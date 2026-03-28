@@ -1,0 +1,130 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 2 (Performance Pro)",
+  "emotional_tone": "Precise, scientific, authoritative, encouraging, tactical.",
+  "design_philosophy": "Biohacking command center. A fusion of Cardiologist, Neuroscientist, and Performance Coach. Information density is high, but hierarchy is absolute. We use tactical minimalism: 1px hard borders instead of soft shadows, pure white data on obsidian backgrounds, and high-visibility neon accents for status indicators. The UI must feel like a precision instrument for measuring human performance.",
+  "colors": {
+    "background": {
+      "base": "bg-neutral-950",
+      "surface": "bg-neutral-900/50",
+      "surface_elevated": "bg-neutral-800/80"
+    },
+    "text": {
+      "primary": "text-white",
+      "secondary": "text-neutral-400",
+      "tertiary": "text-neutral-500",
+      "accent": "text-cyan-400"
+    },
+    "border": {
+      "default": "border-white/10",
+      "subtle": "border-white/5",
+      "active": "border-cyan-500/50"
+    },
+    "status": {
+      "optimal": {
+        "text": "text-emerald-400",
+        "bg": "bg-emerald-400/10",
+        "border": "border-emerald-400/30",
+        "glow": "drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]",
+        "hex": "#34d399"
+      },
+      "warning": {
+        "text": "text-amber-400",
+        "bg": "bg-amber-400/10",
+        "border": "border-amber-400/30",
+        "glow": "drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]",
+        "hex": "#fbbf24"
+      },
+      "danger": {
+        "text": "text-rose-500",
+        "bg": "bg-rose-500/10",
+        "border": "border-rose-500/30",
+        "glow": "drop-shadow-[0_0_12px_rgba(244,63,94,0.5)]",
+        "hex": "#f43f5e"
+      }
+    },
+    "primary": {
+      "DEFAULT": "bg-cyan-500",
+      "hover": "hover:bg-cyan-400",
+      "text": "text-cyan-400"
+    }
+  },
+  "typography": {
+    "font_families": {
+      "heading": "Chivo",
+      "body": "IBM Plex Sans",
+      "mono": "JetBrains Mono"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl font-black tracking-tighter",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "h3": "text-xl font-semibold tracking-tight",
+      "h4": "text-lg font-medium",
+      "body": "text-sm sm:text-base font-normal leading-relaxed",
+      "label": "text-xs font-bold uppercase tracking-[0.2em]",
+      "data_large": "text-6xl sm:text-7xl font-mono font-bold tracking-tighter"
+    }
+  },
+  "layout_and_spacing": {
+    "container": "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "grid": "grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-6",
+    "surface_padding": "p-6 sm:p-8",
+    "border_radius": "rounded-none sm:rounded-md",
+    "card_structure": "border border-white/10 bg-neutral-900/40 backdrop-blur-xl flex flex-col relative overflow-hidden"
+  },
+  "surfaces_and_micro_themes": {
+    "dashboard_cards": "Flat background (bg-neutral-900/40), 1px subtle border (border-white/10), no drop shadow. On hover: border-white/30 and bg-neutral-900/60.",
+    "nudge_card": "The Tracing Beam effect. Add a glowing gradient line that travels around the container edge or a highly visible inner glow to signify immediate action required.",
+    "v_score_hero": "Retro-Futurism. Deep neutral-950 background with a scanline overlay (CSS repeating-linear-gradient) and a massive JetBrains Mono data readout.",
+    "inputs": "Tactical, flat. bg-neutral-950, border-white/20, focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400.",
+    "glass": "Crystal Glass for headers/modals: bg-neutral-950/70, backdrop-blur-2xl, border-b border-white/10."
+  },
+  "components": {
+    "navigation": "Sticky top bar, z-50, backdrop-blur-xl bg-neutral-950/80, border-b border-white/10. Contains Logo ('VitalFlow'), User Avatar, and quick 'Add Data' CTA.",
+    "biometric_form": "Shadcn Dialog or fixed Side Panel. Inputs: sliders for HRV, BPM, Sleep Hours, Cognitive Load. Must feel like a scientific intake form. Use standard Shadcn form components but overridden with tactical styling (sharp edges, no soft rings).",
+    "v_score_display": "Large central or left widget. Shows the massive 0-100 number. The color of this number and its container's subtle glow MUST map to the Status_Visual (Green, Yellow, Red).",
+    "affected_areas": "A 2x2 grid or horizontal flex of 'Area_Afetada' (Brain, Heart, Muscles, Digestion). Use Phosphor icons. Active area gets the status color, others remain dimmed (text-neutral-600).",
+    "ai_analysis": "Text block with 'Causa_Provavel' and 'Tag_Rapida'. Use a monospace label for the tag (e.g., [FADIGA_CEREBRAL]). Text is IBM Plex Sans.",
+    "nudge_action": "High-visibility button/card at the bottom or right. 'Nudge_Acao'. E.g., 'Do 5 mins of box breathing'. Button uses the status color as a subtle pulse or glow.",
+    "history_chart": "Recharts AreaChart or LineChart. X-axis: Days. Y-axis: V-Score. Line color maps to the latest status, with a gradient fill below it."
+  },
+  "interactions_and_motion": {
+    "hover": "All interactive elements must have a visible hover state (e.g., bg-white/5 to bg-white/10, or border-white/10 to border-white/30). Text color must remain high-contrast.",
+    "transitions": "transition-all duration-200 ease-in-out",
+    "data_reveal": "Use Framer Motion to animate the V-Score number counting up, and stagger the entrance of the affected areas.",
+    "nudge_pulse": "If status is Red or Yellow, the Nudge button should have a slow, subtle infinite pulse animation (scale 1 to 1.02) to draw attention."
+  },
+  "media": {
+    "images": [
+      {
+        "category": "abstract_background",
+        "url": "https://images.unsplash.com/photo-1762278804951-43ec485de332?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGRhcmslMjB0ZWNoJTIwZ3JlZW4lMjBkYXRhJTIwbGluZXN8ZW58MHx8fHwxNzc0NzM2OTAwfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract green data lines. Use this as a very low opacity (10-15%) absolute background behind the main V-Score hero card to give a 'data flow' vibe. Apply a radial-gradient mask to fade it into the black background."
+      },
+      {
+        "category": "user_avatar",
+        "url": "https://images.unsplash.com/photo-1624670319970-37aa780d4874?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxhdGhsZXRpYyUyMHByb2Zlc3Npb25hbCUyMG1hbiUyMHBvcnRyYWl0JTIwZGFyayUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzc0NzM2ODk1fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Athletic professional man for the user profile avatar in the header."
+      }
+    ]
+  },
+  "icons": {
+    "library": "lucide-react",
+    "instructions": "Use Lucide React. Example mapping: Brain -> Brain, Heart -> HeartPulse, Muscles -> Dumbbell or Activity, Digestion -> Stethoscope or Apple."
+  },
+  "accessibility_and_testing": {
+    "testing_attributes": "Add data-testid to ALL interactive elements. Example: data-testid='submit-biometrics-button', data-testid='vscore-value', data-testid='nudge-action-card'.",
+    "contrast": "Ensure all text over the dark background meets minimum 4.5:1 APCA. Do not use pure #000000; stick to the zinc/neutral-950 scale.",
+    "reduced_motion": "Wrap Framer Motion animations to respect prefers-reduced-motion."
+  },
+  "instructions_to_main_agent": [
+    "Install the required fonts via Google Fonts in index.html or layout.jsx: 'Chivo', 'IBM Plex Sans', 'JetBrains Mono'.",
+    "Use Shadcn components for structural elements but override the default rounding and shadows. Replace `rounded-lg` with `rounded-md` or `rounded-none`. Remove `shadow-md` and use `border border-white/10`.",
+    "Implement the 'Biometric Input Form' as a floating panel or a prominent card that feeds data to a local state.",
+    "The AI Analysis block should mock a response based on the input: HRV, BPM, and Cognitive Load (Sleep + Apps). Output the structured JSON schema defined in the problem statement.",
+    "For the V-Score, create a dynamic styling function that returns the optimal, warning, or danger color classes based on the score (e.g., >80 Green, 50-80 Yellow, <50 Red).",
+    "Do NOT use Space Grotesk. Use JetBrains Mono for the large V-Score number.",
+    "Implement a mock history chart using Recharts with a sleek, dark-mode styling (no grid lines, pure data line).",
+    "Keep spacing generous but layout dense (Control Room Grid). Use gap-6 between cards."
+  ]
+}
