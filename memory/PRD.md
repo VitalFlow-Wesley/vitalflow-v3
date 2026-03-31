@@ -9,11 +9,12 @@ Motor de analise preditiva e copiloto de longevidade e saude mental corporativo.
 - **IA:** GPT-4o via Emergent LLM Key (emergentintegrations)
 - **Banco:** MongoDB
 
-## Funcionalidades Implementadas (MVP 1.0) - Fev/2026
+## Funcionalidades Implementadas (MVP 1.0 + Redesign) - Fev/2026
 - [x] Autenticacao JWT (Login/Register/Logout/Profile)
 - [x] Filtro de Dominio Corporativo (B2B vs B2C automatico)
 - [x] Analise Biometrica com GPT-4o (V-Score + Nudge)
-- [x] Mapa Anatomico 3D (Heatmap com zonas pulsantes)
+- [x] **StatusOrb** - Esfera abstrata substituindo Heatmap anatomico (Verde=lento, Amarelo=medio, Vermelho=vibracao)
+- [x] **MetricBars** - Barras de progresso para HRV/BPM/Sono/Carga + grid de areas afetadas
 - [x] EnergyStatus (bolinha visual em tempo real)
 - [x] Conectar Dispositivos (4 providers: Google, Apple, Garmin, Fitbit)
 - [x] Webhook de Smartwatch (deteccao estresse/fadiga)
@@ -24,7 +25,14 @@ Motor de analise preditiva e copiloto de longevidade e saude mental corporativo.
 - [x] Exportacao de relatorio PDF (dados JSON)
 - [x] Historico de V-Score (grafico de linha)
 - [x] Fallback sem IA (analise algoritmica local)
-- [x] Documento de Arquitetura Final v1.1 (com Gamificacao spec)
+- [x] Documento de Arquitetura Final v1.1
+
+## Design Choices
+- Interface minimalista sem imagem anatomica
+- Elementos abstratos: circulos de status, barras de progresso, tags
+- Transicoes suaves (fade 1.5s) entre estados
+- Orb com pulsacao variavel: Verde(4s), Amarelo(2.4s), Vermelho(1.2s+vibracao)
+- Foco em clareza de dados e facilidade de leitura
 
 ## Backlog (Proximos Passos)
 ### P0 - Fase 2: Gamificacao & Monetizacao

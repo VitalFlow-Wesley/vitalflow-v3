@@ -238,6 +238,7 @@ class AnalysisResponse(BaseModel):
     nudge_acao: str
     timestamp: str
     colaborador_id: Optional[str] = None
+    input_data: Optional[dict] = None
 
 # Wearable Models
 class WearableConnectionRequest(BaseModel):
@@ -1034,7 +1035,8 @@ async def create_analysis(input_data: BiometricInput, request: Request):
             causa_provavel=analysis.causa_provavel,
             nudge_acao=analysis.nudge_acao,
             timestamp=analysis.timestamp.isoformat(),
-            colaborador_id=analysis.colaborador_id
+            colaborador_id=analysis.colaborador_id,
+            input_data=input_data.model_dump()
         )
     except Exception as e:
         logger.error(f"Error creating analysis: {str(e)}")
@@ -1060,7 +1062,8 @@ async def get_history(request: Request, limit: int = 30):
                 causa_provavel=a["causa_provavel"],
                 nudge_acao=a["nudge_acao"],
                 timestamp=a["timestamp"],
-                colaborador_id=a.get("colaborador_id")
+                colaborador_id=a.get("colaborador_id"),
+                input_data=a.get("input_data")
             )
             for a in analyses
         ]

@@ -27,7 +27,7 @@ Um sistema de analise preditiva de saude que recebe dados biometricos (HRV, BPM,
 | 1 | **Autenticacao JWT** | Login/Registro com cookies HttpOnly, refresh token (7 dias) | Completo |
 | 2 | **Filtro de Dominio Corporativo (Camaleao)** | Diferencia contas pessoais (B2C) de corporativas (B2B) pelo dominio do email | Completo |
 | 3 | **Analise Biometrica com IA** | GPT-4o analisa HRV, BPM, Sono e Carga Cognitiva e retorna V-Score + diagnostico | Completo |
-| 4 | **Mapa Anatomico 3D (Heatmap)** | Silhueta humana com zonas de calor dinamicas que pulsam conforme status | Completo |
+| 4 | **StatusOrb (Esfera Abstrata)** | Esfera animada que muda de cor/pulsacao conforme status (Verde=lento, Amarelo=medio, Vermelho=vibracao) | Completo |
 | 5 | **EnergyStatus (Bolinha Visual)** | Indicador de cor pulsante (Verde/Amarelo/Vermelho) em tempo real na Navbar | Completo |
 | 6 | **Conectar Dispositivos (Wearables)** | Tela de integracao com Google Health Connect, Apple HealthKit, Garmin, Fitbit | Completo |
 | 7 | **Webhook de Smartwatch** | Recebe dados BPM/HRV/Giroscopio via webhook; detecta estresse e fadiga | Completo |
@@ -38,7 +38,8 @@ Um sistema de analise preditiva de saude que recebe dados biometricos (HRV, BPM,
 | 12 | **Exportacao de Relatorio PDF** | Endpoint que retorna dados formatados para geracao de PDF no frontend | Completo |
 | 13 | **Perfil do Usuario** | Edicao de nome, data de nascimento e foto de perfil | Completo |
 | 14 | **Historico de V-Score** | Grafico de linha mostrando evolucao temporal do V-Score | Completo |
-| 15 | **Fallback sem IA** | Analise algoritmica local quando GPT-4o esta indisponivel | Completo |
+| 16 | **MetricBars (Barras de Progresso)** | Barras de HRV, BPM, Sono e Carga Cognitiva com cores dinamicas | Completo |
+| 17 | **UI Minimalista** | Redesign sem imagem anatomica; elementos abstratos (circulos, barras, tags) | Completo |
 
 ---
 
@@ -346,6 +347,11 @@ DADOS DO SMARTWATCH
 |   |   +-- Smartwatch Endpoints     # (linhas 1492-1586) - Analyze/Webhook/History
 |   |   +-- Startup/Seed             # (linhas 1612-1698) - Indexes/Admin/Domains
 |   +-- smartwatch_simulator.py      # Script de teste do webhook (4 cenarios)
+
+---
+
+# PARTE II - ESPECIFICACAO DE NOVAS FEATURES (A IMPLEMENTAR)
+
 |   +-- requirements.txt             # 27 dependencias Python
 |   +-- .env                         # MONGO_URL, JWT_SECRET, EMERGENT_LLM_KEY, etc.
 |
@@ -356,7 +362,8 @@ DADOS DO SMARTWATCH
 |   |   +-- contexts/
 |   |   |   +-- AuthContext.js       # Estado global de autenticacao
 |   |   +-- components/
-|   |   |   +-- HumanBodyHeatmap.js  # Silhueta 3D com mapa de calor animado
+|   |   |   +-- StatusOrb.js         # Esfera abstrata com pulsacao variavel por status
+|   |   |   +-- MetricBars.js        # Barras de progresso biometricas + areas afetadas
 |   |   |   +-- EnergyStatus.js      # Bolinha pulsante Verde/Amarelo/Vermelho
 |   |   |   +-- VScoreDisplay.js     # Display grande do V-Score com animacao
 |   |   |   +-- AIAnalysis.js        # Card de tag + causa provavel
@@ -365,6 +372,8 @@ DADOS DO SMARTWATCH
 |   |   |   +-- HistoryChart.js      # Grafico de linha (recharts)
 |   |   |   +-- Navbar.js            # Navegacao + EnergyStatus + Dropdown
 |   |   |   +-- ProtectedRoute.js    # HOC de protecao de rotas
+|   |   |   +-- HumanBodyHeatmap.js  # [DEPRECIADO] Substituido por StatusOrb
+|   |   |   +-- AffectedAreas.js     # [DEPRECIADO] Integrado ao MetricBars
 |   |   |   +-- ui/                  # Componentes Shadcn UI (20+ componentes)
 |   |   +-- pages/
 |   |       +-- Dashboard.js         # Tela principal (V-Score + Heatmap + Nudge)
@@ -479,14 +488,15 @@ Linhas 1588-1702: CORS, Startup (seed admin, seed dominios), Shutdown
 |---------|--------|--------|
 | `App.js` | Roteamento e providers | 61 |
 | `AuthContext.js` | Estado global de auth | 115 |
-| `Dashboard.js` | Tela principal | 201 |
+| `Dashboard.js` | Tela principal (Orb + MetricBars + Nudge) | 178 |
 | `GestorDashboard.js` | Painel do gestor | 260 |
 | `ConnectDevices.js` | Integracao wearables | 284 |
 | `Profile.js` | Edicao de perfil | 244 |
 | `Login.js` | Tela de login | 127 |
 | `Register.js` | Tela de cadastro | 199 |
-| `HumanBodyHeatmap.js` | Heatmap 3D animado | 346 |
-| `EnergyStatus.js` | Bolinha de status | 102 |
+| `StatusOrb.js` | Esfera abstrata com pulsacao dinamica | 207 |
+| `MetricBars.js` | Barras de progresso + areas afetadas | 153 |
+| `EnergyStatus.js` | Bolinha de status na Navbar | 102 |
 | `VScoreDisplay.js` | Display do V-Score | 118 |
 | `BiometricForm.js` | Modal de entrada de dados | 198 |
 | `NudgeCard.js` | Card de acao imediata | 90 |
@@ -544,11 +554,28 @@ cd /app/backend
 python smartwatch_simulator.py
 ```
 
----
+### 3.6 Comportamento do StatusOrb (Interface Visual)
+
+O StatusOrb e o elemento visual central da interface. Seu comportamento muda conforme o status:
+
+| Status | Cor | Pulsacao | Efeito | Transicao |
+|--------|-----|----------|--------|-----------|
+| **Verde (Normal)** | `#34d399` (Emerald) | Lenta (4s ciclo) - como respiracao calma | Glow suave, rings lentos | Fade 1.5s |
+| **Amarelo (Atencao)** | `#fbbf24` (Amber) | Media (2.4s ciclo) - ritmo atento | Glow medio, rings acelerados | Fade 1.5s |
+| **Vermelho (Critico)** | `#f43f5e` (Rose) | Rapida (1.2s ciclo) + vibracao lateral | Glow intenso + brilho pulsante | Fade 1.5s |
+
+**Regra de Transicao:** Quando o estado muda (ex: Verde -> Amarelo), a cor, glow e velocidade de pulsacao transicionam suavemente via CSS `transition: 1.5s ease-in-out`. Nao ha "piscar" ou mudanca abrupta.
+
+**Elementos visuais do Orb:**
+1. Anel externo (200px) - pulsacao lenta
+2. Anel medio (160px) - pulsacao com delay
+3. Glow difuso (blur 20px) atras do orb
+4. Esfera principal (120px) com gradiente radial + highlight interno
+5. V-Score centralizado com sombra de texto colorida
+6. Label de status abaixo com AnimatePresence (fade in/out)
+7. Tags de areas afetadas como pills coloridas
 
 ---
-
-# PARTE II - ESPECIFICACAO DE NOVAS FEATURES (A IMPLEMENTAR)
 
 ---
 

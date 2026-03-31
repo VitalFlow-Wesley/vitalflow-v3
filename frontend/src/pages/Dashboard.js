@@ -3,7 +3,8 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import BiometricForm from "../components/BiometricForm";
 import VScoreDisplay from "../components/VScoreDisplay";
-import HumanBodyHeatmap from "../components/HumanBodyHeatmap";
+import StatusOrb from "../components/StatusOrb";
+import MetricBars from "../components/MetricBars";
 import AIAnalysis from "../components/AIAnalysis";
 import NudgeCard from "../components/NudgeCard";
 import HistoryChart from "../components/HistoryChart";
@@ -12,7 +13,7 @@ import { motion } from "framer-motion";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const POLLING_INTERVAL = 10000; // 10 segundos
+const POLLING_INTERVAL = 10000;
 
 const Dashboard = () => {
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
@@ -23,15 +24,11 @@ const Dashboard = () => {
   const pollingIntervalRef = useRef(null);
   const lastAnalysisIdRef = useRef(null);
 
-  // Fetch history on mount
   useEffect(() => {
     fetchHistory();
     fetchConnectedDevices();
     startPolling();
-
-    return () => {
-      stopPolling();
-    };
+    return () => stopPolling();
   }, []);
 
   const fetchHistory = async () => {
@@ -50,7 +47,7 @@ const Dashboard = () => {
   const fetchConnectedDevices = async () => {
     try {
       const response = await axios.get(`${API}/wearables`);
-      setConnectedDevices(response.data.filter(d => d.is_connected));
+      setConnectedDevices(response.data.filter((d) => d.is_connected));
     } catch (error) {
       console.error("Erro ao buscar dispositivos:", error);
     }
@@ -59,22 +56,13 @@ const Dashboard = () => {
   const checkForNewAnalysis = async () => {
     try {
       const response = await axios.get(`${API}/history?limit=1`);
-      
       if (response.data.length > 0) {
         const latestAnalysis = response.data[0];
-        
-        // Se há uma nova análise (ID diferente da última conhecida)
         if (lastAnalysisIdRef.current !== latestAnalysis.id) {
           lastAnalysisIdRef.current = latestAnalysis.id;
           setCurrentAnalysis(latestAnalysis);
-          
-          // Atualizar histórico completo
           await fetchHistory();
-          
-          // Notificar usuário
-          toast.success("Nova análise disponível! Mapa Anatômico atualizado.", {
-            duration: 5000
-          });
+          toast.success("Nova análise disponível!", { duration: 4000 });
         }
       }
     } catch (error) {
@@ -83,10 +71,7 @@ const Dashboard = () => {
   };
 
   const startPolling = () => {
-    // Poll a cada 10 segundos para detectar novas análises
-    pollingIntervalRef.current = setInterval(() => {
-      checkForNewAnalysis();
-    }, POLLING_INTERVAL);
+    pollingIntervalRef.current = setInterval(checkForNewAnalysis, POLLING_INTERVAL);
   };
 
   const stopPolling = () => {
@@ -116,55 +101,65 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-neutral-950">
       <Navbar onOpenForm={() => setIsFormOpen(true)} />
-      
+
       {/* Connected Devices Banner */}
       {connectedDevices.length > 0 && (
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <div className="border border-emerald-400/30 bg-emerald-400/5 rounded-md p-3 flex items-center justify-between">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <div className="border border-emerald-400/20 bg-emerald-400/5 rounded-md px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-sm text-emerald-400 font-semibold">
-                {connectedDevices.length} dispositivo(s) conectado(s) - Sincronização automática ativa
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs text-emerald-400 font-medium">
+                {connectedDevices.length} dispositivo(s) conectado(s)
               </span>
             </div>
-            <span className="text-xs text-neutral-400">
-              Atualizando a cada {POLLING_INTERVAL / 1000}s
+            <span className="text-xs text-neutral-500">
+              Atualiza a cada {POLLING_INTERVAL / 1000}s
             </span>
           </div>
         </div>
       )}
-      
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {currentAnalysis ? (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+            className="space-y-6"
           >
-            {/* Left Column - V-Score Hero */}
-            <div className="lg:col-span-5 space-y-6">
-              <VScoreDisplay analysis={currentAnalysis} />
-              <HumanBodyHeatmap 
-                areas={currentAnalysis.area_afetada} 
-                status={currentAnalysis.status_visual}
-                tag={currentAnalysis.tag_rapida}
-              />
+            {/* Top row: Orb + V-Score + Metrics */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left: Orb */}
+              <div className="lg:col-span-4">
+                <StatusOrb
+                  status={currentAnalysis.status_visual}
+                  vScore={currentAnalysis.v_score}
+                  areas={currentAnalysis.area_afetada}
+                  tag={currentAnalysis.tag_rapida}
+                />
+              </div>
+
+              {/* Center: AI Analysis + Nudge */}
+              <div className="lg:col-span-4 space-y-6">
+                <AIAnalysis
+                  tag={currentAnalysis.tag_rapida}
+                  cause={currentAnalysis.causa_provavel}
+                  status={currentAnalysis.status_visual}
+                />
+                <NudgeCard
+                  nudge={currentAnalysis.nudge_acao}
+                  status={currentAnalysis.status_visual}
+                />
+              </div>
+
+              {/* Right: Metric Bars */}
+              <div className="lg:col-span-4">
+                <MetricBars analysis={currentAnalysis} />
+              </div>
             </div>
 
-            {/* Right Column - Analysis & Nudge */}
-            <div className="lg:col-span-7 space-y-6">
-              <AIAnalysis 
-                tag={currentAnalysis.tag_rapida}
-                cause={currentAnalysis.causa_provavel}
-                status={currentAnalysis.status_visual}
-              />
-              <NudgeCard 
-                nudge={currentAnalysis.nudge_acao}
-                status={currentAnalysis.status_visual}
-              />
-              <HistoryChart history={history} />
-            </div>
+            {/* Bottom: History Chart */}
+            <HistoryChart history={history} />
           </motion.div>
         ) : (
           <motion.div
@@ -173,8 +168,12 @@ const Dashboard = () => {
             className="flex flex-col items-center justify-center py-20"
           >
             <div className="text-center space-y-4">
-              <h2 className="text-3xl font-bold text-white font-heading">Bem-vindo ao VitalFlow</h2>
-              <p className="text-neutral-400 text-lg">Comece sua jornada de otimização biológica</p>
+              <h2 className="text-3xl font-bold text-white font-heading">
+                Bem-vindo ao VitalFlow
+              </h2>
+              <p className="text-neutral-400 text-base">
+                Comece sua jornada de otimização biológica
+              </p>
               <button
                 onClick={() => setIsFormOpen(true)}
                 data-testid="start-analysis-button"
@@ -188,7 +187,7 @@ const Dashboard = () => {
       </div>
 
       {/* Biometric Form Dialog */}
-      <BiometricForm 
+      <BiometricForm
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleAnalyze}
