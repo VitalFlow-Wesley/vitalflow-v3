@@ -1,61 +1,65 @@
-# VitalFlow - Resumo Final da Arquitetura
-## Motor de Análise Preditiva e Copiloto de Longevidade & Saúde Mental
+# VitalFlow - Arquitetura Final Consolidada
+## Motor de Analise Preditiva e Copiloto de Longevidade & Saude Mental
 
-**Versão:** 1.0 (MVP Completo)
+**Versao:** 1.1 (MVP + Spec de Gamificacao)
 **Data:** Fevereiro 2026
 **Stack:** React 19 + FastAPI + MongoDB + GPT-4o (Emergent LLM)
+
+---
+
+# PARTE I - SISTEMA IMPLEMENTADO (MVP 1.0)
 
 ---
 
 ## 1. VISAO GERAL TECNICA
 
 ### 1.1 O que e o VitalFlow?
-Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, BPM, Carga Cognitiva, Sono) e os transforma em:
-- **V-Score** (0-100): Pontuação de vitalidade
-- **Area Afetada**: Cérebro, Coração, Músculos, Sistema Digestivo
-- **Status Visual**: Verde (Ótimo), Amarelo (Atenção), Vermelho (Alerta)
-- **Nudge_Acao**: Tarefa rápida de 5 minutos gerada por IA (GPT-4o)
+Um sistema de analise preditiva de saude que recebe dados biometricos (HRV, BPM, Carga Cognitiva, Sono) e os transforma em:
+- **V-Score** (0-100): Pontuacao de vitalidade
+- **Area Afetada**: Cerebro, Coracao, Musculos, Sistema Digestivo
+- **Status Visual**: Verde (Otimo), Amarelo (Atencao), Vermelho (Alerta)
+- **Nudge_Acao**: Tarefa rapida de 5 minutos gerada por IA (GPT-4o)
 
 ### 1.2 Funcionalidades Implementadas
 
-| # | Funcionalidade | Descrição | Status |
+| # | Funcionalidade | Descricao | Status |
 |---|---|---|---|
-| 1 | **Autenticação JWT** | Login/Registro com cookies HttpOnly, refresh token (7 dias) | Completo |
-| 2 | **Filtro de Domínio Corporativo (Camaleão)** | Diferencia contas pessoais (B2C) de corporativas (B2B) pelo domínio do email | Completo |
-| 3 | **Análise Biométrica com IA** | GPT-4o analisa HRV, BPM, Sono e Carga Cognitiva e retorna V-Score + diagnóstico | Completo |
-| 4 | **Mapa Anatômico 3D (Heatmap)** | Silhueta humana com zonas de calor dinâmicas que pulsam conforme status | Completo |
+| 1 | **Autenticacao JWT** | Login/Registro com cookies HttpOnly, refresh token (7 dias) | Completo |
+| 2 | **Filtro de Dominio Corporativo (Camaleao)** | Diferencia contas pessoais (B2C) de corporativas (B2B) pelo dominio do email | Completo |
+| 3 | **Analise Biometrica com IA** | GPT-4o analisa HRV, BPM, Sono e Carga Cognitiva e retorna V-Score + diagnostico | Completo |
+| 4 | **Mapa Anatomico 3D (Heatmap)** | Silhueta humana com zonas de calor dinamicas que pulsam conforme status | Completo |
 | 5 | **EnergyStatus (Bolinha Visual)** | Indicador de cor pulsante (Verde/Amarelo/Vermelho) em tempo real na Navbar | Completo |
-| 6 | **Conectar Dispositivos (Wearables)** | Tela de integração com Google Health Connect, Apple HealthKit, Garmin, Fitbit | Completo |
-| 7 | **Webhook de Smartwatch** | Recebe dados BPM/HRV/Giroscópio via webhook; detecta estresse e fadiga | Completo |
-| 8 | **Anonimização LGPD** | Dados de smartwatch analisados com UUID anônimo (sem rastreamento individual) | Completo |
-| 9 | **Notificações Push Simuladas** | Alertas via Toast quando status crítico é detectado (prep. para FCM/OneSignal) | Completo |
-| 10 | **Dashboard do Gestor** | Métricas anonimizadas do time: média de estresse, alertas, gráfico por horário | Completo |
-| 11 | **IA Preditiva** | Analisa histórico de 7 dias e prevê próximo pico de estresse com 30min de antecedência | Completo |
-| 12 | **Exportação de Relatório PDF** | Endpoint que retorna dados formatados para geração de PDF no frontend | Completo |
-| 13 | **Perfil do Usuário** | Edição de nome, data de nascimento e foto de perfil | Completo |
-| 14 | **Histórico de V-Score** | Gráfico de linha mostrando evolução temporal do V-Score | Completo |
-| 15 | **Fallback sem IA** | Análise algorítmica local quando GPT-4o está indisponível | Completo |
+| 6 | **Conectar Dispositivos (Wearables)** | Tela de integracao com Google Health Connect, Apple HealthKit, Garmin, Fitbit | Completo |
+| 7 | **Webhook de Smartwatch** | Recebe dados BPM/HRV/Giroscopio via webhook; detecta estresse e fadiga | Completo |
+| 8 | **Anonimizacao LGPD** | Dados de smartwatch analisados com UUID anonimo (sem rastreamento individual) | Completo |
+| 9 | **Notificacoes Push Simuladas** | Alertas via Toast quando status critico e detectado (prep. para FCM/OneSignal) | Completo |
+| 10 | **Dashboard do Gestor** | Metricas anonimizadas do time: media de estresse, alertas, grafico por horario | Completo |
+| 11 | **IA Preditiva** | Analisa historico de 7 dias e preve proximo pico de estresse com 30min de antecedencia | Completo |
+| 12 | **Exportacao de Relatorio PDF** | Endpoint que retorna dados formatados para geracao de PDF no frontend | Completo |
+| 13 | **Perfil do Usuario** | Edicao de nome, data de nascimento e foto de perfil | Completo |
+| 14 | **Historico de V-Score** | Grafico de linha mostrando evolucao temporal do V-Score | Completo |
+| 15 | **Fallback sem IA** | Analise algoritmica local quando GPT-4o esta indisponivel | Completo |
 
 ---
 
-## 2. ENDPOINTS DA API
+## 2. ENDPOINTS DA API (IMPLEMENTADOS)
 
-### 2.1 Autenticação (`/api/auth/*`)
+### 2.1 Autenticacao (`/api/auth/*`)
 
-| Método | Rota | Descrição | Auth? |
+| Metodo | Rota | Descricao | Auth? |
 |--------|------|-----------|-------|
-| `POST` | `/api/auth/register` | Cadastro de novo colaborador. Detecta automaticamente se é corporativo pelo domínio do email | Não |
-| `POST` | `/api/auth/login` | Login. Retorna tokens JWT em cookies HttpOnly | Não |
-| `POST` | `/api/auth/logout` | Logout. Remove cookies de token | Não |
-| `GET` | `/api/auth/me` | Retorna dados do usuário logado (sem password_hash) | Sim |
+| `POST` | `/api/auth/register` | Cadastro de novo colaborador. Detecta automaticamente se e corporativo pelo dominio do email | Nao |
+| `POST` | `/api/auth/login` | Login. Retorna tokens JWT em cookies HttpOnly | Nao |
+| `POST` | `/api/auth/logout` | Logout. Remove cookies de token | Nao |
+| `GET` | `/api/auth/me` | Retorna dados do usuario logado (sem password_hash) | Sim |
 | `PUT` | `/api/auth/profile` | Atualiza nome, data de nascimento e foto do perfil | Sim |
-| `GET` | `/api/auth/check-domain?email=x@y.com` | Verifica se email pertence a domínio corporativo cadastrado | Não |
+| `GET` | `/api/auth/check-domain?email=x@y.com` | Verifica se email pertence a dominio corporativo cadastrado | Nao |
 
 **Modelo de Resposta (`AuthResponse`):**
 ```json
 {
   "id": "uuid",
-  "nome": "João Silva",
+  "nome": "Joao Silva",
   "email": "joao@empresa.com",
   "data_nascimento": "1990-01-15",
   "foto_url": null,
@@ -68,12 +72,12 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
 }
 ```
 
-### 2.2 Análise Biométrica (`/api/analyze`, `/api/history`)
+### 2.2 Analise Biometrica (`/api/analyze`, `/api/history`)
 
-| Método | Rota | Descrição | Auth? |
+| Metodo | Rota | Descricao | Auth? |
 |--------|------|-----------|-------|
-| `POST` | `/api/analyze` | Envia dados biométricos e recebe análise completa da IA | Sim |
-| `GET` | `/api/history?limit=30` | Histórico de análises do colaborador logado | Sim |
+| `POST` | `/api/analyze` | Envia dados biometricos e recebe analise completa da IA | Sim |
+| `GET` | `/api/history?limit=30` | Historico de analises do colaborador logado | Sim |
 
 **Body do `POST /api/analyze`:**
 ```json
@@ -83,7 +87,7 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
   "bpm_average": 70,
   "sleep_hours": 5.5,
   "cognitive_load": 8,
-  "user_name": "João",
+  "user_name": "Joao",
   "age": 32
 }
 ```
@@ -93,11 +97,11 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
 {
   "id": "uuid",
   "v_score": 42,
-  "area_afetada": ["Cérebro", "Coração"],
+  "area_afetada": ["Cerebro", "Coracao"],
   "status_visual": "Vermelho",
   "tag_rapida": "Overload Cognitivo",
-  "causa_provavel": "HRV baixa (45ms) indica estresse do SN. BPM 35% acima da média.",
-  "nudge_acao": "Faça 5 minutos de respiração 4-7-8 e beba 300ml de água gelada.",
+  "causa_provavel": "HRV baixa (45ms) indica estresse do SN. BPM 35% acima da media.",
+  "nudge_acao": "Faca 5 minutos de respiracao 4-7-8 e beba 300ml de agua gelada.",
   "timestamp": "2026-02-01T14:30:00Z",
   "colaborador_id": "uuid"
 }
@@ -105,11 +109,11 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
 
 ### 2.3 Smartwatch (`/api/smartwatch/*`)
 
-| Método | Rota | Descrição | Auth? |
+| Metodo | Rota | Descricao | Auth? |
 |--------|------|-----------|-------|
-| `POST` | `/api/smartwatch/analyze` | Análise em tempo real de dados do smartwatch + recomendação IA | Sim |
+| `POST` | `/api/smartwatch/analyze` | Analise em tempo real de dados do smartwatch + recomendacao IA | Sim |
 | `POST` | `/api/smartwatch/webhook?device_token=x` | Webhook para receber dados de smartwatches reais | Token |
-| `GET` | `/api/smartwatch/history?limit=20` | Histórico de análises do smartwatch (anonimizado) | Sim |
+| `GET` | `/api/smartwatch/history?limit=20` | Historico de analises do smartwatch (anonimizado) | Sim |
 
 **Body do `POST /api/smartwatch/analyze`:**
 ```json
@@ -136,7 +140,7 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
   "hrv": 35,
   "is_stationary": false,
   "stationary_duration_minutes": null,
-  "ai_recommendation": "Título: Respiração Box\nAção: Inspire 4s, segure 4s, expire 4s...",
+  "ai_recommendation": "Titulo: Respiracao Box\nAcao: Inspire 4s, segure 4s, expire 4s...",
   "detected_at": "2026-02-01T15:00:00Z",
   "risk_level": "Alto",
   "push_notification_sent": true
@@ -145,7 +149,7 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
 
 ### 2.4 Status de Energia (`/api/status/*`)
 
-| Método | Rota | Descrição | Auth? |
+| Metodo | Rota | Descricao | Auth? |
 |--------|------|-----------|-------|
 | `GET` | `/api/status/energy` | Status em tempo real (bolinha Verde/Amarelo/Vermelho) | Sim |
 
@@ -154,7 +158,7 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
 {
   "status": "Amarelo",
   "color_code": "#fbbf24",
-  "label": "Atenção - Fadiga Detectada",
+  "label": "Atencao - Fadiga Detectada",
   "last_updated": "2026-02-01T15:00:00Z",
   "current_bpm": 85,
   "current_hrv": 42
@@ -163,37 +167,37 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
 
 ### 2.5 IA Preditiva (`/api/predictive/*`)
 
-| Método | Rota | Descrição | Auth? |
+| Metodo | Rota | Descricao | Auth? |
 |--------|------|-----------|-------|
-| `GET` | `/api/predictive/alert` | Verifica se há padrão de estresse previsto e retorna alerta preventivo | Sim |
+| `GET` | `/api/predictive/alert` | Verifica se ha padrao de estresse previsto e retorna alerta preventivo | Sim |
 
 **Modelo de Resposta (com alerta):**
 ```json
 {
   "has_alert": true,
   "alert": {
-    "message": "João, seu histórico mostra picos de estresse às terças-feiras às 14h...",
+    "message": "Joao, seu historico mostra picos de estresse as tercas-feiras as 14h...",
     "predicted_time": "14:00",
     "minutes_until": 45,
     "confidence": 85.7,
-    "pattern": "Pico de estresse detectado às terças-feiras às 14h (3x em 7 dias)"
+    "pattern": "Pico de estresse detectado as tercas-feiras as 14h (3x em 7 dias)"
   }
 }
 ```
 
 ### 2.6 Dashboard do Gestor (`/api/dashboard/*`)
 
-| Método | Rota | Descrição | Auth? | Permissão |
+| Metodo | Rota | Descricao | Auth? | Permissao |
 |--------|------|-----------|-------|-----------|
-| `GET` | `/api/dashboard/metrics` | Métricas gerais: total colaboradores, média V-Score, distribuição | Sim | Gestor |
-| `GET` | `/api/dashboard/team-stress` | Métricas de estresse do time (anonimizadas por LGPD) | Sim | Gestor |
-| `GET` | `/api/dashboard/export-pdf` | Exporta dados do relatório para PDF | Sim | Gestor |
+| `GET` | `/api/dashboard/metrics` | Metricas gerais: total colaboradores, media V-Score, distribuicao | Sim | Gestor |
+| `GET` | `/api/dashboard/team-stress` | Metricas de estresse do time (anonimizadas por LGPD) | Sim | Gestor |
+| `GET` | `/api/dashboard/export-pdf` | Exporta dados do relatorio para PDF | Sim | Gestor |
 | `GET` | `/api/colaboradores?setor=SAC` | Lista colaboradores (filtro por setor) | Sim | Gestor |
 
 **Modelo de Resposta (`TeamStressMetrics`):**
 ```json
 {
-  "period": "últimas 24h",
+  "period": "ultimas 24h",
   "total_analyses": 150,
   "average_stress_level": 45.2,
   "critical_alerts": 12,
@@ -209,7 +213,7 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
 
 ### 2.7 Wearables (`/api/wearables/*`)
 
-| Método | Rota | Descrição | Auth? |
+| Metodo | Rota | Descricao | Auth? |
 |--------|------|-----------|-------|
 | `POST` | `/api/wearables/connect` | Conecta um dispositivo wearable | Sim |
 | `GET` | `/api/wearables` | Lista dispositivos conectados do colaborador | Sim |
@@ -217,15 +221,15 @@ Um sistema de análise preditiva de saúde que recebe dados biométricos (HRV, B
 
 ---
 
-## 3. LOGICA DE NEGOCIO
+## 3. LOGICA DE NEGOCIO (IMPLEMENTADA)
 
-### 3.1 Diferenciação B2B vs B2C (Sistema Camaleão)
+### 3.1 Diferenciacao B2B vs B2C (Sistema Camaleao)
 
 ```
 REGISTRO DE USUARIO
        |
        v
-[Extrai domínio do email]  (ex: joao@brisanet.com.br -> "brisanet.com.br")
+[Extrai dominio do email]  (ex: joao@brisanet.com.br -> "brisanet.com.br")
        |
        v
 [Busca no MongoDB: corporate_domains]
@@ -245,36 +249,36 @@ Acesso a:      Acesso a:
   Pessoal        Pessoal
 - Dashboard    - Perfil
   Gestor       - Wearables
-  (se Gestor)  - Análise IA
+  (se Gestor)  - Analise IA
 - Perfil
 - Wearables
-- Análise IA
+- Analise IA
 ```
 
-**Domínios Corporativos Cadastrados (Seed):**
+**Dominios Corporativos Cadastrados (Seed):**
 - `brisanet.com.br` -> Brisanet
 - `vitalflow.com` -> VitalFlow
 - `emergent.sh` -> Emergent
 
-**Regra:** A diferenciação é AUTOMATICA. O sistema detecta pelo domínio do email no momento do registro. Não há tela de seleção "pessoal vs corporativo".
+**Regra:** A diferenciacao e AUTOMATICA. O sistema detecta pelo dominio do email no momento do registro. Nao ha tela de selecao "pessoal vs corporativo".
 
-### 3.2 Cálculo do V-Score
+### 3.2 Calculo do V-Score
 
-A IA (GPT-4o) recebe os dados biométricos e retorna o V-Score aplicando estas regras:
+A IA (GPT-4o) recebe os dados biometricos e retorna o V-Score aplicando estas regras:
 
-| Parâmetro | Faixa Normal | Alerta | Crítico |
+| Parametro | Faixa Normal | Alerta | Critico |
 |-----------|-------------|--------|---------|
 | HRV | > 50ms | 30-50ms | < 30ms |
-| BPM vs Média | < 15% acima | 15-25% acima | > 25% acima |
+| BPM vs Media | < 15% acima | 15-25% acima | > 25% acima |
 | Sono | > 7h | 5-6h | < 5h |
 | Carga Cognitiva | 0-5 | 6-7 | 8-10 (c/ sono < 6h) |
 
 **Faixas do V-Score:**
-- 80-100: Verde (Ótimo) -> Manter hábitos
-- 50-79: Amarelo (Atenção) -> Intervenção leve
-- 0-49: Vermelho (Alerta) -> Ação imediata necessária
+- 80-100: Verde (Otimo) -> Manter habitos
+- 50-79: Amarelo (Atencao) -> Intervencao leve
+- 0-49: Vermelho (Alerta) -> Acao imediata necessaria
 
-### 3.3 Detecção de Estresse e Fadiga (Smartwatch)
+### 3.3 Deteccao de Estresse e Fadiga (Smartwatch)
 
 ```
 DADOS DO SMARTWATCH
@@ -286,7 +290,7 @@ DADOS DO SMARTWATCH
   SIM       NAO
   |          |
   v          v
-"Alerta    [Acelerômetro ~0 por > 60min?]
+"Alerta    [Acelerometro ~0 por > 60min?]
  de           |
  Estresse"   +----+----+
   |          SIM       NAO
@@ -296,30 +300,30 @@ DADOS DO SMARTWATCH
   |       Fadiga"
   |
   v
-[Gera UUID anônimo (LGPD)]
+[Gera UUID anonimo (LGPD)]
   |
   v
-[GPT-4o gera recomendação de Reset de Foco]
+[GPT-4o gera recomendacao de Reset de Foco]
   |
   v
-[Se Crítico: Dispara notificação push]
+[Se Critico: Dispara notificacao push]
 ```
 
-### 3.4 IA Preditiva (Prevenção de Estresse)
+### 3.4 IA Preditiva (Prevencao de Estresse)
 
-1. Busca últimas 7 dias de análises do smartwatch
+1. Busca ultimas 7 dias de analises do smartwatch
 2. Agrupa por dia da semana + hora (ex: "segunda_14h")
-3. Calcula média de estresse por slot temporal
-4. Se média >= 70/100 com >= 2 ocorrências, detecta padrão
-5. Se o padrão está entre 30min e 2h no futuro, gera alerta preventivo via GPT-4o
-6. Retorna mensagem personalizada com confiança baseada na frequência
+3. Calcula media de estresse por slot temporal
+4. Se media >= 70/100 com >= 2 ocorrencias, detecta padrao
+5. Se o padrao esta entre 30min e 2h no futuro, gera alerta preventivo via GPT-4o
+6. Retorna mensagem personalizada com confianca baseada na frequencia
 
-### 3.5 Níveis de Acesso
+### 3.5 Niveis de Acesso
 
-| Nível | Acesso |
+| Nivel | Acesso |
 |-------|--------|
-| **User** | Dashboard pessoal, análise biométrica, wearables, perfil |
-| **Gestor** | Tudo do User + Dashboard do Gestor (métricas anonimizadas do time), exportação PDF, lista de colaboradores |
+| **User** | Dashboard pessoal, analise biometrica, wearables, perfil |
+| **Gestor** | Tudo do User + Dashboard do Gestor (metricas anonimizadas do time), exportacao PDF, lista de colaboradores |
 
 ---
 
@@ -327,72 +331,72 @@ DADOS DO SMARTWATCH
 
 ```
 /app/
-├── backend/
-│   ├── server.py                    # FastAPI (1702 linhas) - TODA lógica de negócio
-│   │   ├── Modelos Pydantic         # (linhas 91-314) - 15+ modelos de dados
-│   │   ├── Funções de IA            # (linhas 317-440) - Análise biométrica GPT-4o
-│   │   ├── Smartwatch Engine        # (linhas 443-577) - Detecção estresse/fadiga
-│   │   ├── Domain Functions         # (linhas 579-601) - Filtro domínio corporativo
-│   │   ├── Predictive AI            # (linhas 604-735) - Padrões de estresse
-│   │   ├── Push Notifications       # (linhas 738-797) - Notificações simuladas
-│   │   ├── Auth Endpoints           # (linhas 800-1000) - Login/Register/Profile
-│   │   ├── Analysis Endpoints       # (linhas 1002-1069) - Criar/Buscar análises
-│   │   ├── Wearable Endpoints       # (linhas 1071-1142) - CRUD dispositivos
-│   │   ├── Gestor Endpoints         # (linhas 1144-1490) - Métricas/Time/Export
-│   │   ├── Smartwatch Endpoints     # (linhas 1492-1586) - Analyze/Webhook/History
-│   │   └── Startup/Seed             # (linhas 1612-1698) - Indexes/Admin/Domains
-│   ├── smartwatch_simulator.py      # Script de teste do webhook (4 cenários)
-│   ├── requirements.txt             # 27 dependências Python
-│   └── .env                         # MONGO_URL, JWT_SECRET, EMERGENT_LLM_KEY, etc.
-│
-├── frontend/
-│   ├── package.json                 # React 19 + 40+ dependências
-│   ├── src/
-│   │   ├── App.js                   # Roteamento com React Router v7
-│   │   ├── contexts/
-│   │   │   └── AuthContext.js       # Estado global de autenticação
-│   │   ├── components/
-│   │   │   ├── HumanBodyHeatmap.js  # Silhueta 3D com mapa de calor animado
-│   │   │   ├── EnergyStatus.js      # Bolinha pulsante Verde/Amarelo/Vermelho
-│   │   │   ├── VScoreDisplay.js     # Display grande do V-Score com animação
-│   │   │   ├── AIAnalysis.js        # Card de tag + causa provável
-│   │   │   ├── NudgeCard.js         # Card de ação imediata (5 min)
-│   │   │   ├── BiometricForm.js     # Modal de entrada de dados biométricos
-│   │   │   ├── HistoryChart.js      # Gráfico de linha (recharts)
-│   │   │   ├── Navbar.js            # Navegação + EnergyStatus + Dropdown
-│   │   │   ├── ProtectedRoute.js    # HOC de proteção de rotas
-│   │   │   └── ui/                  # Componentes Shadcn UI (20+ componentes)
-│   │   └── pages/
-│   │       ├── Dashboard.js         # Tela principal (V-Score + Heatmap + Nudge)
-│   │       ├── GestorDashboard.js   # Painel do Gestor (gráficos + métricas)
-│   │       ├── ConnectDevices.js    # Integração com wearables (4 providers)
-│   │       ├── Profile.js           # Edição de perfil + foto
-│   │       ├── Login.js             # Tela de login
-│   │       └── Register.js          # Tela de cadastro
-│   └── .env                         # REACT_APP_BACKEND_URL
-│
-└── memory/
-    ├── PRD.md                       # Documento de requisitos do produto
-    └── test_credentials.md          # Credenciais de teste
++-- backend/
+|   +-- server.py                    # FastAPI (1702 linhas) - TODA logica de negocio
+|   |   +-- Modelos Pydantic         # (linhas 91-314) - 15+ modelos de dados
+|   |   +-- Funcoes de IA            # (linhas 317-440) - Analise biometrica GPT-4o
+|   |   +-- Smartwatch Engine        # (linhas 443-577) - Deteccao estresse/fadiga
+|   |   +-- Domain Functions         # (linhas 579-601) - Filtro dominio corporativo
+|   |   +-- Predictive AI            # (linhas 604-735) - Padroes de estresse
+|   |   +-- Push Notifications       # (linhas 738-797) - Notificacoes simuladas
+|   |   +-- Auth Endpoints           # (linhas 800-1000) - Login/Register/Profile
+|   |   +-- Analysis Endpoints       # (linhas 1002-1069) - Criar/Buscar analises
+|   |   +-- Wearable Endpoints       # (linhas 1071-1142) - CRUD dispositivos
+|   |   +-- Gestor Endpoints         # (linhas 1144-1490) - Metricas/Time/Export
+|   |   +-- Smartwatch Endpoints     # (linhas 1492-1586) - Analyze/Webhook/History
+|   |   +-- Startup/Seed             # (linhas 1612-1698) - Indexes/Admin/Domains
+|   +-- smartwatch_simulator.py      # Script de teste do webhook (4 cenarios)
+|   +-- requirements.txt             # 27 dependencias Python
+|   +-- .env                         # MONGO_URL, JWT_SECRET, EMERGENT_LLM_KEY, etc.
+|
++-- frontend/
+|   +-- package.json                 # React 19 + 40+ dependencias
+|   +-- src/
+|   |   +-- App.js                   # Roteamento com React Router v7
+|   |   +-- contexts/
+|   |   |   +-- AuthContext.js       # Estado global de autenticacao
+|   |   +-- components/
+|   |   |   +-- HumanBodyHeatmap.js  # Silhueta 3D com mapa de calor animado
+|   |   |   +-- EnergyStatus.js      # Bolinha pulsante Verde/Amarelo/Vermelho
+|   |   |   +-- VScoreDisplay.js     # Display grande do V-Score com animacao
+|   |   |   +-- AIAnalysis.js        # Card de tag + causa provavel
+|   |   |   +-- NudgeCard.js         # Card de acao imediata (5 min)
+|   |   |   +-- BiometricForm.js     # Modal de entrada de dados biometricos
+|   |   |   +-- HistoryChart.js      # Grafico de linha (recharts)
+|   |   |   +-- Navbar.js            # Navegacao + EnergyStatus + Dropdown
+|   |   |   +-- ProtectedRoute.js    # HOC de protecao de rotas
+|   |   |   +-- ui/                  # Componentes Shadcn UI (20+ componentes)
+|   |   +-- pages/
+|   |       +-- Dashboard.js         # Tela principal (V-Score + Heatmap + Nudge)
+|   |       +-- GestorDashboard.js   # Painel do Gestor (graficos + metricas)
+|   |       +-- ConnectDevices.js    # Integracao com wearables (4 providers)
+|   |       +-- Profile.js           # Edicao de perfil + foto
+|   |       +-- Login.js             # Tela de login
+|   |       +-- Register.js          # Tela de cadastro
+|   +-- .env                         # REACT_APP_BACKEND_URL
+|
++-- memory/
+    +-- PRD.md                       # Documento de requisitos do produto
+    +-- test_credentials.md          # Credenciais de teste
 ```
 
 ---
 
 ## 5. BANCO DE DADOS (MongoDB)
 
-### 5.1 Collections
+### 5.1 Collections (Implementadas)
 
-| Collection | Descrição | Documentos Típicos |
+| Collection | Descricao | Documentos Tipicos |
 |------------|-----------|-------------------|
-| `colaboradores` | Usuários do sistema | ~10-1000 |
-| `analyses` | Análises biométricas (V-Score) | ~100-10000 |
+| `colaboradores` | Usuarios do sistema | ~10-1000 |
+| `analyses` | Analises biometricas (V-Score) | ~100-10000 |
 | `smartwatch_analyses` | Dados de smartwatch processados | ~1000-100000 |
 | `wearable_devices` | Dispositivos conectados | ~10-1000 |
-| `corporate_domains` | Domínios corporativos cadastrados | ~3-50 |
+| `corporate_domains` | Dominios corporativos cadastrados | ~3-50 |
 | `predictive_alerts` | Alertas preditivos gerados | ~10-1000 |
-| `notifications` | Histórico de notificações push | ~100-10000 |
+| `notifications` | Historico de notificacoes push | ~100-10000 |
 
-### 5.2 Schema: Colaborador
+### 5.2 Schema: Colaborador (Atual)
 ```json
 {
   "id": "uuid",
@@ -401,7 +405,7 @@ DADOS DO SMARTWATCH
   "password_hash": "string (bcrypt)",
   "data_nascimento": "string (ISO date)",
   "foto_url": "string | null",
-  "setor": "Administrativo | SAC | Logística | Operacional",
+  "setor": "Administrativo | SAC | Logistica | Operacional",
   "nivel_acesso": "User | Gestor",
   "matricula": "string | null (apenas corporativo)",
   "cargo": "string | null (apenas corporativo)",
@@ -417,11 +421,11 @@ DADOS DO SMARTWATCH
 
 ---
 
-## 6. INTEGRAÇÕES DE TERCEIROS
+## 6. INTEGRACOES DE TERCEIROS
 
-| Serviço | Uso | Chave |
+| Servico | Uso | Chave |
 |---------|-----|-------|
-| **Emergent LLM (GPT-4o)** | Análise biométrica, geração de Nudges, recomendações de Reset de Foco, alertas preditivos | `EMERGENT_LLM_KEY` (via `emergentintegrations`) |
+| **Emergent LLM (GPT-4o)** | Analise biometrica, geracao de Nudges, recomendacoes de Reset de Foco, alertas preditivos | `EMERGENT_LLM_KEY` (via `emergentintegrations`) |
 
 **Biblioteca:** `emergentintegrations==0.1.0`
 ```python
@@ -438,7 +442,7 @@ response = await chat.send_message(UserMessage(text="..."))
 
 ## 7. CREDENCIAIS DE TESTE
 
-| Conta | Email | Senha | Tipo | Nível |
+| Conta | Email | Senha | Tipo | Nivel |
 |-------|-------|-------|------|-------|
 | Admin | `admin@vitalflow.com` | `Admin123!@#` | Personal | Gestor |
 
@@ -446,129 +450,53 @@ Para criar conta corporativa, registre com email `@brisanet.com.br`, `@vitalflow
 
 ---
 
-## 8. GUIA DE PROXIMOS PASSOS
-
-### 8.1 Interface Visual (Mobile/Web)
-
-**Recomendação: React Native ou Flutter**
-
-O backend já está 100% pronto como API REST. Para criar apps mobile nativos:
-
-1. **React Native (Recomendado):** Reutiliza a lógica de componentes React existente. Os mesmos contextos (`AuthContext`) e chamadas Axios funcionam com mínimas adaptações.
-
-2. **Flutter:** Melhor performance nativa, mas requer reescrever toda a camada de UI.
-
-**Passos para Mobile:**
-- Trocar cookies HttpOnly por `Authorization: Bearer <token>` header (já suportado pelo backend - ver linha 64 do `server.py`)
-- Usar `AsyncStorage` (React Native) ou `SharedPreferences` (Flutter) para persistir tokens
-- Implementar push notifications reais com Firebase Cloud Messaging (o backend já tem a estrutura de notificação pronta)
-- Adaptar o HumanBodyHeatmap para SVG nativo ou canvas
-
-### 8.2 Integração com Smartwatches Reais
-
-| Plataforma | API | Tipo |
-|------------|-----|------|
-| **Apple Watch** | HealthKit | SDK nativo iOS |
-| **Wear OS** | Health Connect (Google) | SDK Android |
-| **Garmin** | Garmin Connect API | REST API (OAuth 2.0) |
-| **Fitbit** | Fitbit Web API | REST API (OAuth 2.0) |
-
-**Fluxo de Integração Real:**
-```
-SMARTWATCH
-    |
-    v
-[SDK do dispositivo coleta BPM, HRV, Acelerômetro]
-    |
-    v
-[App Mobile envia para VitalFlow via POST /api/smartwatch/analyze]
-    |
-    v
-[Backend processa: Detecta estresse/fadiga -> GPT-4o -> Notificação]
-    |
-    v
-[Resultado reflete no Dashboard em tempo real]
-```
-
-**O webhook (`POST /api/smartwatch/webhook`) já está preparado** para receber dados de dispositivos reais. Basta:
-1. Substituir o `device_token` por autenticação OAuth
-2. Mapear os campos do SDK para o formato `SmartwatchData`
-
-### 8.3 Funcionalidades Futuras Planejadas
-
-| Prioridade | Feature | Descrição |
-|------------|---------|-----------|
-| P0 | **Gamificação (Pontos de Energia)** | +50 pontos ao seguir Nudge da IA. Ranking e recompensas |
-| P0 | **Plano Free vs Premium (B2C)** | Free: apenas EnergyStatus. Premium: predições completas da IA |
-| P1 | **Boas-Vindas Corporativas** | "Bem-vindo ao VitalFlow, [Nome]! Cuidando da sua energia na [Empresa]" |
-| P1 | **Relatórios PDF reais** | Integrar `reportlab` ou `weasyprint` para PDFs formatados |
-| P2 | **Push Notifications reais** | Firebase Cloud Messaging / OneSignal |
-| P2 | **Integração com calendário** | Correlacionar picos de estresse com reuniões do Google Calendar |
-| P2 | **Modo Offline** | Service Worker + IndexedDB para funcionar sem internet |
-| P3 | **Wearable SDK nativo** | Watch face dedicada com V-Score em tempo real |
-
-### 8.4 Melhorias de Infraestrutura
-
-| Area | Recomendação |
-|------|-------------|
-| **Backend** | Refatorar `server.py` em múltiplos arquivos com `APIRouter` (auth, analyze, smartwatch, dashboard) |
-| **Banco** | Adicionar índices compostos em `smartwatch_analyses` (colaborador_id + timestamp) |
-| **Cache** | Implementar Redis para caching de V-Score e EnergyStatus |
-| **CI/CD** | Testes automatizados com pytest + GitHub Actions |
-| **Segurança** | Rate limiting, HTTPS obrigatório, rotação de JWT_SECRET |
-| **Monitoramento** | Integrar Sentry para tracking de erros em produção |
-
----
-
-## 9. CODIGO-FONTE COMPLETO
-
-O código-fonte consolidado está organizado da seguinte forma:
+## 8. CODIGO-FONTE - MAPA DE REFERENCIA
 
 ### Backend Principal: `/app/backend/server.py`
 
 **Estrutura do arquivo (1702 linhas):**
 
 ```
-Linhas 1-28    : Imports e conexão MongoDB
-Linhas 29-85   : Autenticação (hash, JWT, helper get_current_colaborador)
+Linhas 1-28    : Imports e conexao MongoDB
+Linhas 29-85   : Autenticacao (hash, JWT, helper get_current_colaborador)
 Linhas 86-314  : Modelos Pydantic (15+ modelos)
-Linhas 317-440 : Função analyze_biometrics() - Motor de IA principal
-Linhas 443-577 : Funções de Smartwatch (detecção de estresse/fadiga)
-Linhas 579-601 : Verificação de domínio corporativo
-Linhas 604-735 : IA Preditiva (análise de padrões de estresse)
-Linhas 738-797 : Notificações Push simuladas
-Linhas 800-1000: Endpoints de Autenticação (register, login, logout, me, profile)
-Linhas 1002-1069: Endpoints de Análise (create, history)
+Linhas 317-440 : Funcao analyze_biometrics() - Motor de IA principal
+Linhas 443-577 : Funcoes de Smartwatch (deteccao de estresse/fadiga)
+Linhas 579-601 : Verificacao de dominio corporativo
+Linhas 604-735 : IA Preditiva (analise de padroes de estresse)
+Linhas 738-797 : Notificacoes Push simuladas
+Linhas 800-1000: Endpoints de Autenticacao (register, login, logout, me, profile)
+Linhas 1002-1069: Endpoints de Analise (create, history)
 Linhas 1071-1142: Endpoints de Wearables (connect, list, disconnect)
 Linhas 1144-1321: Endpoints do Dashboard Gestor (metrics, team-stress, export-pdf)
 Linhas 1323-1586: Endpoints de Smartwatch (analyze, webhook, history, energy)
-Linhas 1588-1702: CORS, Startup (seed admin, seed domínios), Shutdown
+Linhas 1588-1702: CORS, Startup (seed admin, seed dominios), Shutdown
 ```
 
-### Frontend Principal: 12 arquivos React
+### Frontend Principal: 16 arquivos React
 
-| Arquivo | Função | Linhas |
+| Arquivo | Funcao | Linhas |
 |---------|--------|--------|
 | `App.js` | Roteamento e providers | 61 |
 | `AuthContext.js` | Estado global de auth | 115 |
 | `Dashboard.js` | Tela principal | 201 |
 | `GestorDashboard.js` | Painel do gestor | 260 |
-| `ConnectDevices.js` | Integração wearables | 284 |
-| `Profile.js` | Edição de perfil | 244 |
+| `ConnectDevices.js` | Integracao wearables | 284 |
+| `Profile.js` | Edicao de perfil | 244 |
 | `Login.js` | Tela de login | 127 |
 | `Register.js` | Tela de cadastro | 199 |
 | `HumanBodyHeatmap.js` | Heatmap 3D animado | 346 |
 | `EnergyStatus.js` | Bolinha de status | 102 |
 | `VScoreDisplay.js` | Display do V-Score | 118 |
 | `BiometricForm.js` | Modal de entrada de dados | 198 |
-| `NudgeCard.js` | Card de ação imediata | 90 |
-| `AIAnalysis.js` | Card de diagnóstico IA | 79 |
-| `HistoryChart.js` | Gráfico de evolução | 100 |
-| `Navbar.js` | Navegação principal | 138 |
+| `NudgeCard.js` | Card de acao imediata | 90 |
+| `AIAnalysis.js` | Card de diagnostico IA | 79 |
+| `HistoryChart.js` | Grafico de evolucao | 100 |
+| `Navbar.js` | Navegacao principal | 138 |
 
 ---
 
-## 10. VARIAVEIS DE AMBIENTE
+## 9. VARIAVEIS DE AMBIENTE
 
 ### Backend (`/app/backend/.env`)
 ```
@@ -589,7 +517,7 @@ REACT_APP_BACKEND_URL=https://your-app.preview.emergentagent.com
 
 ---
 
-## 11. COMO EXECUTAR
+## 10. COMO EXECUTAR
 
 ### Desenvolvimento Local
 ```bash
@@ -604,9 +532,8 @@ yarn install
 yarn start
 ```
 
-### Produção (Emergent Platform)
+### Producao (Emergent Platform)
 ```bash
-# O supervisor gerencia ambos os serviços automaticamente
 sudo supervisorctl restart backend
 sudo supervisorctl restart frontend
 ```
@@ -619,5 +546,443 @@ python smartwatch_simulator.py
 
 ---
 
-**Documento gerado automaticamente pelo VitalFlow Architecture Analyzer**
-**VitalFlow v1.0 - Motor de Análise Preditiva e Copiloto de Longevidade**
+---
+
+# PARTE II - ESPECIFICACAO DE NOVAS FEATURES (A IMPLEMENTAR)
+
+---
+
+## 11. MODULO DE GAMIFICACAO - PONTOS DE ENERGIA, STREAKS & BADGES
+
+### 11.1 Visao Geral
+
+O modulo de Gamificacao adiciona uma camada de engajamento ao VitalFlow. Os colaboradores ganham **Pontos de Energia** ao seguir as recomendacoes da IA (Nudges), acumulam **Streaks** (dias consecutivos de adesao) e podem conquistar o badge **"Biohacker da Semana"**.
+
+### 11.2 Regras de Negocio
+
+#### 11.2.1 Pontos de Energia
+
+| Regra | Valor |
+|-------|-------|
+| Seguir um Nudge da IA (clicar "Iniciar Agora" no NudgeCard) | **+50 pontos** |
+| Completar analise biometrica diaria | **+10 pontos** |
+| Manter streak de 3 dias | **+100 pontos bonus** |
+| Manter streak de 7 dias (Biohacker da Semana) | **+500 pontos bonus** |
+
+**Logica de Acumulo:**
+```
+USUARIO CLICA "INICIAR AGORA" NO NUDGE
+       |
+       v
+[Backend recebe POST /api/gamification/follow-nudge]
+       |
+       v
+[Valida: nudge_id existe? Ja foi seguido hoje?]
+       |
+  +----+----+
+  SIM       NAO (duplicado)
+  |              |
+  v              v
++50 pontos     Retorna erro
+  |            "Nudge ja seguido"
+  v
+[Atualiza energy_points no colaborador]
+  |
+  v
+[Verifica e atualiza streak]
+  |
+  v
+[Retorna novo total + streak atual]
+```
+
+#### 11.2.2 Sistema de Streaks (Dias Consecutivos)
+
+| Campo | Descricao |
+|-------|-----------|
+| `current_streak` | Numero de dias consecutivos que o usuario seguiu pelo menos 1 Nudge |
+| `longest_streak` | Maior streak ja atingido (recorde pessoal) |
+| `last_nudge_date` | Data do ultimo Nudge seguido (YYYY-MM-DD) |
+
+**Logica de Calculo do Streak:**
+```
+USUARIO SEGUE UM NUDGE
+       |
+       v
+[Qual e a data de hoje? (YYYY-MM-DD)]
+       |
+       v
+[Compara com last_nudge_date do usuario]
+       |
+  +----+----+----+
+  |         |         |
+  v         v         v
+MESMO DIA   DIA       MAIS DE
+(hoje)    ANTERIOR   1 DIA ATRAS
+  |       (ontem)      |
+  v         |          v
+Ignora      v       current_streak = 1
+(ja contou  current_streak += 1   (resetou)
+ hoje)      |
+            v
+       [streak >= longest_streak?]
+            |
+       +----+----+
+       SIM       NAO
+        |          |
+        v          v
+  longest_streak  (mantem)
+  = current_streak
+```
+
+**Regra de Reset:** Se o usuario nao segue nenhum Nudge por 1 dia completo (00:00 a 23:59), o streak reseta para 0.
+
+#### 11.2.3 Badge "Biohacker da Semana"
+
+| Criterio | Descricao |
+|----------|-----------|
+| **Condicao** | `current_streak >= 7` |
+| **Badge** | "Biohacker da Semana" |
+| **Bonus** | +500 Pontos de Energia (concedidos 1 vez por streak de 7) |
+| **Visibilidade** | Badge visivel no perfil do usuario e no Dashboard do Gestor |
+| **Recorrencia** | O badge e renovado a cada novo ciclo de 7 dias |
+
+**Logica de Concessao:**
+```
+STREAK ATUALIZADO
+       |
+       v
+[current_streak == 7?]
+       |
+  +----+----+
+  SIM       NAO
+  |          |
+  v          v
+[Ja recebeu badge  (continua)
+ neste ciclo?]
+  |
+  +----+----+
+  NAO       SIM
+  |          |
+  v          v
++500 pontos  (ignora)
+Badge ativo
+Salva em badges[]
+```
+
+**Ciclos de Badge:**
+- Dias 1-7: Primeiro badge (se atingir 7)
+- Dias 8-14: Segundo badge (se mantiver)
+- O badge "expira" visualmente se o streak resetar
+
+### 11.3 Novos Campos no Schema do Colaborador
+
+```json
+{
+  "...campos existentes...",
+  "energy_points": 0,
+  "current_streak": 0,
+  "longest_streak": 0,
+  "last_nudge_date": null,
+  "badges": [],
+  "nudges_followed_today": 0,
+  "is_premium": false,
+  "plan": "free"
+}
+```
+
+### 11.4 Nova Collection: `gamification_events`
+
+```json
+{
+  "id": "uuid",
+  "colaborador_id": "uuid",
+  "event_type": "nudge_followed | streak_bonus | badge_earned | analysis_completed",
+  "points_earned": 50,
+  "nudge_id": "uuid (se aplicavel)",
+  "streak_at_time": 3,
+  "badge_name": "Biohacker da Semana (se aplicavel)",
+  "created_at": "2026-02-01T14:30:00Z"
+}
+```
+
+### 11.5 Novos Endpoints (Gamificacao)
+
+| Metodo | Rota | Descricao | Auth? |
+|--------|------|-----------|-------|
+| `POST` | `/api/gamification/follow-nudge` | Marca Nudge como seguido, adiciona +50 pontos, atualiza streak | Sim |
+| `GET` | `/api/gamification/stats` | Retorna pontos, streak atual, longest streak, badges | Sim |
+| `GET` | `/api/gamification/leaderboard` | Top 10 colaboradores por pontos (anonimizado para nao-gestores) | Sim |
+| `GET` | `/api/gamification/history?limit=20` | Historico de eventos de gamificacao | Sim |
+
+**Body do `POST /api/gamification/follow-nudge`:**
+```json
+{
+  "nudge_id": "uuid-da-analise",
+  "analysis_id": "uuid-da-analise-que-gerou-o-nudge"
+}
+```
+
+**Modelo de Resposta (`GamificationStats`):**
+```json
+{
+  "energy_points": 750,
+  "current_streak": 5,
+  "longest_streak": 12,
+  "badges": [
+    {
+      "name": "Biohacker da Semana",
+      "earned_at": "2026-01-28T10:00:00Z",
+      "is_active": true
+    }
+  ],
+  "nudges_followed_today": 2,
+  "rank_position": 3,
+  "next_badge_in": 2
+}
+```
+
+**Modelo de Resposta (`Leaderboard`):**
+```json
+{
+  "period": "all_time",
+  "entries": [
+    {"rank": 1, "nome": "Maria S.", "energy_points": 2500, "current_streak": 14, "has_badge": true},
+    {"rank": 2, "nome": "Joao P.", "energy_points": 1800, "current_streak": 5, "has_badge": false}
+  ]
+}
+```
+
+### 11.6 Impacto no Frontend
+
+| Componente | Mudanca |
+|------------|---------|
+| **NudgeCard.js** | Botao "Iniciar Agora" chama `POST /api/gamification/follow-nudge`. Apos sucesso, exibe toast "+50 Pontos de Energia!" com animacao |
+| **Navbar.js** | Exibe contador de Pontos de Energia e icone de chama (streak) ao lado do nome do usuario |
+| **Dashboard.js** | Novo card compacto "Sua Energia" com pontos totais, streak e progresso ate proximo badge |
+| **Profile.js** | Secao de badges com icones visuais. Badge "Biohacker da Semana" em destaque |
+| **GestorDashboard.js** | Nova secao "Engajamento do Time" com leaderboard anonimizado e % de adesao a Nudges |
+
+---
+
+## 12. LIMITE DE ACESSO - PLANO FREE vs PREMIUM (B2C)
+
+### 12.1 Visao Geral
+
+Usuarios B2C (conta pessoal, sem dominio corporativo) possuem plano **Free** por padrao. O plano **Premium** desbloqueia funcionalidades avancadas. Usuarios **corporativos (B2B) nao sao afetados** - sempre tem acesso completo.
+
+### 12.2 Regras de Negocio
+
+| Funcionalidade | Free | Premium | Corporativo (B2B) |
+|----------------|------|---------|-------------------|
+| EnergyStatus (bolinha) | Sim | Sim | Sim |
+| Analise biometrica basica | Sim (3/dia) | Ilimitada | Ilimitada |
+| V-Score numerico | Sim | Sim | Sim |
+| Heatmap 3D completo | Parcial (sem pulso) | Completo | Completo |
+| Predicoes IA completas | Nao | Sim | Sim |
+| Alerta Preditivo | Nao | Sim | Sim |
+| Nudge detalhado da IA | Resumido (1 frase) | Completo | Completo |
+| Historico completo | Ultimos 7 dias | Ilimitado | Ilimitado |
+| Gamificacao | Sim | Sim | Sim |
+| Conectar Wearables | 1 dispositivo | Ilimitado | Ilimitado |
+
+### 12.3 Fluxo de Verificacao
+
+```
+USUARIO FAZ REQUISICAO
+       |
+       v
+[Busca colaborador no banco]
+       |
+       v
+[account_type == "corporate"?]
+       |
+  +----+----+
+  SIM       NAO (personal)
+  |              |
+  v              v
+ACESSO         [is_premium == true?]
+TOTAL               |
+              +----+----+
+              SIM       NAO
+              |          |
+              v          v
+           ACESSO     ACESSO
+           TOTAL      LIMITADO
+                     (aplica regras
+                      da tabela acima)
+```
+
+### 12.4 Novos Campos
+
+```json
+{
+  "is_premium": false,
+  "plan": "free",
+  "premium_since": null,
+  "premium_expires": null
+}
+```
+
+### 12.5 Novos Endpoints (Premium)
+
+| Metodo | Rota | Descricao | Auth? |
+|--------|------|-----------|-------|
+| `POST` | `/api/billing/upgrade` | Atualiza plano para Premium (mock - prep. para Stripe) | Sim |
+| `GET` | `/api/billing/plan` | Retorna plano atual e limites restantes | Sim |
+
+**Modelo de Resposta (`PlanInfo`):**
+```json
+{
+  "plan": "free",
+  "is_premium": false,
+  "account_type": "personal",
+  "limits": {
+    "analyses_today": 2,
+    "analyses_limit": 3,
+    "wearables_connected": 1,
+    "wearables_limit": 1,
+    "history_days": 7,
+    "has_predictions": false,
+    "has_detailed_nudge": false
+  },
+  "upgrade_url": null
+}
+```
+
+---
+
+## 13. MENSAGEM DE BOAS-VINDAS PERSONALIZADA (LOGIN CORPORATIVO)
+
+### 13.1 Regra
+
+Quando um usuario com `account_type == "corporate"` faz login, o frontend exibe um toast/banner:
+
+```
+"Bem-vindo ao VitalFlow, [PrimeiroNome]! Estamos cuidando da sua energia hoje na [NomeEmpresa]."
+```
+
+### 13.2 Fonte dos Dados
+
+| Campo | Origem |
+|-------|--------|
+| `[PrimeiroNome]` | `colaborador.nome.split(' ')[0]` |
+| `[NomeEmpresa]` | Busca em `corporate_domains` pelo `colaborador.domain` -> `company_name` |
+
+### 13.3 Implementacao
+
+**Backend:** O endpoint `POST /api/auth/login` ja retorna `account_type` e `domain`. Adicionar campo `company_name` na resposta de login para usuarios corporativos.
+
+**Modelo de Resposta Atualizado (`AuthResponse`):**
+```json
+{
+  "...campos existentes...",
+  "account_type": "corporate",
+  "domain": "brisanet.com.br",
+  "company_name": "Brisanet"
+}
+```
+
+**Frontend:** No `AuthContext.js`, apos login bem-sucedido, verificar `account_type === "corporate"` e exibir toast com a mensagem personalizada.
+
+---
+
+---
+
+# PARTE III - GUIA DE PROXIMOS PASSOS
+
+---
+
+## 14. INTEGRACAO COM SMARTWATCHES REAIS
+
+| Plataforma | API | Tipo |
+|------------|-----|------|
+| **Apple Watch** | HealthKit | SDK nativo iOS |
+| **Wear OS** | Health Connect (Google) | SDK Android |
+| **Garmin** | Garmin Connect API | REST API (OAuth 2.0) |
+| **Fitbit** | Fitbit Web API | REST API (OAuth 2.0) |
+
+**Fluxo de Integracao Real:**
+```
+SMARTWATCH
+    |
+    v
+[SDK do dispositivo coleta BPM, HRV, Acelerometro]
+    |
+    v
+[App Mobile envia para VitalFlow via POST /api/smartwatch/analyze]
+    |
+    v
+[Backend processa: Detecta estresse/fadiga -> GPT-4o -> Notificacao]
+    |
+    v
+[Resultado reflete no Dashboard em tempo real]
+```
+
+**O webhook (`POST /api/smartwatch/webhook`) ja esta preparado** para receber dados de dispositivos reais. Basta:
+1. Substituir o `device_token` por autenticacao OAuth
+2. Mapear os campos do SDK para o formato `SmartwatchData`
+
+## 15. INTERFACE VISUAL (MOBILE/WEB)
+
+**Recomendacao: React Native ou Flutter**
+
+O backend ja esta 100% pronto como API REST. Para criar apps mobile nativos:
+
+1. **React Native (Recomendado):** Reutiliza a logica de componentes React existente.
+2. **Flutter:** Melhor performance nativa, mas requer reescrever toda a camada de UI.
+
+**Passos para Mobile:**
+- Trocar cookies HttpOnly por `Authorization: Bearer <token>` header (ja suportado pelo backend)
+- Usar `AsyncStorage` (React Native) ou `SharedPreferences` (Flutter) para persistir tokens
+- Implementar push notifications reais com Firebase Cloud Messaging
+- Adaptar o HumanBodyHeatmap para SVG nativo ou canvas
+
+## 16. ROADMAP COMPLETO
+
+### Fase 2 - Gamificacao & Monetizacao (Proximo Sprint)
+
+| # | Feature | Prioridade | Esforco |
+|---|---------|------------|---------|
+| 1 | Gamificacao: Pontos de Energia (+50 por Nudge) | P0 | Media |
+| 2 | Gamificacao: Sistema de Streaks | P0 | Media |
+| 3 | Gamificacao: Badge "Biohacker da Semana" | P0 | Baixo |
+| 4 | Limite Free vs Premium (B2C) | P0 | Media |
+| 5 | Mensagem de Boas-Vindas Corporativa | P1 | Baixo |
+| 6 | Leaderboard (Top 10 pontos) | P1 | Baixo |
+
+### Fase 3 - Producao & Integracao Real
+
+| # | Feature | Prioridade | Esforco |
+|---|---------|------------|---------|
+| 7 | Relatorios PDF reais (reportlab) | P1 | Media |
+| 8 | Push Notifications reais (FCM) | P2 | Alto |
+| 9 | Integracao Google Calendar | P2 | Alto |
+| 10 | Modo Offline (Service Worker) | P2 | Alto |
+| 11 | Stripe para plano Premium | P2 | Media |
+
+### Fase 4 - Escala & Hardware
+
+| # | Feature | Prioridade | Esforco |
+|---|---------|------------|---------|
+| 12 | Refatoracao server.py em APIRouters | P2 | Media |
+| 13 | Redis cache (V-Score, EnergyStatus) | P2 | Media |
+| 14 | Watch face nativa com V-Score | P3 | Alto |
+| 15 | Dashboard analytics avancado | P3 | Alto |
+| 16 | App Mobile nativo (React Native) | P3 | Muito Alto |
+
+## 17. MELHORIAS DE INFRAESTRUTURA
+
+| Area | Recomendacao |
+|------|-------------|
+| **Backend** | Refatorar `server.py` em multiplos arquivos com `APIRouter` (auth, analyze, smartwatch, dashboard, gamification) |
+| **Banco** | Adicionar indices compostos em `smartwatch_analyses` (colaborador_id + timestamp) e `gamification_events` |
+| **Cache** | Implementar Redis para caching de V-Score e EnergyStatus |
+| **CI/CD** | Testes automatizados com pytest + GitHub Actions |
+| **Seguranca** | Rate limiting, HTTPS obrigatorio, rotacao de JWT_SECRET |
+| **Monitoramento** | Integrar Sentry para tracking de erros em producao |
+
+---
+
+**Documento Final Consolidado - VitalFlow v1.1**
+**Motor de Analise Preditiva e Copiloto de Longevidade & Saude Mental**
+**Fevereiro 2026**
