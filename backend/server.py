@@ -119,6 +119,10 @@ class AuthResponse(BaseModel):
     foto_url: Optional[str]
     setor: str
     nivel_acesso: str
+    matricula: Optional[str] = None
+    cargo: Optional[str] = None
+    account_type: str = "personal"
+    domain: Optional[str] = None
 
 # Colaborador Models
 class ColaboradorCreate(BaseModel):
@@ -128,6 +132,9 @@ class ColaboradorCreate(BaseModel):
     setor: str
     nivel_acesso: str = "User"
     foto_base64: Optional[str] = None
+    # Campos corporativos (apenas para domínios empresariais)
+    matricula: Optional[str] = None
+    cargo: Optional[str] = None
 
 class ColaboradorUpdate(BaseModel):
     nome: Optional[str] = None
@@ -145,6 +152,10 @@ class Colaborador(BaseModel):
     foto_url: Optional[str] = None
     setor: str
     nivel_acesso: str
+    matricula: Optional[str] = None
+    cargo: Optional[str] = None
+    account_type: str = Field(default="personal")  # "personal" ou "corporate"
+    domain: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -156,8 +167,40 @@ class ColaboradorResponse(BaseModel):
     foto_url: Optional[str]
     setor: str
     nivel_acesso: str
+    matricula: Optional[str]
+    cargo: Optional[str]
+    account_type: str
+    domain: Optional[str]
     created_at: str
     updated_at: str
+
+# Domain Models
+class CorporateDomain(BaseModel):
+    """Domínios corporativos cadastrados"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    domain: str = Field(..., description="Ex: brisanet.com.br")
+    company_name: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class DomainCheckResponse(BaseModel):
+    is_corporate: bool
+    domain: Optional[str]
+    company_name: Optional[str]
+    account_type: str  # "personal" ou "corporate"
+
+# Predictive Alert Models
+class PredictiveAlert(BaseModel):
+    """Alerta preditivo baseado em histórico"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    colaborador_id: str
+    predicted_stress_time: str
+    current_time: str
+    minutes_until_stress: int
+    confidence: float = Field(..., ge=0, le=100)
+    ai_message: str
+    pattern_detected: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Analysis Models (keeping existing with updates)
 class BiometricInput(BaseModel):
@@ -515,6 +558,182 @@ Forneça uma recomendação de Reset de Foco apropriada para este cenário.
         }
         
         return result
+        
+    except Exception as e:
+        logger.error(f"Error analyzing smartwatch data: {str(e)}")
+        # Fallback sem IA
+        return {
+            "anonymous_id": generate_anonymous_id(colaborador_id),
+            "status": status if 'status' in locals() else "Normal",
+            "bpm": data.bpm,
+            "hrv": data.hrv,
+            "is_stationary": is_stationary if 'is_stationary' in locals() else False,
+            "stationary_duration_minutes": stationary_duration if 'stationary_duration' in locals() else None,
+            "ai_recommendation": "Faça uma pausa de 5 minutos: levante-se, caminhe e respire profundamente 5 vezes.",
+            "detected_at": data.timestamp.isoformat(),
+            "risk_level": "Baixo",
+            "push_notification_sent": False
+        }
+
+
+# Domain Functions
+async def check_corporate_domain(email: str) -> tuple[bool, Optional[str], Optional[str]]:
+    """
+    Verifica se o email pertence a um domínio corporativo cadastrado
+    Retorna: (is_corporate, domain, company_name)
+    """
+    try:
+        domain = email.split('@')[1].lower()
+        
+        # Busca domínio no banco
+        corporate = await db.corporate_domains.find_one(
+            {"domain": domain, "is_active": True},
+            {"_id": 0}
+        )
+        
+        if corporate:
+            return True, domain, corporate["company_name"]
+        
+        return False, domain, None
+        
+    except Exception as e:
+        logger.error(f"Error checking domain: {str(e)}")
+        return False, None, None
+
+# Predictive AI Functions
+async def analyze_stress_patterns(colaborador_id: str) -> Optional[dict]:
+    """
+    Analisa padrões de estresse do colaborador e prevê próximo pico
+    Retorna alerta preventivo 30 minutos antes do pico esperado
+    """
+    try:
+        # Busca histórico dos últimos 7 dias
+        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        
+        analyses = await db.smartwatch_analyses.find(
+            {
+                "colaborador_id": colaborador_id,
+                "timestamp": {"$gte": seven_days_ago.isoformat()}
+            },
+            {"_id": 0}
+        ).to_list(1000)
+        
+        if len(analyses) < 5:  # Precisa de pelo menos 5 análises
+            return None
+        
+        # Agrupa por hora do dia
+        hour_stress = {}
+        for a in analyses:
+            timestamp = datetime.fromisoformat(a["timestamp"])
+            hour = timestamp.hour
+            weekday = timestamp.weekday()  # 0=Monday, 6=Sunday
+            
+            key = f"{weekday}_{hour}"  # Ex: "0_14" = Segunda 14h
+            
+            if key not in hour_stress:
+                hour_stress[key] = []
+            
+            # Mapeia risk_level para score
+            if a.get("risk_level") == "Alto":
+                hour_stress[key].append(100)
+            elif a.get("risk_level") == "Médio":
+                hour_stress[key].append(60)
+            else:
+                hour_stress[key].append(20)
+        
+        # Identifica padrões: horários com alta frequência de estresse
+        patterns = []
+        for key, scores in hour_stress.items():
+            if len(scores) >= 2:  # Pelo menos 2 ocorrências
+                avg_stress = sum(scores) / len(scores)
+                if avg_stress >= 70:  # Alta ou média-alta
+                    weekday, hour = key.split('_')
+                    patterns.append({
+                        "weekday": int(weekday),
+                        "hour": int(hour),
+                        "avg_stress": avg_stress,
+                        "occurrences": len(scores)
+                    })
+        
+        if not patterns:
+            return None
+        
+        # Ordena por nível de estresse
+        patterns.sort(key=lambda x: x["avg_stress"], reverse=True)
+        
+        # Verifica se há um padrão próximo (nas próximas 2 horas)
+        now = datetime.now(timezone.utc)
+        current_weekday = now.weekday()
+        current_hour = now.hour
+        
+        for pattern in patterns:
+            if pattern["weekday"] == current_weekday:
+                hours_until = pattern["hour"] - current_hour
+                
+                # Se o pico está entre 30min e 2h no futuro
+                if 0.5 <= hours_until <= 2:
+                    minutes_until = int(hours_until * 60)
+                    
+                    # Chama GPT-4o para gerar mensagem personalizada
+                    chat = LlmChat(
+                        api_key=os.environ['EMERGENT_LLM_KEY'],
+                        session_id=f"predictive-{colaborador_id}",
+                        system_message="""
+Você é um coach de bem-estar preventivo. Sua função é alertar colaboradores ANTES de picos de estresse acontecerem.
+
+DIRETRIZES:
+- Tom amigável e encorajador
+- Mensagem curta (2-3 frases)
+- Incluir ação específica para prevenir o estresse
+- Validar o histórico do colaborador
+- Usar "você" diretamente
+
+FORMATO:
+[Nome], baseado no seu histórico, [padrão detectado]. [Sugestão preventiva].
+"""
+                    ).with_model("openai", "gpt-4o")
+                    
+                    # Busca nome do colaborador
+                    colaborador = await db.colaboradores.find_one(
+                        {"id": colaborador_id},
+                        {"_id": 0, "nome": 1}
+                    )
+                    
+                    nome = colaborador.get("nome", "Colaborador").split()[0] if colaborador else "Colaborador"
+                    
+                    weekday_names = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+                    
+                    context = f"""
+DADOS DO PADRÃO:
+- Colaborador: {nome}
+- Padrão detectado: Picos de estresse toda {weekday_names[pattern["weekday"]]}-feira às {pattern["hour"]}h
+- Nível médio de estresse: {pattern["avg_stress"]:.0f}/100
+- Ocorrências: {pattern["occurrences"]}x nos últimos 7 dias
+- Tempo até o próximo pico: {minutes_until} minutos
+
+Gere um alerta preventivo personalizado.
+"""
+                    
+                    user_message = UserMessage(text=context)
+                    ai_response = await chat.send_message(user_message)
+                    
+                    confidence = min(100, (pattern["occurrences"] / 7) * 100)  # Confiança baseada em frequência
+                    
+                    return {
+                        "predicted_stress_time": f"{pattern['hour']:02d}:00",
+                        "current_time": now.strftime("%H:%M"),
+                        "minutes_until_stress": minutes_until,
+                        "confidence": round(confidence, 1),
+                        "ai_message": ai_response.strip(),
+                        "pattern_detected": f"Pico de estresse detectado às {weekday_names[pattern['weekday']]}-feiras às {pattern['hour']}h ({pattern['occurrences']}x em 7 dias)"
+                    }
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error analyzing stress patterns: {str(e)}")
+        return None
+
 
 async def send_push_notification(colaborador: dict, status: str, recommendation: str) -> bool:
     """
@@ -579,6 +798,25 @@ async def send_push_notification(colaborador: dict, status: str, recommendation:
 
 
 # AUTH ENDPOINTS
+@api_router.get("/auth/check-domain")
+async def check_domain(email: str):
+    """
+    Verifica se email pertence a domínio corporativo
+    """
+    try:
+        is_corporate, domain, company_name = await check_corporate_domain(email)
+        
+        return DomainCheckResponse(
+            is_corporate=is_corporate,
+            domain=domain,
+            company_name=company_name,
+            account_type="corporate" if is_corporate else "personal"
+        )
+    except Exception as e:
+        logger.error(f"Error checking domain: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# AUTH ENDPOINTS (register, login, etc.)
 @api_router.post("/auth/register", response_model=AuthResponse)
 async def register(data: RegisterRequest, response: Response):
     try:
@@ -587,13 +825,19 @@ async def register(data: RegisterRequest, response: Response):
         if existing:
             raise HTTPException(status_code=400, detail="Email já cadastrado")
         
+        # Verifica se é domínio corporativo
+        is_corporate, domain, company_name = await check_corporate_domain(email_lower)
+        account_type = "corporate" if is_corporate else "personal"
+        
         colaborador = Colaborador(
             nome=data.nome,
             email=email_lower,
             password_hash=hash_password(data.password),
             data_nascimento=data.data_nascimento.isoformat(),
             setor=data.setor,
-            nivel_acesso=data.nivel_acesso
+            nivel_acesso=data.nivel_acesso,
+            account_type=account_type,
+            domain=domain
         )
         
         doc = colaborador.model_dump()
@@ -632,7 +876,13 @@ async def register(data: RegisterRequest, response: Response):
             data_nascimento=colaborador.data_nascimento,
             foto_url=colaborador.foto_url,
             setor=colaborador.setor,
-            nivel_acesso=colaborador.nivel_acesso
+            nivel_acesso=colaborador.nivel_acesso,
+            matricula=colaborador.matricula,
+            cargo=colaborador.cargo,
+            account_type=colaborador.account_type,
+            domain=colaborador.domain,
+            created_at=colaborador.created_at.isoformat(),
+            updated_at=colaborador.updated_at.isoformat()
         )
     except HTTPException:
         raise
@@ -680,7 +930,11 @@ async def login(data: LoginRequest, response: Response, request: Request):
             data_nascimento=colaborador["data_nascimento"],
             foto_url=colaborador.get("foto_url"),
             setor=colaborador["setor"],
-            nivel_acesso=colaborador["nivel_acesso"]
+            nivel_acesso=colaborador["nivel_acesso"],
+            matricula=colaborador.get("matricula"),
+            cargo=colaborador.get("cargo"),
+            account_type=colaborador.get("account_type", "personal"),
+            domain=colaborador.get("domain")
         )
     except HTTPException:
         raise
@@ -954,6 +1208,116 @@ async def get_colaboradores(request: Request, setor: Optional[str] = None):
         raise
     except Exception as e:
         logger.error(f"Error fetching colaboradores: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# PREDICTIVE AI ENDPOINTS
+@api_router.get("/predictive/alert")
+async def get_predictive_alert(request: Request):
+    """
+    Retorna alerta preditivo se houver padrão de estresse detectado
+    IA analisa histórico e prevê próximo pico com 30min de antecedência
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        
+        # Analisa padrões de estresse
+        alert_data = await analyze_stress_patterns(colaborador["id"])
+        
+        if not alert_data:
+            return {"has_alert": False, "message": "Nenhum padrão detectado ainda"}
+        
+        # Salva alerta no banco
+        alert = PredictiveAlert(
+            colaborador_id=colaborador["id"],
+            predicted_stress_time=alert_data["predicted_stress_time"],
+            current_time=alert_data["current_time"],
+            minutes_until_stress=alert_data["minutes_until_stress"],
+            confidence=alert_data["confidence"],
+            ai_message=alert_data["ai_message"],
+            pattern_detected=alert_data["pattern_detected"]
+        )
+        
+        doc = alert.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        
+        await db.predictive_alerts.insert_one(doc)
+        
+        return {
+            "has_alert": True,
+            "alert": {
+                "message": alert_data["ai_message"],
+                "predicted_time": alert_data["predicted_stress_time"],
+                "minutes_until": alert_data["minutes_until_stress"],
+                "confidence": alert_data["confidence"],
+                "pattern": alert_data["pattern_detected"]
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting predictive alert: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/dashboard/export-pdf")
+async def export_dashboard_pdf(request: Request):
+    """
+    Exporta relatório do Dashboard do Gestor em PDF
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        
+        if colaborador["nivel_acesso"] != "Gestor":
+            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        
+        # Busca métricas
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        
+        analyses = await db.smartwatch_analyses.find(
+            {"timestamp": {"$gte": twenty_four_hours_ago.isoformat()}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        # Calcula métricas
+        total = len(analyses)
+        critical = sum(1 for a in analyses if a.get("risk_level") == "Alto")
+        medium = sum(1 for a in analyses if a.get("risk_level") == "Médio")
+        normal = total - critical - medium
+        
+        stress_scores = []
+        for a in analyses:
+            if a.get("risk_level") == "Alto":
+                stress_scores.append(100)
+            elif a.get("risk_level") == "Médio":
+                stress_scores.append(60)
+            else:
+                stress_scores.append(20)
+        
+        avg_stress = sum(stress_scores) / len(stress_scores) if stress_scores else 0
+        
+        # Gera PDF simples (em produção, usar reportlab ou weasyprint)
+        # Por enquanto, retorna JSON que o frontend pode converter
+        report_data = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_by": colaborador["nome"],
+            "period": "Últimas 24 horas",
+            "metrics": {
+                "total_analyses": total,
+                "average_stress_level": round(avg_stress, 1),
+                "critical_alerts": critical,
+                "medium_alerts": medium,
+                "normal_status": normal
+            },
+            "summary": f"Relatório gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}. Total de {total} análises com nível médio de estresse de {avg_stress:.1f}/100. {critical} alertas críticos detectados."
+        }
+        
+        return report_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # SMARTWATCH ENDPOINTS
@@ -1265,13 +1629,38 @@ async def startup_event():
                 password_hash=hash_password(admin_password),
                 data_nascimento="1990-01-01",
                 setor="Administrativo",
-                nivel_acesso="Gestor"
+                nivel_acesso="Gestor",
+                account_type="personal",
+                domain=None
             )
             doc = admin.model_dump()
             doc['created_at'] = doc['created_at'].isoformat()
             doc['updated_at'] = doc['updated_at'].isoformat()
             await db.colaboradores.insert_one(doc)
             logger.info(f"Admin seeded: {admin_email}")
+        
+        # Seed corporate domains
+        corporate_domains = [
+            {"domain": "brisanet.com.br", "company_name": "Brisanet"},
+            {"domain": "vitalflow.com", "company_name": "VitalFlow"},
+            {"domain": "emergent.sh", "company_name": "Emergent"}
+        ]
+        
+        for domain_data in corporate_domains:
+            existing_domain = await db.corporate_domains.find_one(
+                {"domain": domain_data["domain"]},
+                {"_id": 0}
+            )
+            
+            if not existing_domain:
+                domain_doc = CorporateDomain(
+                    domain=domain_data["domain"],
+                    company_name=domain_data["company_name"]
+                )
+                doc = domain_doc.model_dump()
+                doc['created_at'] = doc['created_at'].isoformat()
+                await db.corporate_domains.insert_one(doc)
+                logger.info(f"Corporate domain seeded: {domain_data['domain']}")
         
         # Write test credentials
         Path("/app/memory").mkdir(exist_ok=True)
