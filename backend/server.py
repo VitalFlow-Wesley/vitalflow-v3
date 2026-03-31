@@ -219,6 +219,36 @@ class DashboardMetrics(BaseModel):
     colaboradores_otimo: int
     analises_por_setor: dict
 
+# Smartwatch Models
+class MovementData(BaseModel):
+    """Dados de movimento do smartwatch"""
+    accelerometer_x: float = Field(default=0.0, description="Acelerômetro eixo X")
+    accelerometer_y: float = Field(default=0.0, description="Acelerômetro eixo Y")
+    accelerometer_z: float = Field(default=0.0, description="Acelerômetro eixo Z")
+    gyroscope_x: float = Field(default=0.0, description="Giroscópio eixo X")
+    gyroscope_y: float = Field(default=0.0, description="Giroscópio eixo Y")
+    gyroscope_z: float = Field(default=0.0, description="Giroscópio eixo Z")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SmartwatchData(BaseModel):
+    """Dados recebidos do smartwatch"""
+    bpm: int = Field(..., ge=40, le=220, description="Frequência cardíaca (BPM)")
+    hrv: int = Field(..., ge=0, le=200, description="Variabilidade da FC (HRV em ms)")
+    movement_data: Optional[MovementData] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SmartwatchAnalysisResult(BaseModel):
+    """Resultado da análise de dados do smartwatch"""
+    anonymous_id: str = Field(..., description="ID anônimo (UUID) para LGPD")
+    status: str = Field(..., description="Status detectado: Normal, Alerta de Estresse, Sinal de Fadiga")
+    bpm: int
+    hrv: int
+    is_stationary: bool = Field(..., description="Se o usuário está parado")
+    stationary_duration_minutes: Optional[float] = None
+    ai_recommendation: str = Field(..., description="Recomendação de Reset de Foco da IA")
+    detected_at: str
+    risk_level: str = Field(..., description="Nível de risco: Baixo, Médio, Alto")
+
 # AI Analysis Function
 async def analyze_biometrics(data: BiometricInput) -> dict:
     try:
@@ -344,6 +374,139 @@ def fallback_analysis(data: BiometricInput) -> dict:
         "causa_provavel": ". ".join(causes) if causes else "Parâmetros normais",
         "nudge_acao": nudges[0] if nudges else "Continue com bons hábitos"
     }
+
+# Smartwatch Analysis Functions
+def generate_anonymous_id(colaborador_id: str) -> str:
+    """
+    Gera UUID anônimo para LGPD
+    Não permite rastreamento individual do colaborador
+    """
+    return str(uuid.uuid4())
+
+def detect_stationary_state(movement_data: Optional[MovementData], previous_movements: list = None) -> tuple[bool, float]:
+    """
+    Detecta se o usuário está parado (acelerômetro e giroscópio próximos de zero)
+    Retorna: (is_stationary, duration_in_minutes)
+    """
+    if not movement_data:
+        return False, 0.0
+    
+    # Threshold para considerar "parado" (valores próximos de zero)
+    STATIONARY_THRESHOLD = 0.1
+    
+    # Verifica se todos os sensores estão próximos de zero
+    is_stationary = (
+        abs(movement_data.accelerometer_x) < STATIONARY_THRESHOLD and
+        abs(movement_data.accelerometer_y) < STATIONARY_THRESHOLD and
+        abs(movement_data.accelerometer_z) < STATIONARY_THRESHOLD and
+        abs(movement_data.gyroscope_x) < STATIONARY_THRESHOLD and
+        abs(movement_data.gyroscope_y) < STATIONARY_THRESHOLD and
+        abs(movement_data.gyroscope_z) < STATIONARY_THRESHOLD
+    )
+    
+    # TODO: Em produção, calcular duração real baseado em histórico
+    # Por enquanto, simula duração baseado na proximidade de zero
+    simulated_duration = 0.0
+    if is_stationary:
+        simulated_duration = 75.0  # Simula 75 minutos parado (mock)
+    
+    return is_stationary, simulated_duration
+
+async def analyze_smartwatch_data(data: SmartwatchData, colaborador_id: str) -> dict:
+    """
+    Analisa dados do smartwatch e detecta:
+    - Alerta de Estresse (BPM > 100 e HRV baixo)
+    - Sinal de Fadiga (parado por mais de 1 hora)
+    - Gera recomendação de Reset de Foco via GPT-4o
+    """
+    try:
+        # Gera ID anônimo para LGPD
+        anonymous_id = generate_anonymous_id(colaborador_id)
+        
+        # Detecta estado estacionário
+        is_stationary, stationary_duration = detect_stationary_state(data.movement_data)
+        
+        # Lógica de detecção
+        status = "Normal"
+        risk_level = "Baixo"
+        
+        # Alerta de Estresse: BPM > 100 e HRV baixo (<50ms)
+        if data.bpm > 100 and data.hrv < 50:
+            status = "Alerta de Estresse"
+            risk_level = "Alto"
+        # Sinal de Fadiga: parado por mais de 60 minutos
+        elif is_stationary and stationary_duration > 60:
+            status = "Sinal de Fadiga"
+            risk_level = "Médio"
+        # Combinação crítica: estresse + fadiga
+        elif data.bpm > 100 and data.hrv < 50 and is_stationary:
+            status = "Alerta Crítico: Estresse + Fadiga"
+            risk_level = "Alto"
+        
+        # Chama GPT-4o para recomendação de Reset de Foco
+        chat = LlmChat(
+            api_key=os.environ['EMERGENT_LLM_KEY'],
+            session_id=f"smartwatch-{anonymous_id}",
+            system_message="""
+Você é um coach de performance e bem-estar corporativo especializado em biohacking.
+Sua função é fornecer recomendações práticas de "Reset de Foco" para colaboradores.
+
+DIRETRIZES:
+- Recomendações devem ser executáveis em 5-10 minutos
+- Foco em técnicas de respiração, movimento ou mindfulness
+- Linguagem direta e motivadora
+- Considere o contexto de trabalho corporativo
+- Priorize ações que podem ser feitas no escritório
+
+FORMATO DA RESPOSTA:
+Título: [Nome da técnica]
+Ação: [Passo a passo em 2-3 frases]
+Benefício: [Resultado esperado em 1 frase]
+"""
+        ).with_model("openai", "gpt-4o")
+        
+        # Monta contexto para a IA
+        context = f"""
+DADOS DO COLABORADOR (ANONIMIZADO):
+- Status Detectado: {status}
+- BPM: {data.bpm} (Normal: 60-100)
+- HRV: {data.hrv}ms (Ideal: >50ms)
+- Movimento: {"Parado há " + str(int(stationary_duration)) + " minutos" if is_stationary else "Em movimento"}
+- Nível de Risco: {risk_level}
+
+Forneça uma recomendação de Reset de Foco apropriada para este cenário.
+"""
+        
+        user_message = UserMessage(text=context)
+        ai_response = await chat.send_message(user_message)
+        
+        return {
+            "anonymous_id": anonymous_id,
+            "status": status,
+            "bpm": data.bpm,
+            "hrv": data.hrv,
+            "is_stationary": is_stationary,
+            "stationary_duration_minutes": stationary_duration if is_stationary else None,
+            "ai_recommendation": ai_response.strip(),
+            "detected_at": data.timestamp.isoformat(),
+            "risk_level": risk_level
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing smartwatch data: {str(e)}")
+        # Fallback sem IA
+        return {
+            "anonymous_id": generate_anonymous_id(colaborador_id),
+            "status": status,
+            "bpm": data.bpm,
+            "hrv": data.hrv,
+            "is_stationary": is_stationary,
+            "stationary_duration_minutes": stationary_duration if is_stationary else None,
+            "ai_recommendation": "Faça uma pausa de 5 minutos: levante-se, caminhe e respire profundamente 5 vezes.",
+            "detected_at": data.timestamp.isoformat(),
+            "risk_level": risk_level
+        }
+
 
 # AUTH ENDPOINTS
 @api_router.post("/auth/register", response_model=AuthResponse)
@@ -723,6 +886,93 @@ async def get_colaboradores(request: Request, setor: Optional[str] = None):
         logger.error(f"Error fetching colaboradores: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# SMARTWATCH ENDPOINTS
+@api_router.post("/smartwatch/analyze", response_model=SmartwatchAnalysisResult)
+async def analyze_smartwatch(data: SmartwatchData, request: Request):
+    """
+    Endpoint para análise de dados do smartwatch em tempo real
+    Detecta: Alerta de Estresse, Sinal de Fadiga
+    Retorna: Recomendação de Reset de Foco via GPT-4o
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        
+        # Analisa dados do smartwatch
+        result = await analyze_smartwatch_data(data, colaborador["id"])
+        
+        # Salva análise no histórico (opcional - para análise posterior)
+        doc = {
+            "id": str(uuid.uuid4()),
+            "anonymous_id": result["anonymous_id"],
+            "colaborador_id": colaborador["id"],  # Mantido apenas para vínculo interno
+            "type": "smartwatch_analysis",
+            "status": result["status"],
+            "risk_level": result["risk_level"],
+            "bpm": result["bpm"],
+            "hrv": result["hrv"],
+            "is_stationary": result["is_stationary"],
+            "stationary_duration_minutes": result["stationary_duration_minutes"],
+            "ai_recommendation": result["ai_recommendation"],
+            "timestamp": result["detected_at"]
+        }
+        
+        await db.smartwatch_analyses.insert_one(doc)
+        
+        return SmartwatchAnalysisResult(**result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in smartwatch analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/smartwatch/webhook")
+async def smartwatch_webhook(data: SmartwatchData, device_token: str):
+    """
+    Webhook para receber dados de smartwatches reais (preparado para produção)
+    Aceita dados via token de autenticação do dispositivo
+    """
+    try:
+        # TODO: Validar device_token e associar ao colaborador
+        # Por enquanto, aceita dados mas não processa sem autenticação
+        
+        logger.info(f"Smartwatch webhook received: BPM={data.bpm}, HRV={data.hrv}")
+        
+        return {
+            "status": "received",
+            "message": "Dados recebidos. Webhook preparado para integração real.",
+            "data_received": {
+                "bpm": data.bpm,
+                "hrv": data.hrv,
+                "has_movement_data": data.movement_data is not None
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in smartwatch webhook: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/smartwatch/history")
+async def get_smartwatch_history(request: Request, limit: int = 20):
+    """
+    Retorna histórico de análises do smartwatch (anonimizadas)
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        
+        analyses = await db.smartwatch_analyses.find(
+            {"colaborador_id": colaborador["id"]},
+            {"_id": 0, "colaborador_id": 0}  # Remove IDs sensíveis
+        ).sort("timestamp", -1).limit(limit).to_list(limit)
+        
+        return analyses
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching smartwatch history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Root
 @api_router.get("/")
 async def root():
@@ -799,6 +1049,11 @@ async def startup_event():
 - GET /api/wearables - Dispositivos conectados
 - GET /api/dashboard/metrics - Métricas (apenas gestores)
 - GET /api/colaboradores - Listar colaboradores (apenas gestores)
+
+## Endpoints Smartwatch (NOVO)
+- POST /api/smartwatch/analyze - Análise em tempo real com IA
+- POST /api/smartwatch/webhook - Webhook para dados reais
+- GET /api/smartwatch/history - Histórico de alertas
 """)
         logger.info("Test credentials written to /app/memory/test_credentials.md")
         
