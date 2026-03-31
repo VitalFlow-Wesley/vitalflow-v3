@@ -248,6 +248,27 @@ class SmartwatchAnalysisResult(BaseModel):
     ai_recommendation: str = Field(..., description="Recomendação de Reset de Foco da IA")
     detected_at: str
     risk_level: str = Field(..., description="Nível de risco: Baixo, Médio, Alto")
+    push_notification_sent: bool = Field(default=False, description="Se notificação push foi enviada")
+
+class EnergyStatus(BaseModel):
+    """Status de energia do colaborador em tempo real"""
+    status: str = Field(..., description="Verde, Amarelo ou Vermelho")
+    color_code: str = Field(..., description="Código hex da cor")
+    label: str = Field(..., description="Label descritivo do status")
+    last_updated: str
+    current_bpm: Optional[int] = None
+    current_hrv: Optional[int] = None
+
+class TeamStressMetrics(BaseModel):
+    """Métricas de estresse do time (anonimizadas)"""
+    period: str = Field(default="últimas 24h")
+    total_analyses: int
+    average_stress_level: float = Field(..., ge=0, le=100, description="0-100, onde 100 é estresse máximo")
+    critical_alerts: int
+    medium_alerts: int
+    normal_status: int
+    stress_distribution: List[dict] = Field(..., description="Distribuição sem identificação")
+    peak_stress_time: Optional[str] = None
 
 # AI Analysis Function
 async def analyze_biometrics(data: BiometricInput) -> dict:
@@ -480,7 +501,7 @@ Forneça uma recomendação de Reset de Foco apropriada para este cenário.
         user_message = UserMessage(text=context)
         ai_response = await chat.send_message(user_message)
         
-        return {
+        result = {
             "anonymous_id": anonymous_id,
             "status": status,
             "bpm": data.bpm,
@@ -489,8 +510,56 @@ Forneça uma recomendação de Reset de Foco apropriada para este cenário.
             "stationary_duration_minutes": stationary_duration if is_stationary else None,
             "ai_recommendation": ai_response.strip(),
             "detected_at": data.timestamp.isoformat(),
-            "risk_level": risk_level
+            "risk_level": risk_level,
+            "push_notification_sent": False
         }
+        
+        return result
+
+async def send_push_notification(colaborador: dict, status: str, recommendation: str) -> bool:
+    """
+    Simula envio de notificação push quando alerta crítico é detectado
+    Em produção: integrar com Firebase Cloud Messaging, OneSignal, etc.
+    """
+    try:
+        notification_payload = {
+            "title": f"🚨 {status}",
+            "body": recommendation[:100] + "..." if len(recommendation) > 100 else recommendation,
+            "priority": "high" if "Crítico" in status else "normal",
+            "sound": "default",
+            "badge": 1,
+            "data": {
+                "type": "health_alert",
+                "status": status,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        }
+        
+        # Simula envio (em produção, chamaria API de push notification)
+        logger.info(f"📱 PUSH NOTIFICATION SIMULADA para {colaborador.get('nome', 'Colaborador')}")
+        logger.info(f"   Título: {notification_payload['title']}")
+        logger.info(f"   Mensagem: {notification_payload['body']}")
+        logger.info(f"   Prioridade: {notification_payload['priority']}")
+        
+        # Salva notificação no banco (histórico)
+        notification_doc = {
+            "id": str(uuid.uuid4()),
+            "colaborador_id": colaborador["id"],
+            "type": "push_notification",
+            "status": status,
+            "message": recommendation,
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "delivered": True  # Mock - assume entrega bem-sucedida
+        }
+        
+        await db.notifications.insert_one(notification_doc)
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending push notification: {str(e)}")
+        return False
+
         
     except Exception as e:
         logger.error(f"Error analyzing smartwatch data: {str(e)}")
@@ -504,7 +573,8 @@ Forneça uma recomendação de Reset de Foco apropriada para este cenário.
             "stationary_duration_minutes": stationary_duration if is_stationary else None,
             "ai_recommendation": "Faça uma pausa de 5 minutos: levante-se, caminhe e respire profundamente 5 vezes.",
             "detected_at": data.timestamp.isoformat(),
-            "risk_level": risk_level
+            "risk_level": risk_level,
+            "push_notification_sent": False
         }
 
 
@@ -887,6 +957,175 @@ async def get_colaboradores(request: Request, setor: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 # SMARTWATCH ENDPOINTS
+@api_router.get("/status/energy", response_model=EnergyStatus)
+async def get_energy_status(request: Request):
+    """
+    Retorna o status de energia do colaborador em tempo real
+    Para alimentar a bolinha visual (Verde/Amarelo/Vermelho)
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        
+        # Busca última análise do smartwatch
+        last_analysis = await db.smartwatch_analyses.find_one(
+            {"colaborador_id": colaborador["id"]},
+            {"_id": 0}
+        )
+        
+        if not last_analysis:
+            # Sem análises ainda - status padrão
+            return EnergyStatus(
+                status="Verde",
+                color_code="#34d399",
+                label="Normal - Sem dados recentes",
+                last_updated=datetime.now(timezone.utc).isoformat()
+            )
+        
+        # Mapeia status para cor
+        status_map = {
+            "Normal": {
+                "status": "Verde",
+                "color_code": "#34d399",  # emerald-400
+                "label": "Energia Normal"
+            },
+            "Sinal de Fadiga": {
+                "status": "Amarelo",
+                "color_code": "#fbbf24",  # amber-400
+                "label": "Atenção - Fadiga Detectada"
+            },
+            "Alerta de Estresse": {
+                "status": "Vermelho",
+                "color_code": "#f43f5e",  # rose-500
+                "label": "Crítico - Estresse Alto"
+            },
+            "Alerta Crítico: Estresse + Fadiga": {
+                "status": "Vermelho",
+                "color_code": "#dc2626",  # red-600
+                "label": "Alerta Crítico"
+            }
+        }
+        
+        current_status = last_analysis.get("status", "Normal")
+        status_info = status_map.get(current_status, status_map["Normal"])
+        
+        return EnergyStatus(
+            status=status_info["status"],
+            color_code=status_info["color_code"],
+            label=status_info["label"],
+            last_updated=last_analysis.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            current_bpm=last_analysis.get("bpm"),
+            current_hrv=last_analysis.get("hrv")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting energy status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/dashboard/team-stress", response_model=TeamStressMetrics)
+async def get_team_stress_metrics(request: Request):
+    """
+    Dashboard do Gestor: Métricas de estresse do time (anonimizadas)
+    Mostra média de estresse das últimas 24h sem identificar colaboradores
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        
+        # Apenas gestores podem acessar
+        if colaborador["nivel_acesso"] != "Gestor":
+            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        
+        # Período: últimas 24h
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        
+        # Busca todas as análises das últimas 24h
+        analyses = await db.smartwatch_analyses.find(
+            {"timestamp": {"$gte": twenty_four_hours_ago.isoformat()}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        if not analyses:
+            return TeamStressMetrics(
+                period="últimas 24h",
+                total_analyses=0,
+                average_stress_level=0.0,
+                critical_alerts=0,
+                medium_alerts=0,
+                normal_status=0,
+                stress_distribution=[]
+            )
+        
+        # Calcula métricas
+        total_analyses = len(analyses)
+        critical_count = sum(1 for a in analyses if a.get("risk_level") == "Alto")
+        medium_count = sum(1 for a in analyses if a.get("risk_level") == "Médio")
+        normal_count = total_analyses - critical_count - medium_count
+        
+        # Calcula nível médio de estresse (0-100)
+        # Alto = 100, Médio = 60, Baixo = 20
+        stress_scores = []
+        for a in analyses:
+            if a.get("risk_level") == "Alto":
+                stress_scores.append(100)
+            elif a.get("risk_level") == "Médio":
+                stress_scores.append(60)
+            else:
+                stress_scores.append(20)
+        
+        average_stress = sum(stress_scores) / len(stress_scores) if stress_scores else 0
+        
+        # Distribuição de estresse (anonimizada por horário)
+        stress_distribution = []
+        hour_groups = {}
+        
+        for a in analyses:
+            timestamp = datetime.fromisoformat(a["timestamp"])
+            hour = timestamp.hour
+            
+            if hour not in hour_groups:
+                hour_groups[hour] = {"hour": f"{hour:02d}:00", "count": 0, "avg_stress": []}
+            
+            hour_groups[hour]["count"] += 1
+            if a.get("risk_level") == "Alto":
+                hour_groups[hour]["avg_stress"].append(100)
+            elif a.get("risk_level") == "Médio":
+                hour_groups[hour]["avg_stress"].append(60)
+            else:
+                hour_groups[hour]["avg_stress"].append(20)
+        
+        for hour, data in sorted(hour_groups.items()):
+            avg = sum(data["avg_stress"]) / len(data["avg_stress"]) if data["avg_stress"] else 0
+            stress_distribution.append({
+                "hour": data["hour"],
+                "analyses_count": data["count"],
+                "avg_stress_level": round(avg, 1)
+            })
+        
+        # Identifica horário de pico de estresse
+        peak_stress_time = None
+        if stress_distribution:
+            peak = max(stress_distribution, key=lambda x: x["avg_stress_level"])
+            peak_stress_time = peak["hour"]
+        
+        return TeamStressMetrics(
+            period="últimas 24h",
+            total_analyses=total_analyses,
+            average_stress_level=round(average_stress, 1),
+            critical_alerts=critical_count,
+            medium_alerts=medium_count,
+            normal_status=normal_count,
+            stress_distribution=stress_distribution,
+            peak_stress_time=peak_stress_time
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting team stress metrics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# SMARTWATCH ENDPOINTS (análise)
 @api_router.post("/smartwatch/analyze", response_model=SmartwatchAnalysisResult)
 async def analyze_smartwatch(data: SmartwatchData, request: Request):
     """
@@ -899,6 +1138,15 @@ async def analyze_smartwatch(data: SmartwatchData, request: Request):
         
         # Analisa dados do smartwatch
         result = await analyze_smartwatch_data(data, colaborador["id"])
+        
+        # Envia notificação push se alerta crítico
+        if "Crítico" in result["status"] or result["risk_level"] == "Alto":
+            notification_sent = await send_push_notification(
+                colaborador,
+                result["status"],
+                result["ai_recommendation"]
+            )
+            result["push_notification_sent"] = notification_sent
         
         # Salva análise no histórico (opcional - para análise posterior)
         doc = {

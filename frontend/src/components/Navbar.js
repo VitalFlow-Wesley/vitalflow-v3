@@ -1,7 +1,8 @@
-import { Brain, Settings, User, LogOut } from "lucide-react";
+import { Brain, Settings, User, LogOut, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
+import EnergyStatus from "./EnergyStatus";
 
 const Navbar = ({ onOpenForm }) => {
   const navigate = useNavigate();
@@ -40,8 +41,25 @@ const Navbar = ({ onOpenForm }) => {
             </h1>
           </div>
 
+          {/* Energy Status */}
+          <div className="hidden lg:block">
+            <EnergyStatus />
+          </div>
+
           {/* Actions */}
           <div className="flex items-center gap-3">
+            {/* Dashboard Gestor (apenas para gestores) */}
+            {user?.nivel_acesso === 'Gestor' && (
+              <button
+                onClick={() => navigate("/gestor")}
+                data-testid="gestor-dashboard-button"
+                className="px-3 py-2 border border-purple-500/30 text-purple-400 text-sm font-semibold rounded-md hover:bg-purple-500/10 transition-all duration-200 flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </button>
+            )}
+
             <button
               onClick={() => navigate("/devices")}
               data-testid="devices-button"
