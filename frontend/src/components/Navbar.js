@@ -1,8 +1,29 @@
-import { Brain, Settings } from "lucide-react";
+import { Brain, Settings, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { useState, useRef, useEffect } from "react";
 
 const Navbar = ({ onOpenForm }) => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <nav 
@@ -36,6 +57,59 @@ const Navbar = ({ onOpenForm }) => {
             >
               + Adicionar Dados
             </button>
+
+            {/* User Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-2 px-3 py-2 border border-white/20 rounded-md hover:bg-white/5 transition-all duration-200"
+                data-testid="user-menu-button"
+              >
+                {user?.foto_url ? (
+                  <img
+                    src={user.foto_url}
+                    alt={user.nome}
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center">
+                    <User className="w-4 h-4 text-black" />
+                  </div>
+                )}
+                <span className="text-white text-sm font-medium hidden sm:inline">
+                  {user?.nome?.split(' ')[0]}
+                </span>
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-neutral-900 border border-white/10 rounded-md shadow-xl z-50">
+                  <div className="p-3 border-b border-white/10">
+                    <p className="text-sm font-semibold text-white">{user?.nome}</p>
+                    <p className="text-xs text-neutral-400">{user?.email}</p>
+                    <p className="text-xs text-cyan-400 mt-1">{user?.setor}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigate('/profile');
+                      setDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-white/5 transition-colors"
+                    data-testid="profile-menu-item"
+                  >
+                    <User className="w-4 h-4" />
+                    Meu Perfil
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors border-t border-white/10"
+                    data-testid="logout-button"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sair
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

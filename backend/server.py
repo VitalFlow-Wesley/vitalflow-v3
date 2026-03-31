@@ -1,32 +1,93 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
 from dotenv import load_dotenv
+from pathlib import Path
+
+# Load env vars FIRST
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# Now import everything else
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
 import os
 import logging
-from pathlib import Path
+import bcrypt
+import jwt
+import secrets
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta, date
 from emergentintegrations.llm.chat import LlmChat, UserMessage
-import base64
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# JWT Configuration
+JWT_ALGORITHM = "HS256"
+JWT_SECRET = os.environ.get('JWT_SECRET', 'default-secret-change-me')
 
-# Create a router with the /api prefix
+# Password Hashing Functions
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+# JWT Token Functions
+def create_access_token(colaborador_id: str, email: str) -> str:
+    payload = {
+        "sub": colaborador_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=60),
+        "type": "access"
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def create_refresh_token(colaborador_id: str) -> str:
+    payload = {
+        "sub": colaborador_id,
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "type": "refresh"
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+# Get Current User Helper
+async def get_current_colaborador(request: Request) -> dict:
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Não autenticado")
+    
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Tipo de token inválido")
+        
+        colaborador = await db.colaboradores.find_one({"id": payload["sub"]}, {"_id": 0})
+        if not colaborador:
+            raise HTTPException(status_code=401, detail="Colaborador não encontrado")
+        
+        colaborador.pop("password_hash", None)
+        return colaborador
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+# Create the main app
+app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-# Enums
+# Models
 class Setor(str):
     ADMINISTRATIVO = "Administrativo"
     SAC = "SAC"
@@ -37,6 +98,28 @@ class NivelAcesso(str):
     USER = "User"
     GESTOR = "Gestor"
 
+# Auth Models
+class RegisterRequest(BaseModel):
+    nome: str = Field(..., min_length=1, max_length=200)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    data_nascimento: date
+    setor: str
+    nivel_acesso: str = "User"
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class AuthResponse(BaseModel):
+    id: str
+    nome: str
+    email: str
+    data_nascimento: str
+    foto_url: Optional[str]
+    setor: str
+    nivel_acesso: str
+
 # Colaborador Models
 class ColaboradorCreate(BaseModel):
     nome: str = Field(..., min_length=1, max_length=200)
@@ -46,6 +129,11 @@ class ColaboradorCreate(BaseModel):
     nivel_acesso: str = "User"
     foto_base64: Optional[str] = None
 
+class ColaboradorUpdate(BaseModel):
+    nome: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    foto_base64: Optional[str] = None
+
 class Colaborador(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
@@ -53,6 +141,7 @@ class Colaborador(BaseModel):
     nome: str
     data_nascimento: str
     email: str
+    password_hash: str
     foto_url: Optional[str] = None
     setor: str
     nivel_acesso: str
@@ -70,16 +159,16 @@ class ColaboradorResponse(BaseModel):
     created_at: str
     updated_at: str
 
-# Existing models (BiometricInput, Analysis, etc. remain the same)
+# Analysis Models (keeping existing with updates)
 class BiometricInput(BaseModel):
-    hrv: int = Field(..., ge=0, le=200, description="Heart Rate Variability (ms)")
-    bpm: int = Field(..., ge=40, le=200, description="Current BPM")
-    bpm_average: int = Field(..., ge=40, le=120, description="Average resting BPM")
-    sleep_hours: float = Field(..., ge=0, le=24, description="Hours of sleep")
-    cognitive_load: int = Field(..., ge=0, le=10, description="Cognitive load level 0-10")
-    colaborador_id: Optional[str] = None  # Link to colaborador
-    user_name: str = Field(default="Colaborador", description="User name")
-    age: int = Field(default=30, ge=18, le=120, description="User age")
+    hrv: int = Field(..., ge=0, le=200)
+    bpm: int = Field(..., ge=40, le=200)
+    bpm_average: int = Field(..., ge=40, le=120)
+    sleep_hours: float = Field(..., ge=0, le=24)
+    cognitive_load: int = Field(..., ge=0, le=10)
+    colaborador_id: Optional[str] = None
+    user_name: str = Field(default="Colaborador")
+    age: int = Field(default=30, ge=18, le=120)
 
 class Analysis(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -97,7 +186,6 @@ class Analysis(BaseModel):
 
 class AnalysisResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    
     id: str
     v_score: int
     area_afetada: List[str]
@@ -108,24 +196,7 @@ class AnalysisResponse(BaseModel):
     timestamp: str
     colaborador_id: Optional[str] = None
 
-# Wearable Device Models
-class WearableProvider(str):
-    GOOGLE_HEALTH = "google_health_connect"
-    APPLE_HEALTH = "apple_healthkit"
-    GARMIN = "garmin"
-    FITBIT = "fitbit"
-
-class WearableDevice(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    user_id: str = Field(default="default_user")
-    provider: str
-    device_name: str
-    is_connected: bool = False
-    last_sync: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
+# Wearable Models
 class WearableConnectionRequest(BaseModel):
     provider: str
     device_name: str = "My Device"
@@ -138,26 +209,17 @@ class WearableConnectionResponse(BaseModel):
     last_sync: Optional[str]
     created_at: str
 
-class BiometricWebhookData(BaseModel):
-    """Data received from wearable devices via webhook"""
-    hrv: Optional[int] = None
-    bpm: Optional[int] = None
-    bpm_average: Optional[int] = None
-    sleep_hours: Optional[float] = None
-    device_id: str
-    recorded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-# Dashboard aggregation models
+# Dashboard Models
 class DashboardMetrics(BaseModel):
     total_colaboradores: int
     total_analises: int
     media_v_score: float
-    colaboradores_criticos: int  # V-Score < 50
-    colaboradores_atencao: int   # V-Score 50-79
-    colaboradores_otimo: int     # V-Score >= 80
+    colaboradores_criticos: int
+    colaboradores_atencao: int
+    colaboradores_otimo: int
     analises_por_setor: dict
 
-# AI Analysis Function (keeping existing)
+# AI Analysis Function
 async def analyze_biometrics(data: BiometricInput) -> dict:
     try:
         chat = LlmChat(
@@ -213,9 +275,7 @@ Faça a análise completa e retorne APENAS o JSON com o diagnóstico.
             lines = response_text.split('\n')
             response_text = '\n'.join([line for line in lines if not line.startswith('```')])
         
-        analysis_data = json.loads(response_text)
-        return analysis_data
-        
+        return json.loads(response_text)
     except Exception as e:
         logger.error(f"Error in AI analysis: {str(e)}")
         return fallback_analysis(data)
@@ -256,276 +316,210 @@ def fallback_analysis(data: BiometricInput) -> dict:
     score = max(0, min(100, score))
     
     if score >= 80:
-        status = "Verde"
-        tag = "Resiliência Ótima"
+        status, tag = "Verde", "Resiliência Ótima"
     elif score >= 50:
-        status = "Amarelo"
-        tag = "Atenção Necessária"
+        status, tag = "Amarelo", "Atenção Necessária"
     else:
-        status = "Vermelho"
-        tag = "Alerta Crítico"
+        status, tag = "Vermelho", "Alerta Crítico"
     
     if not areas:
         areas = ["Sistema Geral"]
     
-    causes = []
-    nudges = []
-    
+    causes, nudges = [], []
     if data.hrv < 50:
         causes.append(f"HRV baixa ({data.hrv}ms) indica estresse do sistema nervoso")
-        nudges.append("Faça 5 minutos de respiração diafragmática (4s inspirar, 7s segurar, 8s expirar)")
-    
+        nudges.append("Faça 5 minutos de respiração diafragmática")
     if bpm_increase > 15:
-        causes.append(f"BPM {int(bpm_increase)}% acima da média indica sobrecarga cardíaca")
-        nudges.append("Beba 400ml de água gelada e descanse 10 minutos em posição reclinada")
-    
+        causes.append(f"BPM {int(bpm_increase)}% acima da média")
+        nudges.append("Beba 400ml de água gelada e descanse 10 minutos")
     if data.sleep_hours < 6:
-        causes.append(f"Déficit de sono ({data.sleep_hours}h) impede recuperação do sistema nervoso")
-        nudges.append("Ative o Modo Foco e tire um cochilo de 20 minutos")
-    
-    causa = ". ".join(causes) if causes else "Parâmetros dentro da normalidade"
-    nudge = nudges[0] if nudges else "Continue mantendo seus bons hábitos de saúde"
+        causes.append(f"Déficit de sono ({data.sleep_hours}h)")
+        nudges.append("Tire um cochilo de 20 minutos")
     
     return {
         "v_score": score,
         "area_afetada": areas,
         "status_visual": status,
         "tag_rapida": tag,
-        "causa_provavel": causa,
-        "nudge_acao": nudge
+        "causa_provavel": ". ".join(causes) if causes else "Parâmetros normais",
+        "nudge_acao": nudges[0] if nudges else "Continue com bons hábitos"
     }
 
-# COLABORADOR ENDPOINTS
-@api_router.post("/colaboradores", response_model=ColaboradorResponse)
-async def create_colaborador(colaborador_data: ColaboradorCreate):
-    """
-    Cria um novo colaborador
-    """
+# AUTH ENDPOINTS
+@api_router.post("/auth/register", response_model=AuthResponse)
+async def register(data: RegisterRequest, response: Response):
     try:
-        # Check if email already exists
-        existing = await db.colaboradores.find_one({"email": colaborador_data.email}, {"_id": 0})
+        email_lower = data.email.lower()
+        existing = await db.colaboradores.find_one({"email": email_lower}, {"_id": 0})
         if existing:
             raise HTTPException(status_code=400, detail="Email já cadastrado")
         
-        # Handle photo
-        foto_url = None
-        if colaborador_data.foto_base64:
-            # In production, upload to cloud storage
-            # For now, store as data URL
-            foto_url = f"data:image/jpeg;base64,{colaborador_data.foto_base64}"
-        
         colaborador = Colaborador(
-            nome=colaborador_data.nome,
-            data_nascimento=colaborador_data.data_nascimento.isoformat(),
-            email=colaborador_data.email,
-            foto_url=foto_url,
-            setor=colaborador_data.setor,
-            nivel_acesso=colaborador_data.nivel_acesso
+            nome=data.nome,
+            email=email_lower,
+            password_hash=hash_password(data.password),
+            data_nascimento=data.data_nascimento.isoformat(),
+            setor=data.setor,
+            nivel_acesso=data.nivel_acesso
         )
         
         doc = colaborador.model_dump()
         doc['created_at'] = doc['created_at'].isoformat()
         doc['updated_at'] = doc['updated_at'].isoformat()
-        
         await db.colaboradores.insert_one(doc)
         
-        return ColaboradorResponse(
+        # Create tokens
+        access_token = create_access_token(colaborador.id, colaborador.email)
+        refresh_token = create_refresh_token(colaborador.id)
+        
+        # Set cookies
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=3600,
+            path="/"
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=604800,
+            path="/"
+        )
+        
+        return AuthResponse(
             id=colaborador.id,
             nome=colaborador.nome,
-            data_nascimento=colaborador.data_nascimento,
             email=colaborador.email,
+            data_nascimento=colaborador.data_nascimento,
             foto_url=colaborador.foto_url,
             setor=colaborador.setor,
-            nivel_acesso=colaborador.nivel_acesso,
-            created_at=colaborador.created_at.isoformat(),
-            updated_at=colaborador.updated_at.isoformat()
+            nivel_acesso=colaborador.nivel_acesso
         )
-        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating colaborador: {str(e)}")
+        logger.error(f"Error in register: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.get("/colaboradores", response_model=List[ColaboradorResponse])
-async def get_colaboradores(setor: Optional[str] = None):
-    """
-    Lista todos os colaboradores
-    """
+@api_router.post("/auth/login", response_model=AuthResponse)
+async def login(data: LoginRequest, response: Response, request: Request):
     try:
-        query = {}
-        if setor:
-            query["setor"] = setor
+        email_lower = data.email.lower()
+        colaborador = await db.colaboradores.find_one({"email": email_lower}, {"_id": 0})
         
-        colaboradores = await db.colaboradores.find(query, {"_id": 0}).to_list(1000)
+        if not colaborador or not verify_password(data.password, colaborador["password_hash"]):
+            raise HTTPException(status_code=401, detail="Email ou senha incorretos")
         
-        return [
-            ColaboradorResponse(
-                id=c["id"],
-                nome=c["nome"],
-                data_nascimento=c["data_nascimento"],
-                email=c["email"],
-                foto_url=c.get("foto_url"),
-                setor=c["setor"],
-                nivel_acesso=c["nivel_acesso"],
-                created_at=c["created_at"],
-                updated_at=c["updated_at"]
-            )
-            for c in colaboradores
-        ]
+        # Create tokens
+        access_token = create_access_token(colaborador["id"], colaborador["email"])
+        refresh_token = create_refresh_token(colaborador["id"])
         
-    except Exception as e:
-        logger.error(f"Error fetching colaboradores: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.get("/colaboradores/{colaborador_id}", response_model=ColaboradorResponse)
-async def get_colaborador(colaborador_id: str):
-    """
-    Retorna um colaborador específico
-    """
-    try:
-        colaborador = await db.colaboradores.find_one({"id": colaborador_id}, {"_id": 0})
+        # Set cookies
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=3600,
+            path="/"
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=604800,
+            path="/"
+        )
         
-        if not colaborador:
-            raise HTTPException(status_code=404, detail="Colaborador não encontrado")
-        
-        return ColaboradorResponse(
+        return AuthResponse(
             id=colaborador["id"],
             nome=colaborador["nome"],
-            data_nascimento=colaborador["data_nascimento"],
             email=colaborador["email"],
+            data_nascimento=colaborador["data_nascimento"],
             foto_url=colaborador.get("foto_url"),
             setor=colaborador["setor"],
-            nivel_acesso=colaborador["nivel_acesso"],
-            created_at=colaborador["created_at"],
-            updated_at=colaborador["updated_at"]
+            nivel_acesso=colaborador["nivel_acesso"]
         )
-        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching colaborador: {str(e)}")
+        logger.error(f"Error in login: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.put("/colaboradores/{colaborador_id}", response_model=ColaboradorResponse)
-async def update_colaborador(colaborador_id: str, colaborador_data: ColaboradorCreate):
-    """
-    Atualiza um colaborador
-    """
+@api_router.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
+    return {"message": "Logout realizado com sucesso"}
+
+@api_router.get("/auth/me", response_model=AuthResponse)
+async def get_me(request: Request):
+    colaborador = await get_current_colaborador(request)
+    return AuthResponse(
+        id=colaborador["id"],
+        nome=colaborador["nome"],
+        email=colaborador["email"],
+        data_nascimento=colaborador["data_nascimento"],
+        foto_url=colaborador.get("foto_url"),
+        setor=colaborador["setor"],
+        nivel_acesso=colaborador["nivel_acesso"]
+    )
+
+@api_router.put("/auth/profile", response_model=AuthResponse)
+async def update_profile(data: ColaboradorUpdate, request: Request):
+    """Atualiza o perfil do colaborador logado"""
     try:
-        existing = await db.colaboradores.find_one({"id": colaborador_id}, {"_id": 0})
+        colaborador = await get_current_colaborador(request)
         
-        if not existing:
-            raise HTTPException(status_code=404, detail="Colaborador não encontrado")
+        update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
         
-        foto_url = existing.get("foto_url")
-        if colaborador_data.foto_base64:
-            foto_url = f"data:image/jpeg;base64,{colaborador_data.foto_base64}"
-        
-        update_data = {
-            "nome": colaborador_data.nome,
-            "data_nascimento": colaborador_data.data_nascimento.isoformat(),
-            "email": colaborador_data.email,
-            "foto_url": foto_url,
-            "setor": colaborador_data.setor,
-            "nivel_acesso": colaborador_data.nivel_acesso,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }
+        if data.nome:
+            update_data["nome"] = data.nome
+        if data.data_nascimento:
+            update_data["data_nascimento"] = data.data_nascimento.isoformat()
+        if data.foto_base64:
+            update_data["foto_url"] = f"data:image/jpeg;base64,{data.foto_base64}"
         
         await db.colaboradores.update_one(
-            {"id": colaborador_id},
+            {"id": colaborador["id"]},
             {"$set": update_data}
         )
         
-        return ColaboradorResponse(
-            id=colaborador_id,
-            nome=update_data["nome"],
-            data_nascimento=update_data["data_nascimento"],
-            email=update_data["email"],
-            foto_url=update_data["foto_url"],
-            setor=update_data["setor"],
-            nivel_acesso=update_data["nivel_acesso"],
-            created_at=existing["created_at"],
-            updated_at=update_data["updated_at"]
-        )
+        # Get updated colaborador
+        updated = await db.colaboradores.find_one({"id": colaborador["id"]}, {"_id": 0})
         
+        return AuthResponse(
+            id=updated["id"],
+            nome=updated["nome"],
+            email=updated["email"],
+            data_nascimento=updated["data_nascimento"],
+            foto_url=updated.get("foto_url"),
+            setor=updated["setor"],
+            nivel_acesso=updated["nivel_acesso"]
+        )
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating colaborador: {str(e)}")
+        logger.error(f"Error updating profile: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.delete("/colaboradores/{colaborador_id}")
-async def delete_colaborador(colaborador_id: str):
-    """
-    Remove um colaborador
-    """
-    try:
-        result = await db.colaboradores.delete_one({"id": colaborador_id})
-        
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Colaborador não encontrado")
-        
-        return {"status": "success", "message": "Colaborador removido"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting colaborador: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# DASHBOARD GESTOR
-@api_router.get("/dashboard/metrics", response_model=DashboardMetrics)
-async def get_dashboard_metrics():
-    """
-    Retorna métricas agregadas para o dashboard do gestor
-    """
-    try:
-        total_colaboradores = await db.colaboradores.count_documents({})
-        total_analises = await db.analyses.count_documents({})
-        
-        # Calculate average V-Score
-        pipeline_avg = [
-            {"$group": {"_id": None, "avg_score": {"$avg": "$v_score"}}}
-        ]
-        avg_result = await db.analyses.aggregate(pipeline_avg).to_list(1)
-        media_v_score = avg_result[0]["avg_score"] if avg_result else 0
-        
-        # Count by status
-        criticos = await db.analyses.count_documents({"v_score": {"$lt": 50}})
-        atencao = await db.analyses.count_documents({"v_score": {"$gte": 50, "$lt": 80}})
-        otimo = await db.analyses.count_documents({"v_score": {"$gte": 80}})
-        
-        # Analyses by setor (need to join with colaboradores)
-        analises_por_setor = {
-            "Administrativo": 0,
-            "SAC": 0,
-            "Logística": 0,
-            "Operacional": 0
-        }
-        
-        return DashboardMetrics(
-            total_colaboradores=total_colaboradores,
-            total_analises=total_analises,
-            media_v_score=round(media_v_score, 1),
-            colaboradores_criticos=criticos,
-            colaboradores_atencao=atencao,
-            colaboradores_otimo=otimo,
-            analises_por_setor=analises_por_setor
-        )
-        
-    except Exception as e:
-        logger.error(f"Error fetching dashboard metrics: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# EXISTING ROUTES (updated to use colaborador)
-@api_router.get("/")
-async def root():
-    return {"message": "VitalFlow API - Copiloto Corporativo de Longevidade"}
-
+# ANALYSIS ENDPOINTS
 @api_router.post("/analyze", response_model=AnalysisResponse)
-async def create_analysis(input_data: BiometricInput):
+async def create_analysis(input_data: BiometricInput, request: Request):
     try:
+        # Get current colaborador
+        colaborador = await get_current_colaborador(request)
+        input_data.colaborador_id = colaborador["id"]
+        
         analysis_result = await analyze_biometrics(input_data)
         
         analysis = Analysis(
@@ -536,13 +530,12 @@ async def create_analysis(input_data: BiometricInput):
             causa_provavel=analysis_result["causa_provavel"],
             nudge_acao=analysis_result["nudge_acao"],
             input_data=input_data,
-            colaborador_id=input_data.colaborador_id
+            colaborador_id=colaborador["id"]
         )
         
         doc = analysis.model_dump()
         doc['timestamp'] = doc['timestamp'].isoformat()
         doc['input_data'] = input_data.model_dump()
-        
         await db.analyses.insert_one(doc)
         
         return AnalysisResponse(
@@ -556,19 +549,19 @@ async def create_analysis(input_data: BiometricInput):
             timestamp=analysis.timestamp.isoformat(),
             colaborador_id=analysis.colaborador_id
         )
-        
     except Exception as e:
         logger.error(f"Error creating analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/history", response_model=List[AnalysisResponse])
-async def get_history(limit: int = 10, colaborador_id: Optional[str] = None):
+async def get_history(request: Request, limit: int = 30):
     try:
-        query = {}
-        if colaborador_id:
-            query["colaborador_id"] = colaborador_id
+        colaborador = await get_current_colaborador(request)
         
-        analyses = await db.analyses.find(query, {"_id": 0}).sort("timestamp", -1).limit(limit).to_list(limit)
+        analyses = await db.analyses.find(
+            {"colaborador_id": colaborador["id"]},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit).to_list(limit)
         
         return [
             AnalysisResponse(
@@ -584,71 +577,48 @@ async def get_history(limit: int = 10, colaborador_id: Optional[str] = None):
             )
             for a in analyses
         ]
-        
     except Exception as e:
         logger.error(f"Error fetching history: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.get("/analysis/{analysis_id}", response_model=AnalysisResponse)
-async def get_analysis(analysis_id: str):
-    try:
-        analysis = await db.analyses.find_one({"id": analysis_id}, {"_id": 0})
-        
-        if not analysis:
-            raise HTTPException(status_code=404, detail="Análise não encontrada")
-        
-        return AnalysisResponse(
-            id=analysis["id"],
-            v_score=analysis["v_score"],
-            area_afetada=analysis["area_afetada"],
-            status_visual=analysis["status_visual"],
-            tag_rapida=analysis["tag_rapida"],
-            causa_provavel=analysis["causa_provavel"],
-            nudge_acao=analysis["nudge_acao"],
-            timestamp=analysis["timestamp"],
-            colaborador_id=analysis.get("colaborador_id")
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching analysis: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Wearable Device Endpoints (keeping existing)
+# WEARABLE ENDPOINTS
 @api_router.post("/wearables/connect", response_model=WearableConnectionResponse)
-async def connect_wearable(request: WearableConnectionRequest):
+async def connect_wearable(data: WearableConnectionRequest, request: Request):
     try:
-        device = WearableDevice(
-            provider=request.provider,
-            device_name=request.device_name,
-            is_connected=True,
-            last_sync=datetime.now(timezone.utc)
-        )
+        colaborador = await get_current_colaborador(request)
         
-        doc = device.model_dump()
-        doc['created_at'] = doc['created_at'].isoformat()
-        doc['last_sync'] = doc['last_sync'].isoformat() if doc['last_sync'] else None
+        device = {
+            "id": str(uuid.uuid4()),
+            "colaborador_id": colaborador["id"],
+            "provider": data.provider,
+            "device_name": data.device_name,
+            "is_connected": True,
+            "last_sync": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
         
-        await db.wearable_devices.insert_one(doc)
+        await db.wearable_devices.insert_one(device)
         
         return WearableConnectionResponse(
-            id=device.id,
-            provider=device.provider,
-            device_name=device.device_name,
-            is_connected=device.is_connected,
-            last_sync=device.last_sync.isoformat() if device.last_sync else None,
-            created_at=device.created_at.isoformat()
+            id=device["id"],
+            provider=device["provider"],
+            device_name=device["device_name"],
+            is_connected=device["is_connected"],
+            last_sync=device["last_sync"],
+            created_at=device["created_at"]
         )
-        
     except Exception as e:
         logger.error(f"Error connecting wearable: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/wearables", response_model=List[WearableConnectionResponse])
-async def get_wearables():
+async def get_wearables(request: Request):
     try:
-        devices = await db.wearable_devices.find({}, {"_id": 0}).to_list(100)
+        colaborador = await get_current_colaborador(request)
+        devices = await db.wearable_devices.find(
+            {"colaborador_id": colaborador["id"]},
+            {"_id": 0}
+        ).to_list(100)
         
         return [
             WearableConnectionResponse(
@@ -661,132 +631,179 @@ async def get_wearables():
             )
             for d in devices
         ]
-        
     except Exception as e:
         logger.error(f"Error fetching wearables: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/wearables/{device_id}")
-async def disconnect_wearable(device_id: str):
+async def disconnect_wearable(device_id: str, request: Request):
     try:
-        result = await db.wearable_devices.delete_one({"id": device_id})
+        colaborador = await get_current_colaborador(request)
+        result = await db.wearable_devices.delete_one({
+            "id": device_id,
+            "colaborador_id": colaborador["id"]
+        })
         
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
         
         return {"status": "success", "message": "Dispositivo desconectado"}
-        
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error disconnecting wearable: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.post("/wearables/webhook/{device_id}")
-async def receive_wearable_data(device_id: str, data: BiometricWebhookData):
+# GESTOR DASHBOARD (only for gestores)
+@api_router.get("/dashboard/metrics", response_model=DashboardMetrics)
+async def get_dashboard_metrics(request: Request):
     try:
-        device = await db.wearable_devices.find_one({"id": device_id}, {"_id": 0})
+        colaborador = await get_current_colaborador(request)
         
-        if not device:
-            raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
+        if colaborador["nivel_acesso"] != "Gestor":
+            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
         
-        await db.wearable_devices.update_one(
-            {"id": device_id},
-            {"$set": {"last_sync": datetime.now(timezone.utc).isoformat()}}
+        total_colaboradores = await db.colaboradores.count_documents({})
+        total_analises = await db.analyses.count_documents({})
+        
+        pipeline_avg = [{"$group": {"_id": None, "avg_score": {"$avg": "$v_score"}}}]
+        avg_result = await db.analyses.aggregate(pipeline_avg).to_list(1)
+        media_v_score = avg_result[0]["avg_score"] if avg_result else 0
+        
+        criticos = await db.analyses.count_documents({"v_score": {"$lt": 50}})
+        atencao = await db.analyses.count_documents({"v_score": {"$gte": 50, "$lt": 80}})
+        otimo = await db.analyses.count_documents({"v_score": {"$gte": 80}})
+        
+        return DashboardMetrics(
+            total_colaboradores=total_colaboradores,
+            total_analises=total_analises,
+            media_v_score=round(media_v_score, 1),
+            colaboradores_criticos=criticos,
+            colaboradores_atencao=atencao,
+            colaboradores_otimo=otimo,
+            analises_por_setor={}
         )
-        
-        if data.hrv and data.bpm and data.bpm_average and data.sleep_hours:
-            biometric_input = BiometricInput(
-                hrv=data.hrv,
-                bpm=data.bpm,
-                bpm_average=data.bpm_average,
-                sleep_hours=data.sleep_hours,
-                cognitive_load=5,
-                user_name="Colaborador",
-                age=30
-            )
-            
-            analysis_result = await analyze_biometrics(biometric_input)
-            
-            analysis = Analysis(
-                v_score=analysis_result["v_score"],
-                area_afetada=analysis_result["area_afetada"],
-                status_visual=analysis_result["status_visual"],
-                tag_rapida=analysis_result["tag_rapida"],
-                causa_provavel=analysis_result["causa_provavel"],
-                nudge_acao=analysis_result["nudge_acao"],
-                input_data=biometric_input
-            )
-            
-            doc = analysis.model_dump()
-            doc['timestamp'] = doc['timestamp'].isoformat()
-            doc['input_data'] = biometric_input.model_dump()
-            doc['auto_generated'] = True
-            doc['source_device'] = device_id
-            
-            await db.analyses.insert_one(doc)
-            
-            return {
-                "status": "success",
-                "message": "Dados recebidos e análise gerada automaticamente",
-                "analysis_id": analysis.id
-            }
-        
-        return {
-            "status": "success",
-            "message": "Dados recebidos parcialmente"
-        }
-        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error receiving wearable data: {str(e)}")
+        logger.error(f"Error fetching metrics: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.get("/wearables/{device_id}/latest-data")
-async def get_latest_wearable_data(device_id: str):
+@api_router.get("/colaboradores", response_model=List[ColaboradorResponse])
+async def get_colaboradores(request: Request, setor: Optional[str] = None):
     try:
-        analysis = await db.analyses.find_one(
-            {"source_device": device_id},
-            {"_id": 0}
-        )
+        colaborador = await get_current_colaborador(request)
         
-        if not analysis:
-            return {"status": "no_data", "message": "Nenhum dado disponível"}
+        if colaborador["nivel_acesso"] != "Gestor":
+            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
         
-        return AnalysisResponse(
-            id=analysis["id"],
-            v_score=analysis["v_score"],
-            area_afetada=analysis["area_afetada"],
-            status_visual=analysis["status_visual"],
-            tag_rapida=analysis["tag_rapida"],
-            causa_provavel=analysis["causa_provavel"],
-            nudge_acao=analysis["nudge_acao"],
-            timestamp=analysis["timestamp"],
-            colaborador_id=analysis.get("colaborador_id")
-        )
+        query = {}
+        if setor:
+            query["setor"] = setor
         
+        colaboradores = await db.colaboradores.find(query, {"_id": 0, "password_hash": 0}).to_list(1000)
+        
+        return [
+            ColaboradorResponse(
+                id=c["id"],
+                nome=c["nome"],
+                data_nascimento=c["data_nascimento"],
+                email=c["email"],
+                foto_url=c.get("foto_url"),
+                setor=c["setor"],
+                nivel_acesso=c["nivel_acesso"],
+                created_at=c["created_at"],
+                updated_at=c["updated_at"]
+            )
+            for c in colaboradores
+        ]
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error fetching latest wearable data: {str(e)}")
+        logger.error(f"Error fetching colaboradores: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Include the router in the main app
+# Root
+@api_router.get("/")
+async def root():
+    return {"message": "VitalFlow API - Copiloto Corporativo de Longevidade"}
+
+# Include router
 app.include_router(api_router)
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[os.environ.get('FRONTEND_URL', 'http://localhost:3000')],
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configure logging
+# Logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Startup: Create indexes and seed admin
+@app.on_event("startup")
+async def startup_event():
+    try:
+        await db.colaboradores.create_index("email", unique=True)
+        logger.info("Database indexes created")
+        
+        # Seed admin
+        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@vitalflow.com').lower()
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'Admin123!@#')
+        
+        existing_admin = await db.colaboradores.find_one({"email": admin_email}, {"_id": 0})
+        
+        if not existing_admin:
+            admin = Colaborador(
+                nome="Administrador",
+                email=admin_email,
+                password_hash=hash_password(admin_password),
+                data_nascimento="1990-01-01",
+                setor="Administrativo",
+                nivel_acesso="Gestor"
+            )
+            doc = admin.model_dump()
+            doc['created_at'] = doc['created_at'].isoformat()
+            doc['updated_at'] = doc['updated_at'].isoformat()
+            await db.colaboradores.insert_one(doc)
+            logger.info(f"Admin seeded: {admin_email}")
+        
+        # Write test credentials
+        Path("/app/memory").mkdir(exist_ok=True)
+        with open("/app/memory/test_credentials.md", "w") as f:
+            f.write(f"""# VitalFlow - Credenciais de Teste
+
+## Admin/Gestor
+- Email: {admin_email}
+- Senha: {admin_password}
+- Nível: Gestor
+- Setor: Administrativo
+
+## Endpoints de Autenticação
+- POST /api/auth/register - Cadastro
+- POST /api/auth/login - Login
+- POST /api/auth/logout - Logout
+- GET /api/auth/me - Dados do colaborador logado
+- PUT /api/auth/profile - Atualizar perfil
+
+## Endpoints Protegidos
+- POST /api/analyze - Criar análise
+- GET /api/history - Histórico de análises
+- GET /api/wearables - Dispositivos conectados
+- GET /api/dashboard/metrics - Métricas (apenas gestores)
+- GET /api/colaboradores - Listar colaboradores (apenas gestores)
+""")
+        logger.info("Test credentials written to /app/memory/test_credentials.md")
+        
+    except Exception as e:
+        logger.error(f"Startup error: {str(e)}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
