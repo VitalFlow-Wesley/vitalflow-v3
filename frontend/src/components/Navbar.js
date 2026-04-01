@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
 import EnergyStatus from "./EnergyStatus";
+import GamificationBar from "./GamificationBar";
 
 const Navbar = ({ onOpenForm }) => {
   const navigate = useNavigate();
@@ -41,9 +42,10 @@ const Navbar = ({ onOpenForm }) => {
             </h1>
           </div>
 
-          {/* Energy Status */}
-          <div className="hidden lg:block">
+          {/* Energy Status + Gamification */}
+          <div className="hidden lg:flex items-center gap-4">
             <EnergyStatus />
+            <GamificationBar energyPoints={user?.energy_points} currentStreak={user?.current_streak} />
           </div>
 
           {/* Actions */}
@@ -104,7 +106,18 @@ const Navbar = ({ onOpenForm }) => {
                   <div className="p-3 border-b border-white/10">
                     <p className="text-sm font-semibold text-white">{user?.nome}</p>
                     <p className="text-xs text-neutral-400">{user?.email}</p>
-                    <p className="text-xs text-cyan-400 mt-1">{user?.setor}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-cyan-400">{user?.setor}</p>
+                      {user?.account_type === "personal" && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                          user?.is_premium
+                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            : "bg-neutral-800 text-neutral-500 border border-neutral-700"
+                        }`}>
+                          {user?.is_premium ? "PREMIUM" : "FREE"}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <button
                     onClick={() => {

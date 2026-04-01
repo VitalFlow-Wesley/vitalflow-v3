@@ -1,88 +1,96 @@
-import { Zap, ArrowRight } from "lucide-react";
+import { Zap, ArrowRight, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import axios from "axios";
+import { toast } from "sonner";
 
-const NudgeCard = ({ nudge, status }) => {
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Verde":
-        return {
-          border: "border-emerald-400/50",
-          bg: "bg-emerald-400/5",
-          button: "bg-emerald-500 hover:bg-emerald-400 text-black",
-          glow: "shadow-[0_0_20px_rgba(52,211,153,0.3)]"
-        };
-      case "Amarelo":
-        return {
-          border: "border-amber-400/50",
-          bg: "bg-amber-400/5",
-          button: "bg-amber-500 hover:bg-amber-400 text-black",
-          glow: "shadow-[0_0_20px_rgba(251,191,36,0.3)]"
-        };
-      case "Vermelho":
-        return {
-          border: "border-rose-500/50",
-          bg: "bg-rose-500/5",
-          button: "bg-rose-500 hover:bg-rose-400 text-white",
-          glow: "shadow-[0_0_20px_rgba(244,63,94,0.3)]"
-        };
-      default:
-        return {
-          border: "border-cyan-400/50",
-          bg: "bg-cyan-400/5",
-          button: "bg-cyan-500 hover:bg-cyan-400 text-black",
-          glow: "shadow-[0_0_20px_rgba(34,211,238,0.3)]"
-        };
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const NudgeCard = ({ nudge, status, analysisId, onPointsEarned }) => {
+  const [followed, setFollowed] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const borderColor = {
+    Verde: "border-emerald-400/30",
+    Amarelo: "border-amber-400/30",
+    Vermelho: "border-rose-500/30",
+  }[status] || "border-cyan-400/30";
+
+  const btnBg = {
+    Verde: "bg-emerald-500 hover:bg-emerald-400",
+    Amarelo: "bg-amber-500 hover:bg-amber-400",
+    Vermelho: "bg-rose-500 hover:bg-rose-400",
+  }[status] || "bg-cyan-500 hover:bg-cyan-400";
+
+  const handleFollow = async () => {
+    if (followed || loading || !analysisId) return;
+    setLoading(true);
+    try {
+      const { data } = await axios.post(
+        `${API}/gamification/follow-nudge`,
+        { analysis_id: analysisId },
+        { withCredentials: true }
+      );
+      setFollowed(true);
+      const msg = data.bonus_events?.length
+        ? `+${data.points_earned} Pontos de Energia! (inclui bonus)`
+        : `+${data.points_earned} Pontos de Energia!`;
+      toast.success(msg, { duration: 4000 });
+      if (onPointsEarned) onPointsEarned(data);
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      if (detail === "Nudge já seguido para esta análise") {
+        setFollowed(true);
+      } else {
+        toast.error("Erro ao registrar nudge.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const colors = getStatusColor(status);
-  const shouldPulse = status === "Vermelho" || status === "Amarelo";
-
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      data-testid="nudge-action-card"
-      className={`
-        relative border-2 ${colors.border} ${colors.bg} ${colors.glow}
-        backdrop-blur-xl rounded-md p-6 overflow-hidden
-        ${shouldPulse ? 'animate-pulse-glow' : ''}
-      `}
+      className={`border ${borderColor} bg-neutral-900/40 backdrop-blur-xl rounded-md p-6`}
+      data-testid="nudge-card"
     >
-      {/* Glowing border animation */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className={`absolute inset-0 ${colors.border} opacity-30 animate-pulse`} />
+      <div className="flex items-center gap-2 mb-3">
+        <Zap className="w-4 h-4 text-amber-400" />
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">
+          Acao Imediata (5 min)
+        </h3>
       </div>
 
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-5 h-5 text-amber-400" />
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white">
-            AÇÃO IMEDIATA (5 MIN)
-          </h3>
-        </div>
+      <p className="text-neutral-200 text-sm leading-relaxed mb-5">{nudge}</p>
 
-        {/* Nudge Text */}
-        <p className="text-base sm:text-lg text-white leading-relaxed mb-6 font-body" data-testid="nudge-text">
-          {nudge}
-        </p>
-
-        {/* Action Button */}
-        <button
-          className={`
-            w-full flex items-center justify-center gap-2
-            px-6 py-3 rounded-md font-semibold
-            transition-all duration-200
-            ${colors.button}
-          `}
-          data-testid="nudge-action-button"
-        >
-          Iniciar Agora
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
+      <button
+        onClick={handleFollow}
+        disabled={followed || loading}
+        data-testid="follow-nudge-btn"
+        className={`
+          w-full py-3 rounded-md text-sm font-semibold flex items-center justify-center gap-2
+          transition-all duration-200 text-black
+          ${followed
+            ? "bg-neutral-700 text-neutral-400 cursor-default"
+            : btnBg
+          }
+        `}
+      >
+        {followed ? (
+          <>
+            <Check className="w-4 h-4" /> Concluido
+          </>
+        ) : loading ? (
+          "Registrando..."
+        ) : (
+          <>
+            Iniciar Agora <ArrowRight className="w-4 h-4" />
+          </>
+        )}
+      </button>
     </motion.div>
   );
 };

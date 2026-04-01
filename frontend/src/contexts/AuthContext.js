@@ -1,11 +1,11 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const AuthContext = createContext(null);
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Helper to format API errors
 export const formatApiErrorDetail = (detail) => {
   if (detail == null) return "Algo deu errado. Tente novamente.";
   if (typeof detail === "string") return detail;
@@ -19,7 +19,7 @@ export const formatApiErrorDetail = (detail) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // null = checking, false = not authenticated, object = authenticated
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +47,16 @@ export const AuthProvider = ({ children }) => {
         { withCredentials: true }
       );
       setUser(data);
+
+      // Welcome message for corporate users
+      if (data.account_type === "corporate" && data.company_name) {
+        const firstName = data.nome?.split(' ')[0] || data.nome;
+        toast.success(
+          `Bem-vindo ao VitalFlow, ${firstName}! Estamos cuidando da sua energia hoje na ${data.company_name}.`,
+          { duration: 6000 }
+        );
+      }
+
       return { success: true };
     } catch (error) {
       const errorMessage = formatApiErrorDetail(error.response?.data?.detail) || error.message;
@@ -62,6 +72,15 @@ export const AuthProvider = ({ children }) => {
         { withCredentials: true }
       );
       setUser(data);
+
+      if (data.account_type === "corporate" && data.company_name) {
+        const firstName = data.nome?.split(' ')[0] || data.nome;
+        toast.success(
+          `Bem-vindo ao VitalFlow, ${firstName}! Estamos cuidando da sua energia hoje na ${data.company_name}.`,
+          { duration: 6000 }
+        );
+      }
+
       return { success: true };
     } catch (error) {
       const errorMessage = formatApiErrorDetail(error.response?.data?.detail) || error.message;
@@ -93,6 +112,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/auth/me`, { withCredentials: true });
+      setUser(data);
+    } catch (err) {
+      // silently fail
+    }
+  }, []);
+
   const value = {
     user,
     loading,
@@ -101,6 +129,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     checkAuth,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

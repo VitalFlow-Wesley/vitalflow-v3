@@ -123,6 +123,10 @@ class AuthResponse(BaseModel):
     cargo: Optional[str] = None
     account_type: str = "personal"
     domain: Optional[str] = None
+    company_name: Optional[str] = None
+    is_premium: bool = False
+    energy_points: int = 0
+    current_streak: int = 0
 
 # Colaborador Models
 class ColaboradorCreate(BaseModel):
@@ -156,6 +160,12 @@ class Colaborador(BaseModel):
     cargo: Optional[str] = None
     account_type: str = Field(default="personal")  # "personal" ou "corporate"
     domain: Optional[str] = None
+    is_premium: bool = False
+    energy_points: int = 0
+    current_streak: int = 0
+    longest_streak: int = 0
+    last_nudge_date: Optional[str] = None
+    badges: List[dict] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -313,6 +323,24 @@ class TeamStressMetrics(BaseModel):
     normal_status: int
     stress_distribution: List[dict] = Field(..., description="Distribuição sem identificação")
     peak_stress_time: Optional[str] = None
+
+# Gamification Models
+class FollowNudgeRequest(BaseModel):
+    analysis_id: str
+
+class GamificationStatsResponse(BaseModel):
+    energy_points: int
+    current_streak: int
+    longest_streak: int
+    badges: List[dict]
+    nudges_followed_today: int = 0
+    next_badge_in: int = 0
+
+class PlanInfoResponse(BaseModel):
+    plan: str
+    is_premium: bool
+    account_type: str
+    limits: dict
 
 # AI Analysis Function
 async def analyze_biometrics(data: BiometricInput) -> dict:
@@ -882,8 +910,10 @@ async def register(data: RegisterRequest, response: Response):
             cargo=colaborador.cargo,
             account_type=colaborador.account_type,
             domain=colaborador.domain,
-            created_at=colaborador.created_at.isoformat(),
-            updated_at=colaborador.updated_at.isoformat()
+            company_name=company_name if is_corporate else None,
+            is_premium=False,
+            energy_points=0,
+            current_streak=0
         )
     except HTTPException:
         raise
@@ -924,6 +954,15 @@ async def login(data: LoginRequest, response: Response, request: Request):
             path="/"
         )
         
+        # Get company_name for corporate users
+        company_name = None
+        if colaborador.get("account_type") == "corporate" and colaborador.get("domain"):
+            corp = await db.corporate_domains.find_one(
+                {"domain": colaborador["domain"]}, {"_id": 0, "company_name": 1}
+            )
+            if corp:
+                company_name = corp["company_name"]
+        
         return AuthResponse(
             id=colaborador["id"],
             nome=colaborador["nome"],
@@ -935,7 +974,11 @@ async def login(data: LoginRequest, response: Response, request: Request):
             matricula=colaborador.get("matricula"),
             cargo=colaborador.get("cargo"),
             account_type=colaborador.get("account_type", "personal"),
-            domain=colaborador.get("domain")
+            domain=colaborador.get("domain"),
+            company_name=company_name,
+            is_premium=colaborador.get("is_premium", False),
+            energy_points=colaborador.get("energy_points", 0),
+            current_streak=colaborador.get("current_streak", 0)
         )
     except HTTPException:
         raise
@@ -952,6 +995,14 @@ async def logout(response: Response):
 @api_router.get("/auth/me", response_model=AuthResponse)
 async def get_me(request: Request):
     colaborador = await get_current_colaborador(request)
+    # Get company_name for corporate users
+    company_name = None
+    if colaborador.get("account_type") == "corporate" and colaborador.get("domain"):
+        corp = await db.corporate_domains.find_one(
+            {"domain": colaborador["domain"]}, {"_id": 0, "company_name": 1}
+        )
+        if corp:
+            company_name = corp["company_name"]
     return AuthResponse(
         id=colaborador["id"],
         nome=colaborador["nome"],
@@ -959,7 +1010,15 @@ async def get_me(request: Request):
         data_nascimento=colaborador["data_nascimento"],
         foto_url=colaborador.get("foto_url"),
         setor=colaborador["setor"],
-        nivel_acesso=colaborador["nivel_acesso"]
+        nivel_acesso=colaborador["nivel_acesso"],
+        matricula=colaborador.get("matricula"),
+        cargo=colaborador.get("cargo"),
+        account_type=colaborador.get("account_type", "personal"),
+        domain=colaborador.get("domain"),
+        company_name=company_name,
+        is_premium=colaborador.get("is_premium", False),
+        energy_points=colaborador.get("energy_points", 0),
+        current_streak=colaborador.get("current_streak", 0)
     )
 
 @api_router.put("/auth/profile", response_model=AuthResponse)
@@ -1220,9 +1279,20 @@ async def get_predictive_alert(request: Request):
     """
     Retorna alerta preditivo se houver padrão de estresse detectado
     IA analisa histórico e prevê próximo pico com 30min de antecedência
+    TRAVA: Usuários B2C Free não têm acesso a predições
     """
     try:
         colaborador = await get_current_colaborador(request)
+        
+        # Verifica trava Premium para B2C
+        account_type = colaborador.get("account_type", "personal")
+        is_premium = colaborador.get("is_premium", False)
+        if account_type == "personal" and not is_premium:
+            return {
+                "has_alert": False,
+                "locked": True,
+                "message": "Recurso exclusivo do plano Premium. Faça upgrade para acessar predições de IA."
+            }
         
         # Analisa padrões de estresse
         alert_data = await analyze_stress_patterns(colaborador["id"])
@@ -1588,6 +1658,262 @@ async def get_smartwatch_history(request: Request, limit: int = 20):
         logger.error(f"Error fetching smartwatch history: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# GAMIFICATION ENDPOINTS
+@api_router.post("/gamification/follow-nudge")
+async def follow_nudge(data: FollowNudgeRequest, request: Request):
+    """Marca que o usuário seguiu um Nudge da IA. +50 pontos + atualiza streak."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        colab_id = colaborador["id"]
+        today = date.today().isoformat()
+        
+        # Verifica se já seguiu este nudge
+        existing = await db.gamification_events.find_one(
+            {"colaborador_id": colab_id, "analysis_id": data.analysis_id, "event_type": "nudge_followed"},
+            {"_id": 0}
+        )
+        if existing:
+            raise HTTPException(status_code=400, detail="Nudge já seguido para esta análise")
+        
+        # Calcula streak
+        last_nudge_date = colaborador.get("last_nudge_date")
+        current_streak = colaborador.get("current_streak", 0)
+        longest_streak = colaborador.get("longest_streak", 0)
+        
+        if last_nudge_date == today:
+            pass  # Já contou hoje
+        elif last_nudge_date == (date.today() - timedelta(days=1)).isoformat():
+            current_streak += 1  # Dia consecutivo
+        else:
+            current_streak = 1  # Reset
+        
+        if current_streak > longest_streak:
+            longest_streak = current_streak
+        
+        # Pontos base
+        points_earned = 50
+        bonus_events = []
+        
+        # Bônus de streak
+        if current_streak == 3 and last_nudge_date != today:
+            points_earned += 100
+            bonus_events.append({"event_type": "streak_bonus", "points": 100, "streak": 3})
+        
+        if current_streak == 7 and last_nudge_date != today:
+            points_earned += 500
+            badge = {
+                "name": "Biohacker da Semana",
+                "earned_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True,
+                "streak_cycle": current_streak // 7
+            }
+            badges = colaborador.get("badges", [])
+            badges.append(badge)
+            await db.colaboradores.update_one(
+                {"id": colab_id}, {"$set": {"badges": badges}}
+            )
+            bonus_events.append({"event_type": "badge_earned", "badge": "Biohacker da Semana", "points": 500})
+        
+        # Renovação a cada 7 dias adicionais
+        if current_streak > 7 and current_streak % 7 == 0 and last_nudge_date != today:
+            points_earned += 500
+            badge = {
+                "name": "Biohacker da Semana",
+                "earned_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True,
+                "streak_cycle": current_streak // 7
+            }
+            badges = colaborador.get("badges", [])
+            badges.append(badge)
+            await db.colaboradores.update_one(
+                {"id": colab_id}, {"$set": {"badges": badges}}
+            )
+        
+        new_total = colaborador.get("energy_points", 0) + points_earned
+        
+        # Atualiza colaborador
+        await db.colaboradores.update_one(
+            {"id": colab_id},
+            {"$set": {
+                "energy_points": new_total,
+                "current_streak": current_streak,
+                "longest_streak": longest_streak,
+                "last_nudge_date": today,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # Salva evento
+        event = {
+            "id": str(uuid.uuid4()),
+            "colaborador_id": colab_id,
+            "event_type": "nudge_followed",
+            "analysis_id": data.analysis_id,
+            "points_earned": points_earned,
+            "streak_at_time": current_streak,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.gamification_events.insert_one(event)
+        
+        return {
+            "points_earned": points_earned,
+            "total_points": new_total,
+            "current_streak": current_streak,
+            "longest_streak": longest_streak,
+            "bonus_events": bonus_events
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error following nudge: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/gamification/stats", response_model=GamificationStatsResponse)
+async def get_gamification_stats(request: Request):
+    """Retorna estatísticas de gamificação do usuário."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        today = date.today().isoformat()
+        
+        # Conta nudges seguidos hoje
+        nudges_today = await db.gamification_events.count_documents({
+            "colaborador_id": colaborador["id"],
+            "event_type": "nudge_followed",
+            "created_at": {"$gte": today}
+        })
+        
+        current_streak = colaborador.get("current_streak", 0)
+        next_badge = max(0, 7 - (current_streak % 7)) if current_streak > 0 else 7
+        
+        return GamificationStatsResponse(
+            energy_points=colaborador.get("energy_points", 0),
+            current_streak=current_streak,
+            longest_streak=colaborador.get("longest_streak", 0),
+            badges=colaborador.get("badges", []),
+            nudges_followed_today=nudges_today,
+            next_badge_in=next_badge
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting gamification stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/gamification/leaderboard")
+async def get_leaderboard(request: Request):
+    """Top 10 colaboradores por pontos de energia."""
+    try:
+        await get_current_colaborador(request)
+        
+        top_users = await db.colaboradores.find(
+            {"energy_points": {"$gt": 0}},
+            {"_id": 0, "nome": 1, "energy_points": 1, "current_streak": 1, "badges": 1}
+        ).sort("energy_points", -1).limit(10).to_list(10)
+        
+        entries = []
+        for i, u in enumerate(top_users):
+            first_name = u["nome"].split()[0] if u.get("nome") else "Anon"
+            last_initial = u["nome"].split()[-1][0] + "." if len(u.get("nome", "").split()) > 1 else ""
+            has_badge = any(b.get("is_active") for b in u.get("badges", []))
+            entries.append({
+                "rank": i + 1,
+                "nome": f"{first_name} {last_initial}",
+                "energy_points": u.get("energy_points", 0),
+                "current_streak": u.get("current_streak", 0),
+                "has_badge": has_badge
+            })
+        
+        return {"period": "all_time", "entries": entries}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting leaderboard: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# BILLING / PREMIUM ENDPOINTS
+@api_router.get("/billing/plan", response_model=PlanInfoResponse)
+async def get_plan(request: Request):
+    """Retorna informações do plano do usuário."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        account_type = colaborador.get("account_type", "personal")
+        is_premium = colaborador.get("is_premium", False)
+        
+        # Corporativos sempre têm acesso total
+        if account_type == "corporate":
+            return PlanInfoResponse(
+                plan="corporate",
+                is_premium=True,
+                account_type=account_type,
+                limits={
+                    "analyses_limit": -1,
+                    "has_predictions": True,
+                    "has_detailed_nudge": True,
+                    "history_days": -1,
+                    "wearables_limit": -1
+                }
+            )
+        
+        # B2C: Free ou Premium
+        today = date.today().isoformat()
+        analyses_today = await db.analyses.count_documents({
+            "colaborador_id": colaborador["id"],
+            "timestamp": {"$gte": today}
+        })
+        
+        if is_premium:
+            return PlanInfoResponse(
+                plan="premium",
+                is_premium=True,
+                account_type=account_type,
+                limits={
+                    "analyses_today": analyses_today,
+                    "analyses_limit": -1,
+                    "has_predictions": True,
+                    "has_detailed_nudge": True,
+                    "history_days": -1,
+                    "wearables_limit": -1
+                }
+            )
+        
+        return PlanInfoResponse(
+            plan="free",
+            is_premium=False,
+            account_type=account_type,
+            limits={
+                "analyses_today": analyses_today,
+                "analyses_limit": 3,
+                "has_predictions": False,
+                "has_detailed_nudge": False,
+                "history_days": 7,
+                "wearables_limit": 1
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting plan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/billing/upgrade")
+async def upgrade_plan(request: Request):
+    """Mock: Atualiza plano para Premium."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        if colaborador.get("is_premium"):
+            return {"message": "Já é Premium", "is_premium": True}
+        
+        await db.colaboradores.update_one(
+            {"id": colaborador["id"]},
+            {"$set": {"is_premium": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        return {"message": "Upgrade para Premium realizado!", "is_premium": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error upgrading plan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Root
 @api_router.get("/")
 async def root():
@@ -1617,7 +1943,15 @@ logger = logging.getLogger(__name__)
 async def startup_event():
     try:
         await db.colaboradores.create_index("email", unique=True)
+        await db.gamification_events.create_index([("colaborador_id", 1), ("created_at", -1)])
         logger.info("Database indexes created")
+        
+        # Migrate existing users: add gamification fields if missing
+        await db.colaboradores.update_many(
+            {"energy_points": {"$exists": False}},
+            {"$set": {"energy_points": 0, "current_streak": 0, "longest_streak": 0,
+                      "last_nudge_date": None, "badges": [], "is_premium": False}}
+        )
         
         # Seed admin
         admin_email = os.environ.get('ADMIN_EMAIL', 'admin@vitalflow.com').lower()
@@ -1673,10 +2007,10 @@ async def startup_event():
 ## Admin/Gestor
 - Email: {admin_email}
 - Senha: {admin_password}
-- Nível: Gestor
+- Nivel: Gestor
 - Setor: Administrativo
 
-## Endpoints de Autenticação
+## Endpoints de Autenticacao
 - POST /api/auth/register - Cadastro
 - POST /api/auth/login - Login
 - POST /api/auth/logout - Logout
@@ -1684,16 +2018,25 @@ async def startup_event():
 - PUT /api/auth/profile - Atualizar perfil
 
 ## Endpoints Protegidos
-- POST /api/analyze - Criar análise
-- GET /api/history - Histórico de análises
+- POST /api/analyze - Criar analise
+- GET /api/history - Historico de analises
 - GET /api/wearables - Dispositivos conectados
-- GET /api/dashboard/metrics - Métricas (apenas gestores)
-- GET /api/colaboradores - Listar colaboradores (apenas gestores)
+- GET /api/dashboard/metrics - Metricas (apenas gestores)
+- GET /api/predictive/alert - Alerta preditivo (Premium/Corporate only)
 
-## Endpoints Smartwatch (NOVO)
-- POST /api/smartwatch/analyze - Análise em tempo real com IA
+## Gamificacao
+- POST /api/gamification/follow-nudge - Seguir nudge (+50 pts)
+- GET /api/gamification/stats - Estatisticas
+- GET /api/gamification/leaderboard - Top 10
+
+## Premium
+- GET /api/billing/plan - Info do plano
+- POST /api/billing/upgrade - Upgrade para Premium (mock)
+
+## Smartwatch
+- POST /api/smartwatch/analyze - Analise em tempo real com IA
 - POST /api/smartwatch/webhook - Webhook para dados reais
-- GET /api/smartwatch/history - Histórico de alertas
+- GET /api/smartwatch/history - Historico de alertas
 """)
         logger.info("Test credentials written to /app/memory/test_credentials.md")
         
