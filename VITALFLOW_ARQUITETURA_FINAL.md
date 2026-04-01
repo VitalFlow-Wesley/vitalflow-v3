@@ -582,29 +582,83 @@ REACT_APP_BACKEND_URL=https://your-app.preview.emergentagent.com
 
 ## 10. COMO EXECUTAR
 
-### Desenvolvimento Local
+### Pre-requisitos
+- Python 3.11+
+- Node.js 18+ e Yarn
+- MongoDB 6+ rodando localmente (porta 27017)
+
+### 1. Configurar variaveis de ambiente
+
+**Backend** (`/app/backend/.env`):
+```
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=vitalflow
+EMERGENT_LLM_KEY=<sua-chave-emergent>
+JWT_SECRET=<string-aleatoria-64-chars>
+ADMIN_EMAIL=admin@vitalflow.com
+ADMIN_PASSWORD=Admin123!@#
+FRONTEND_URL=http://localhost:3000
+CORS_ORIGINS=*
+```
+
+**Frontend** (`/app/frontend/.env`):
+```
+REACT_APP_BACKEND_URL=http://localhost:8001
+```
+
+### 2. Instalar dependencias e iniciar
+
 ```bash
-# Backend
-cd /app/backend
+# Terminal 1 - Backend
+cd backend
 pip install -r requirements.txt
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 
-# Frontend
-cd /app/frontend
+# Terminal 2 - Frontend
+cd frontend
 yarn install
 yarn start
 ```
 
-### Producao (Emergent Platform)
+### 3. Verificar que esta funcionando
+
+```bash
+# Testar API
+curl http://localhost:8001/api/
+
+# Esperado: {"message":"VitalFlow API - Copiloto Corporativo de Longevidade"}
+
+# Login admin
+curl -c cookies.txt -X POST http://localhost:8001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@vitalflow.com","password":"Admin123!@#"}'
+
+# Criar analise
+curl -b cookies.txt -X POST http://localhost:8001/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"hrv":45,"bpm":95,"bpm_average":70,"sleep_hours":5.5,"cognitive_load":8,"user_name":"Admin","age":35}'
+
+# Seguir nudge (gamificacao)
+# Use o "id" retornado pela analise acima
+curl -b cookies.txt -X POST http://localhost:8001/api/gamification/follow-nudge \
+  -H "Content-Type: application/json" \
+  -d '{"analysis_id":"<id-da-analise>"}'
+
+# Verificar stats
+curl -b cookies.txt http://localhost:8001/api/gamification/stats
+curl -b cookies.txt http://localhost:8001/api/billing/plan
+```
+
+### 4. Testar Smartwatch (opcional)
+```bash
+cd backend
+python smartwatch_simulator.py
+```
+
+### 5. Producao (Emergent Platform)
 ```bash
 sudo supervisorctl restart backend
 sudo supervisorctl restart frontend
-```
-
-### Testar Smartwatch
-```bash
-cd /app/backend
-python smartwatch_simulator.py
 ```
 
 ### 3.6 Comportamento do StatusOrb (Interface Visual)
