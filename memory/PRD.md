@@ -9,51 +9,48 @@ Motor de analise preditiva e copiloto de longevidade e saude mental corporativo.
 - **IA:** GPT-4o via Emergent LLM Key (emergentintegrations)
 - **Banco:** MongoDB
 
-## Funcionalidades Implementadas (MVP 1.0 + Redesign) - Fev/2026
+## Funcionalidades Implementadas (v2.0 - Go-to-Market) - Fev/2026
+
+### MVP Core
 - [x] Autenticacao JWT (Login/Register/Logout/Profile)
 - [x] Filtro de Dominio Corporativo (B2B vs B2C automatico)
 - [x] Analise Biometrica com GPT-4o (V-Score + Nudge)
-- [x] **StatusOrb** - Esfera abstrata substituindo Heatmap anatomico (Verde=lento, Amarelo=medio, Vermelho=vibracao)
-- [x] **MetricBars** - Barras de progresso para HRV/BPM/Sono/Carga + grid de areas afetadas
+- [x] StatusOrb (esfera abstrata com pulsacao variavel)
+- [x] MetricBars (barras de progresso biometricas)
 - [x] EnergyStatus (bolinha visual em tempo real)
-- [x] Conectar Dispositivos (4 providers: Google, Apple, Garmin, Fitbit)
-- [x] Webhook de Smartwatch (deteccao estresse/fadiga)
-- [x] Anonimizacao LGPD
-- [x] Notificacoes Push simuladas (toasts)
+- [x] Conectar Dispositivos (4 providers)
+- [x] Webhook de Smartwatch + LGPD
+- [x] Notificacoes Push simuladas
 - [x] Dashboard do Gestor (metricas anonimizadas)
-- [x] IA Preditiva (previsao de estresse com 30min antecedencia)
-- [x] Exportacao de relatorio PDF (dados JSON)
-- [x] Historico de V-Score (grafico de linha)
-- [x] Fallback sem IA (analise algoritmica local)
-- [x] Documento de Arquitetura Final v1.1
+- [x] IA Preditiva (previsao de estresse 30min)
+- [x] Exportacao de relatorio PDF
+- [x] UI Minimalista (sem imagem anatomica)
 
-## Design Choices
-- Interface minimalista sem imagem anatomica
-- Elementos abstratos: circulos de status, barras de progresso, tags
-- Transicoes suaves (fade 1.5s) entre estados
-- Orb com pulsacao variavel: Verde(4s), Amarelo(2.4s), Vermelho(1.2s+vibracao)
-- Foco em clareza de dados e facilidade de leitura
+### Fase 2 (Gamificacao + Monetizacao)
+- [x] Pontos de Energia (+50 por Nudge, bonus streak)
+- [x] Sistema de Streaks (dias consecutivos)
+- [x] Badge "Biohacker da Semana" (7 dias streak)
+- [x] Leaderboard (Top 10 por pontos)
+- [x] Trava Premium (B2C Free sem predicoes IA)
+- [x] Mensagem de Boas-Vindas Corporativa
+
+### Testes
+- [x] 15/15 testes backend passando
+- [x] 13/13 testes frontend passando
 
 ## Backlog (Proximos Passos)
-### P0 - Fase 2: Gamificacao & Monetizacao
-- [ ] Pontos de Energia (+50 por Nudge, +10 por analise, +100 streak 3d, +500 streak 7d)
-- [ ] Sistema de Streaks (dias consecutivos seguindo Nudges)
-- [ ] Badge "Biohacker da Semana" (streak >= 7 dias, visivel no Gestor Dashboard)
-- [ ] Leaderboard (Top 10 por pontos)
-- [ ] Limite Free vs Premium (B2C) - Free: 3 analises/dia, sem predicoes IA
-
-### P1
-- [ ] Mensagem de Boas-Vindas Personalizada (Login Corporativo)
+### P1 - Fase 3: Producao
 - [ ] Relatorios PDF reais (reportlab/weasyprint)
+- [ ] Push Notifications reais (FCM/OneSignal)
 
 ### P2
-- [ ] Push Notifications reais (FCM/OneSignal)
+- [ ] Stripe para plano Premium (substituir mock)
 - [ ] Integracao com Google Calendar
 - [ ] Modo Offline (Service Worker)
-- [ ] Stripe para plano Premium
-- [ ] Refatoracao do server.py em APIRouters separados
+- [ ] Refatoracao do server.py em APIRouters
 
 ### P3
+- [ ] Redis cache (V-Score, EnergyStatus)
 - [ ] Watch face nativa com V-Score
 - [ ] Dashboard analytics avancado
 - [ ] App Mobile nativo (React Native)
