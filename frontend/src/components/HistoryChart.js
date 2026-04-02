@@ -1,18 +1,61 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Radio, Smartphone } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const HistoryChart = ({ history }) => {
+  const navigate = useNavigate();
+
+  // Awaiting sync state
   if (!history || history.length === 0) {
-    return null;
+    return (
+      <div
+        className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-6"
+        data-testid="history-chart-empty"
+      >
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp className="w-5 h-5 text-cyan-400" />
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">
+            HISTORICO V-SCORE
+          </h3>
+        </div>
+
+        <div className="w-full h-64 flex flex-col items-center justify-center" data-testid="awaiting-sync-state">
+          <motion.div
+            animate={{ scale: [1, 1.15, 1], opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="w-14 h-14 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4"
+          >
+            <Radio className="w-7 h-7 text-cyan-400/60" />
+          </motion.div>
+
+          <p className="text-neutral-300 font-semibold text-sm mb-1">
+            Aguardando sincronizacao
+          </p>
+          <p className="text-neutral-500 text-xs text-center max-w-xs mb-4">
+            Conecte um dispositivo wearable para que seus dados biometricos aparecam aqui em tempo real.
+          </p>
+
+          <button
+            onClick={() => navigate('/devices')}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-semibold rounded-md transition-all"
+            data-testid="chart-connect-device-btn"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            Conectar dispositivo
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Prepare data for chart (reverse to show oldest first)
   const chartData = [...history].reverse().map((item, index) => ({
     index: index + 1,
     score: item.v_score,
-    date: new Date(item.timestamp).toLocaleDateString('pt-BR', { 
-      month: 'short', 
-      day: 'numeric' 
+    date: new Date(item.timestamp).toLocaleDateString('pt-BR', {
+      month: 'short',
+      day: 'numeric'
     }),
     status: item.status_visual
   }));
@@ -48,7 +91,7 @@ const HistoryChart = ({ history }) => {
   };
 
   return (
-    <div 
+    <div
       className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-6"
       data-testid="history-chart"
     >
@@ -56,7 +99,7 @@ const HistoryChart = ({ history }) => {
       <div className="flex items-center gap-2 mb-6">
         <TrendingUp className="w-5 h-5 text-cyan-400" />
         <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">
-          HISTÓRICO V-SCORE ({history.length} análises)
+          HISTORICO V-SCORE ({history.length} analises)
         </h3>
       </div>
 
@@ -71,24 +114,24 @@ const HistoryChart = ({ history }) => {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis 
-              dataKey="date" 
+            <XAxis
+              dataKey="date"
               stroke="rgba(255,255,255,0.3)"
               style={{ fontSize: '12px' }}
             />
-            <YAxis 
+            <YAxis
               domain={[0, 100]}
               stroke="rgba(255,255,255,0.3)"
               style={{ fontSize: '12px' }}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Area 
-              type="monotone" 
-              dataKey="score" 
+            <Area
+              type="monotone"
+              dataKey="score"
               stroke={colors.stroke}
               strokeWidth={2}
-              fillOpacity={1} 
-              fill="url(#colorScore)" 
+              fillOpacity={1}
+              fill="url(#colorScore)"
             />
           </AreaChart>
         </ResponsiveContainer>

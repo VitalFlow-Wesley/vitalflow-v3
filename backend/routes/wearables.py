@@ -1,13 +1,16 @@
+import os
 import uuid
 import logging
 from typing import List
 from datetime import datetime, timezone
 from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import RedirectResponse
 from database import db
 from auth_utils import get_current_colaborador
 from models import (
     WearableConnectionRequest, WearableConnectionResponse
 )
+from services import google_fit_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -74,6 +77,77 @@ async def disconnect_wearable(device_id: str, request: Request):
     except Exception as e:
         logger.error(f"Error disconnecting wearable: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/wearables/google-fit/status")
+async def google_fit_status():
+    """Verifica se a integracao com Google Fit esta configurada."""
+    return {
+        "configured": google_fit_service.is_configured(),
+        "message": "Google Fit configurado e pronto." if google_fit_service.is_configured()
+                   else "Credenciais do Google Fit nao configuradas. Adicione GOOGLE_FIT_CLIENT_ID e GOOGLE_FIT_CLIENT_SECRET no .env."
+    }
+
+
+@router.get("/wearables/google-fit/auth")
+async def google_fit_auth(request: Request):
+    """Inicia fluxo OAuth real do Google Fit (quando configurado)."""
+    colaborador = await get_current_colaborador(request)
+    if not google_fit_service.is_configured():
+        raise HTTPException(status_code=501, detail="Google Fit nao configurado. Credenciais OAuth pendentes.")
+    auth_url = google_fit_service.get_auth_url(state=colaborador["id"])
+    return {"auth_url": auth_url}
+
+
+@router.get("/wearables/google-fit/callback")
+async def google_fit_callback(code: str = "", state: str = ""):
+    """Callback do OAuth do Google Fit. Troca code por tokens e sincroniza dados."""
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="Parametros invalidos no callback.")
+
+    tokens = await google_fit_service.exchange_code(code)
+    if not tokens:
+        raise HTTPException(status_code=502, detail="Falha ao trocar codigo por token no Google.")
+
+    # Save tokens
+    await db.wearable_tokens.update_one(
+        {"colaborador_id": state, "provider": "google_fit"},
+        {"$set": {
+            "access_token": tokens.get("access_token"),
+            "refresh_token": tokens.get("refresh_token"),
+            "expires_in": tokens.get("expires_in"),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+
+    # Create/update device record
+    existing = await db.wearable_devices.find_one(
+        {"colaborador_id": state, "provider": "google_fit"}, {"_id": 0}
+    )
+    if existing:
+        await db.wearable_devices.update_one(
+            {"id": existing["id"]},
+            {"$set": {"is_connected": True, "last_sync": datetime.now(timezone.utc).isoformat()}}
+        )
+    else:
+        device = {
+            "id": str(uuid.uuid4()), "colaborador_id": state,
+            "provider": "google_fit", "device_name": "Google Fit",
+            "is_connected": True, "last_sync": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.wearable_devices.insert_one(device)
+
+    # Fetch initial biometrics
+    biometrics = await google_fit_service.fetch_biometrics(tokens.get("access_token"))
+    if biometrics:
+        biometrics["colaborador_id"] = state
+        biometrics["synced_at"] = datetime.now(timezone.utc).isoformat()
+        await db.google_fit_data.insert_one(biometrics)
+
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    return RedirectResponse(url=f"{frontend_url}/devices?google_fit=success")
 
 
 @router.post("/wearables/oauth/callback")

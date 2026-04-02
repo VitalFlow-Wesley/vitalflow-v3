@@ -78,7 +78,7 @@ const Navbar = () => {
                   className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  <span>Painel Administrativo</span>
+                  <span>Gestao</span>
                 </a>
               </>
             )}

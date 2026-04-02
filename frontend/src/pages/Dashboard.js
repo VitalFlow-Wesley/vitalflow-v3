@@ -7,10 +7,11 @@ import MetricBars from "../components/MetricBars";
 import AIAnalysis from "../components/AIAnalysis";
 import NudgeCard from "../components/NudgeCard";
 import HistoryChart from "../components/HistoryChart";
+import OnboardingTour from "../components/OnboardingTour";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Lock, Zap, Flame, Trophy, Shield, Smartphone } from "lucide-react";
+import { Lock, Zap, Flame, Trophy, Shield, Smartphone, Radio } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -25,16 +26,31 @@ const Dashboard = () => {
   const [predictiveAlert, setPredictiveAlert] = useState(null);
   const [gamStats, setGamStats] = useState(null);
   const [healthTrend, setHealthTrend] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const pollingIntervalRef = useRef(null);
   const lastAnalysisIdRef = useRef(null);
 
   useEffect(() => {
-    fetchHistory();
-    fetchConnectedDevices();
-    fetchPredictiveAlert();
-    fetchGamificationStats();
-    fetchHealthTrend();
-    startPolling();
+    const init = async () => {
+      await Promise.all([
+        fetchHistory(),
+        fetchConnectedDevices(),
+        fetchPredictiveAlert(),
+        fetchGamificationStats(),
+        fetchHealthTrend(),
+      ]);
+      setDataLoaded(true);
+      startPolling();
+    };
+    init();
+
+    // Check if onboarding should be shown
+    const onboardingDone = localStorage.getItem("vitalflow_onboarding_done");
+    if (!onboardingDone) {
+      setShowOnboarding(true);
+    }
+
     return () => stopPolling();
   }, []);
 
@@ -129,13 +145,20 @@ const Dashboard = () => {
   };
 
   const isFreeLocked = predictiveAlert?.locked === true;
+  const hasDevices = connectedDevices.length > 0;
+  const hasData = currentAnalysis !== null;
 
   return (
     <div className="min-h-screen bg-neutral-950">
       <Navbar />
 
+      {/* Onboarding Tour */}
+      {showOnboarding && (
+        <OnboardingTour onComplete={() => setShowOnboarding(false)} />
+      )}
+
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentAnalysis ? (
+        {hasData ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="space-y-6">
             {/* Gamification Stats Bar */}
             {gamStats && (
@@ -267,24 +290,74 @@ const Dashboard = () => {
             <HistoryChart history={history} />
           </motion.div>
         ) : (
-          /* Empty state - guide to connect wearable */
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20">
-            <div className="text-center space-y-5 max-w-md">
-              <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto">
-                <Smartphone className="w-8 h-8 text-cyan-400" />
+          /* Empty state - Awaiting sync / No data */
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            {/* Gamification bar even without data */}
+            {gamStats && (
+              <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-4 flex flex-wrap items-center gap-6" data-testid="gamification-stats">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm text-neutral-400">Pontos de Energia</span>
+                  <span className="text-lg font-mono font-bold text-amber-400" data-testid="dashboard-energy-points">{gamStats.energy_points}</span>
+                </div>
               </div>
-              <h2 className="text-3xl font-bold text-white font-heading">Bem-vindo ao VitalFlow</h2>
-              <p className="text-neutral-400 text-base">
-                Conecte seu wearable para comecar a receber analises automaticas de saude e bem-estar.
-              </p>
-              <button
-                onClick={() => navigate("/devices")}
-                data-testid="connect-wearable-button"
-                className="mt-4 px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-md transition-all duration-200"
-              >
-                Conectar Dispositivo
-              </button>
+            )}
+
+            {/* Main empty state */}
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="text-center space-y-6 max-w-lg">
+                {/* Animated sync icon */}
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="w-20 h-20 rounded-full bg-cyan-500/10 border-2 border-cyan-500/20 flex items-center justify-center mx-auto"
+                >
+                  <Radio className="w-10 h-10 text-cyan-400/70" />
+                </motion.div>
+
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2" data-testid="awaiting-sync-title">
+                    {hasDevices ? "Aguardando sincronizacao" : "Conecte um dispositivo"}
+                  </h2>
+                  <p className="text-neutral-400 text-sm leading-relaxed">
+                    {hasDevices
+                      ? "Seu dispositivo esta conectado. Assim que os primeiros dados biometricos forem sincronizados, o VitalFlow ira gerar sua primeira analise automaticamente."
+                      : "Para que o VitalFlow analise sua saude, voce precisa conectar um wearable (Google Fit, Apple Watch, Garmin ou Fitbit). Sem dados reais, nao ha analise."
+                    }
+                  </p>
+                </div>
+
+                {!hasDevices && (
+                  <button
+                    onClick={() => navigate("/devices")}
+                    data-testid="connect-wearable-button"
+                    className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-black font-bold rounded-lg transition-all duration-200 shadow-lg shadow-cyan-500/20"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Smartphone className="w-5 h-5" />
+                      Conectar Dispositivo
+                    </span>
+                  </button>
+                )}
+
+                {hasDevices && (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-xs text-emerald-400 font-semibold">
+                        {connectedDevices.length} dispositivo(s) conectado(s)
+                      </span>
+                    </div>
+                    <p className="text-xs text-neutral-500">
+                      A primeira analise sera gerada automaticamente apos a sincronizacao
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Empty history chart placeholder */}
+            <HistoryChart history={[]} />
           </motion.div>
         )}
       </div>
