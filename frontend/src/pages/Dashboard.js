@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import BiometricForm from "../components/BiometricForm";
 import StatusOrb from "../components/StatusOrb";
 import MetricBars from "../components/MetricBars";
 import AIAnalysis from "../components/AIAnalysis";
@@ -10,7 +10,7 @@ import HistoryChart from "../components/HistoryChart";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Lock, Zap, Flame, Trophy, Shield } from "lucide-react";
+import { Lock, Zap, Flame, Trophy, Shield, Smartphone } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -18,10 +18,9 @@ const POLLING_INTERVAL = 10000;
 
 const Dashboard = () => {
   const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
   const [history, setHistory] = useState([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [connectedDevices, setConnectedDevices] = useState([]);
   const [predictiveAlert, setPredictiveAlert] = useState(null);
   const [gamStats, setGamStats] = useState(null);
@@ -110,29 +109,10 @@ const Dashboard = () => {
   };
 
   const stopPolling = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
   };
 
-  const handleAnalyze = async (biometricData) => {
-    setIsLoading(true);
-    try {
-      const response = await axios.post(`${API}/analyze`, biometricData, { withCredentials: true });
-      setCurrentAnalysis(response.data);
-      lastAnalysisIdRef.current = response.data.id;
-      await fetchHistory();
-      setIsFormOpen(false);
-      toast.success("Analise concluida com sucesso!");
-    } catch (error) {
-      console.error("Erro na analise:", error);
-      toast.error("Erro ao processar analise. Tente novamente.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePointsEarned = (data) => {
+  const handlePointsEarned = () => {
     fetchGamificationStats();
     refreshUser();
   };
@@ -152,22 +132,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-neutral-950">
-      <Navbar onOpenForm={() => setIsFormOpen(true)} />
-
-      {/* Connected Devices Banner */}
-      {connectedDevices.length > 0 && (
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <div className="border border-emerald-400/20 bg-emerald-400/5 rounded-md px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs text-emerald-400 font-medium">
-                {connectedDevices.length} dispositivo(s) conectado(s)
-              </span>
-            </div>
-            <span className="text-xs text-neutral-500">Atualiza a cada {POLLING_INTERVAL / 1000}s</span>
-          </div>
-        </div>
-      )}
+      <Navbar />
 
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {currentAnalysis ? (
@@ -263,12 +228,8 @@ const Dashboard = () => {
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-purple-400">
-                    Alerta Preditivo
-                  </span>
-                  <span className="text-xs text-neutral-500">
-                    Confianca: {predictiveAlert.alert.confidence}%
-                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-400">Alerta Preditivo</span>
+                  <span className="text-xs text-neutral-500">Confianca: {predictiveAlert.alert.confidence}%</span>
                 </div>
                 <p className="text-sm text-neutral-200">{predictiveAlert.alert.message}</p>
               </motion.div>
@@ -306,23 +267,27 @@ const Dashboard = () => {
             <HistoryChart history={history} />
           </motion.div>
         ) : (
+          /* Empty state - guide to connect wearable */
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20">
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-5 max-w-md">
+              <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto">
+                <Smartphone className="w-8 h-8 text-cyan-400" />
+              </div>
               <h2 className="text-3xl font-bold text-white font-heading">Bem-vindo ao VitalFlow</h2>
-              <p className="text-neutral-400 text-base">Comece sua jornada de otimizacao biologica</p>
+              <p className="text-neutral-400 text-base">
+                Conecte seu wearable para comecar a receber analises automaticas de saude e bem-estar.
+              </p>
               <button
-                onClick={() => setIsFormOpen(true)}
-                data-testid="start-analysis-button"
-                className="mt-6 px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-md transition-all duration-200"
+                onClick={() => navigate("/devices")}
+                data-testid="connect-wearable-button"
+                className="mt-4 px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-md transition-all duration-200"
               >
-                Iniciar Primeira Analise
+                Conectar Dispositivo
               </button>
             </div>
           </motion.div>
         )}
       </div>
-
-      <BiometricForm isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} onSubmit={handleAnalyze} isLoading={isLoading} />
     </div>
   );
 };

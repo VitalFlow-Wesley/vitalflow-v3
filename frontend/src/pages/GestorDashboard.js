@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, AlertTriangle, Activity,
-  Users, Clock, Shield, FileText, Download
+  Users, Clock, Shield, FileText, Download, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -79,7 +79,7 @@ const GestorDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-950">
-        <Navbar onOpenForm={() => {}} />
+        <Navbar />
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -98,9 +98,21 @@ const GestorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-neutral-950">
-      <Navbar onOpenForm={() => {}} />
+      <Navbar />
 
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Mobile block */}
+      <div className="block md:hidden p-8 text-center">
+        <div className="border border-purple-500/30 bg-purple-500/5 rounded-md p-8 max-w-sm mx-auto">
+          <BarChart3 className="w-10 h-10 text-purple-400 mx-auto mb-4" />
+          <h2 className="text-lg font-bold text-white mb-2">Painel do RH</h2>
+          <p className="text-sm text-neutral-400">
+            Este painel esta disponivel apenas no desktop para melhor visualizacao dos dados do time.
+          </p>
+        </div>
+      </div>
+
+      {/* Desktop content */}
+      <div className="hidden md:block w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -321,6 +333,7 @@ const GestorDashboard = () => {
           </p>
         </div>
       </div>
+      {/* End desktop content */}
     </div>
   );
 };

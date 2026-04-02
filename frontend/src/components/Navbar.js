@@ -1,11 +1,12 @@
-import { Brain, Settings, User, LogOut, BarChart3 } from "lucide-react";
+import { Brain, Settings, User, LogOut, BarChart3, Radio } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
 import EnergyStatus from "./EnergyStatus";
 import GamificationBar from "./GamificationBar";
+import ConnectionStatus from "./ConnectionStatus";
 
-const Navbar = ({ onOpenForm }) => {
+const Navbar = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -17,7 +18,6 @@ const Navbar = ({ onOpenForm }) => {
         setDropdownOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -28,21 +28,24 @@ const Navbar = ({ onOpenForm }) => {
   };
 
   return (
-    <nav 
+    <nav
       className="sticky top-0 z-50 glass-header border-b border-white/10"
       data-testid="navbar"
     >
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <Brain className="w-8 h-8 text-cyan-400" />
-            <h1 className="text-xl sm:text-2xl font-black tracking-tighter text-white font-heading">
-              VitalFlow
-            </h1>
+          {/* Logo + Connection Status */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
+              <Brain className="w-8 h-8 text-cyan-400" />
+              <h1 className="text-xl sm:text-2xl font-black tracking-tighter text-white font-heading">
+                VitalFlow
+              </h1>
+            </div>
+            <ConnectionStatus />
           </div>
 
-          {/* Energy Status + Gamification */}
+          {/* Energy Status + Gamification (desktop) */}
           <div className="hidden lg:flex items-center gap-4">
             <EnergyStatus />
             <GamificationBar energyPoints={user?.energy_points} currentStreak={user?.current_streak} />
@@ -50,15 +53,21 @@ const Navbar = ({ onOpenForm }) => {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {/* Dashboard Gestor (apenas para gestores) */}
+            {/* Sync indicator */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-neutral-800/50" data-testid="sync-indicator">
+              <Radio className="w-3 h-3 text-emerald-400" />
+              <span className="text-[11px] text-neutral-400">Sincronizado com wearables</span>
+            </div>
+
+            {/* Gestor Dashboard - DESKTOP ONLY */}
             {user?.nivel_acesso === 'Gestor' && (
               <button
                 onClick={() => navigate("/gestor")}
                 data-testid="gestor-dashboard-button"
-                className="px-3 py-2 border border-purple-500/30 text-purple-400 text-sm font-semibold rounded-md hover:bg-purple-500/10 transition-all duration-200 flex items-center gap-2"
+                className="hidden md:flex px-3 py-2 border border-purple-500/30 text-purple-400 text-sm font-semibold rounded-md hover:bg-purple-500/10 transition-all duration-200 items-center gap-2"
               >
                 <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:inline">Dashboard</span>
+                <span className="hidden lg:inline">Painel RH</span>
               </button>
             )}
 
@@ -70,13 +79,6 @@ const Navbar = ({ onOpenForm }) => {
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Dispositivos</span>
             </button>
-            <button
-              onClick={onOpenForm}
-              data-testid="add-data-button"
-              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-semibold rounded-md transition-all duration-200"
-            >
-              + Adicionar Dados
-            </button>
 
             {/* User Dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -86,11 +88,7 @@ const Navbar = ({ onOpenForm }) => {
                 data-testid="user-menu-button"
               >
                 {user?.foto_url ? (
-                  <img
-                    src={user.foto_url}
-                    alt={user.nome}
-                    className="w-6 h-6 rounded-full object-cover"
-                  />
+                  <img src={user.foto_url} alt={user.nome} className="w-6 h-6 rounded-full object-cover" />
                 ) : (
                   <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center">
                     <User className="w-4 h-4 text-black" />
@@ -120,10 +118,7 @@ const Navbar = ({ onOpenForm }) => {
                     </div>
                   </div>
                   <button
-                    onClick={() => {
-                      navigate('/profile');
-                      setDropdownOpen(false);
-                    }}
+                    onClick={() => { navigate('/profile'); setDropdownOpen(false); }}
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-white/5 transition-colors"
                     data-testid="profile-menu-item"
                   >

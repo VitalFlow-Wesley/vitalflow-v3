@@ -296,8 +296,7 @@ const ConnectDevices = () => {
                   <Button
                     onClick={() => handleDisconnect(device.id)}
                     disabled={loading}
-                    variant="outline"
-                    className="w-full border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
+                    className="w-full bg-rose-600 hover:bg-rose-500 text-white font-semibold border-0"
                     data-testid={`disconnect-${provider.id}`}
                   >
                     <XCircle className="w-4 h-4 mr-2" />
@@ -307,13 +306,13 @@ const ConnectDevices = () => {
                   <Button
                     onClick={() => handleConnect(provider.id)}
                     disabled={inFlow || !!oauthFlow}
-                    className={`w-full ${provider.color.replace('text-', 'bg-').replace('400', '500')} hover:opacity-90 text-black font-semibold`}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold border-0 text-sm"
                     data-testid={`connect-${provider.id}`}
                   >
                     {inFlow ? (
                       <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Autorizando...</>
                     ) : (
-                      <><ArrowRight className="w-4 h-4 mr-2" /> Autorizar via OAuth</>
+                      <><ArrowRight className="w-4 h-4 mr-2" /> Conectar via OAuth</>
                     )}
                   </Button>
                 )}
