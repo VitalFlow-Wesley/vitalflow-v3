@@ -1,43 +1,41 @@
 # VitalFlow - Product Requirements Document (PRD)
 
+## Status: v2.1 (Abril 2026) - Go-to-Market Ready
+
 ## Problema Original
-Motor de analise preditiva e copiloto de longevidade e saude mental corporativo. Recebe dados biometricos (HRV, BPM, Carga Cognitiva/Sono) e transforma em V-Score (0-100), identificando Area Afetada, Status Visual e gerando Nudges de acao via IA.
+Motor de analise preditiva e copiloto de longevidade e saude mental corporativo.
 
-## Stack Tecnico
-- **Frontend:** React 19, Tailwind CSS, Shadcn UI, Framer Motion, Recharts
-- **Backend:** FastAPI, Python, Motor (MongoDB async), PyJWT, bcrypt
-- **IA:** GPT-4o via Emergent LLM Key (emergentintegrations)
-- **Banco:** MongoDB
+## Stack: React 19 + FastAPI + MongoDB + GPT-4o (Emergent LLM)
 
-## Status: v2.0 Go-to-Market (Fevereiro 2026)
+## Funcionalidades Implementadas
 
-### Todas as Features Implementadas
-- [x] Autenticacao JWT completa
-- [x] Filtro de Dominio Corporativo (B2B vs B2C)
-- [x] Analise Biometrica com GPT-4o
-- [x] StatusOrb (esfera abstrata com pulsacao variavel)
-- [x] MetricBars (barras de progresso)
-- [x] EnergyStatus em tempo real
-- [x] Conectar 4 providers de wearables
-- [x] Webhook Smartwatch + LGPD
-- [x] Notificacoes Push simuladas
-- [x] Dashboard do Gestor
-- [x] IA Preditiva (30min antecedencia)
-- [x] Exportacao PDF
-- [x] UI Minimalista
-- [x] Gamificacao: Pontos de Energia (+50/nudge)
-- [x] Gamificacao: Streaks + Badge "Biohacker da Semana"
-- [x] Gamificacao: Leaderboard Top 10
+### MVP Core
+- [x] Autenticacao JWT + Filtro Dominio Corporativo (B2B/B2C)
+- [x] Analise Biometrica com GPT-4o (V-Score + Nudge)
+- [x] StatusOrb (esfera abstrata animada por estado)
+- [x] MetricBars (barras HRV/BPM/Sono/Carga)
+- [x] EnergyStatus + Dashboard Pessoal + Perfil
+- [x] Webhook Smartwatch + LGPD + Notificacoes Push simuladas
+
+### Gamificacao + Premium
+- [x] Pontos de Energia + Streaks + Badge "Biohacker da Semana"
+- [x] Leaderboard Top 10
 - [x] Trava Premium (B2C Free vs Premium)
 - [x] Boas-Vindas Corporativas personalizadas
 
-### Testes: 15/15 backend + 13/13 frontend = 100%
+### Painel Gestor + Lei 14.831 + Wearables
+- [x] Painel do Gestor com V-Score agregado do time (LGPD)
+- [x] Tendencia 7 dias com grafico de linha
+- [x] Distribuicao Verde/Amarelo/Vermelho (pie chart)
+- [x] Flag Lei 14.831 - Intervencao Necessaria (stress rising)
+- [x] Fluxo OAuth simulado (Google Fit/Apple/Garmin/Fitbit)
+- [x] Modal OAuth 4 passos animado + sincronizacao automatica
+- [x] Exportacao de relatorio
+- [x] Legados removidos (AffectedAreas, HumanBodyHeatmap)
+
+### Testes: 17/17 backend + frontend completo = 100%
 
 ## Backlog
-- [ ] P1: PDFs reais, Push FCM
-- [ ] P2: Stripe, Google Calendar, Offline, Refatoracao
+- [ ] P1: PDFs reais (reportlab), Push real (FCM)
+- [ ] P2: Stripe, Google Calendar, Offline, Refatoracao server.py
 - [ ] P3: Redis, Watch face, Mobile React Native
-
-## Arquivos de Referencia
-- Documento completo: /app/VITALFLOW_ARQUITETURA_FINAL.md
-- ZIP consolidado: /app/VITALFLOW_v2.0_COMPLETO.zip (31 arquivos)
