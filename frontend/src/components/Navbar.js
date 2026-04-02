@@ -59,7 +59,7 @@ const Navbar = () => {
               <span className="text-[11px] text-neutral-400">Sincronizado com wearables</span>
             </div>
 
-            {/* Gestor Dashboard - DESKTOP ONLY */}
+            {/* Painel Administrativo - visivel apenas para Gestores */}
             {user?.nivel_acesso === 'Gestor' && (
               <>
                 <button
@@ -74,11 +74,11 @@ const Navbar = () => {
                   href="https://vitalflow.ia.br/gestor"
                   target="_blank"
                   rel="noopener noreferrer"
-                  data-testid="b2b-panel-button"
-                  className="hidden md:flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2"
+                  data-testid="painel-administrativo-button"
+                  className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  <span className="hidden lg:inline">Acessar Painel B2B</span>
+                  <span>Painel Administrativo</span>
                 </a>
               </>
             )}
