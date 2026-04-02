@@ -342,6 +342,24 @@ class PlanInfoResponse(BaseModel):
     account_type: str
     limits: dict
 
+# Health Trend / Lei 14.831
+class HealthTrendResponse(BaseModel):
+    trend: str  # "rising", "stable", "falling"
+    v_scores_7d: List[dict]
+    avg_7d: float
+    requires_intervention: bool  # Lei 14.831
+    intervention_message: Optional[str] = None
+
+# Team Overview (Gestor)
+class TeamOverviewResponse(BaseModel):
+    total_colaboradores: int
+    avg_v_score: float
+    avg_stress_level: float
+    distribution: dict
+    trend_7d: List[dict]
+    lei_14831_alerts: int
+    engagement_rate: float
+
 # AI Analysis Function
 async def analyze_biometrics(data: BiometricInput) -> dict:
     try:
@@ -1912,6 +1930,226 @@ async def upgrade_plan(request: Request):
         raise
     except Exception as e:
         logger.error(f"Error upgrading plan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# HEALTH TREND (Lei 14.831)
+@api_router.get("/health/trend")
+async def get_health_trend(request: Request):
+    """
+    Analisa tendência de V-Score dos últimos 7 dias.
+    Se estresse subindo consistentemente: flag requires_intervention = true (Lei 14.831)
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+
+        analyses = await db.analyses.find(
+            {"colaborador_id": colaborador["id"], "timestamp": {"$gte": seven_days_ago.isoformat()}},
+            {"_id": 0, "v_score": 1, "timestamp": 1, "status_visual": 1}
+        ).sort("timestamp", 1).to_list(500)
+
+        if len(analyses) < 2:
+            return HealthTrendResponse(
+                trend="stable", v_scores_7d=[], avg_7d=0,
+                requires_intervention=False
+            )
+
+        # Agrupa por dia
+        daily = {}
+        for a in analyses:
+            day = a["timestamp"][:10]
+            daily.setdefault(day, []).append(a["v_score"])
+
+        v_scores_7d = [{"date": d, "avg_v_score": round(sum(s)/len(s), 1), "count": len(s)} for d, s in sorted(daily.items())]
+        all_scores = [s for scores in daily.values() for s in scores]
+        avg_7d = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0
+
+        # Detecta tendência: compara primeira metade vs segunda metade
+        if len(v_scores_7d) >= 2:
+            mid = len(v_scores_7d) // 2
+            first_half = sum(d["avg_v_score"] for d in v_scores_7d[:mid]) / mid
+            second_half = sum(d["avg_v_score"] for d in v_scores_7d[mid:]) / (len(v_scores_7d) - mid)
+
+            if second_half < first_half - 5:
+                trend = "falling"
+            elif second_half > first_half + 5:
+                trend = "rising"
+            else:
+                trend = "stable"
+        else:
+            trend = "stable"
+
+        # Lei 14.831: intervenção se V-Score médio < 50 OU tendência caindo com média < 60
+        requires_intervention = False
+        intervention_message = None
+
+        if avg_7d < 50:
+            requires_intervention = True
+            intervention_message = f"Lei 14.831 - Intervencao Necessaria: V-Score medio de {avg_7d}/100 nos ultimos 7 dias indica risco a saude mental do colaborador."
+        elif trend == "falling" and avg_7d < 60:
+            requires_intervention = True
+            intervention_message = f"Lei 14.831 - Atencao: Tendencia de queda no V-Score (media {avg_7d}/100). Recomenda-se intervencao preventiva."
+
+        # Conta dias consecutivos com V-Score < 50
+        consecutive_bad = 0
+        for d in reversed(v_scores_7d):
+            if d["avg_v_score"] < 50:
+                consecutive_bad += 1
+            else:
+                break
+        if consecutive_bad >= 3:
+            requires_intervention = True
+            intervention_message = f"Lei 14.831 - ALERTA CRITICO: {consecutive_bad} dias consecutivos com V-Score abaixo de 50. Intervencao obrigatoria."
+
+        return HealthTrendResponse(
+            trend=trend,
+            v_scores_7d=v_scores_7d,
+            avg_7d=avg_7d,
+            requires_intervention=requires_intervention,
+            intervention_message=intervention_message
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting health trend: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# TEAM OVERVIEW (Gestor - V-Score agregado + LGPD)
+@api_router.get("/dashboard/team-overview")
+async def get_team_overview(request: Request):
+    """
+    Visão geral do time para o Gestor.
+    V-Score agregado, tendência de 7 dias, alertas Lei 14.831.
+    Dados 100% anonimizados - nenhum nome individual exposto.
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        if colaborador["nivel_acesso"] != "Gestor":
+            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+
+        total_colabs = await db.colaboradores.count_documents({})
+        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+
+        # V-Score agregado de todas as análises
+        all_analyses = await db.analyses.find(
+            {"timestamp": {"$gte": seven_days_ago.isoformat()}},
+            {"_id": 0, "v_score": 1, "timestamp": 1, "status_visual": 1, "colaborador_id": 1}
+        ).sort("timestamp", 1).to_list(5000)
+
+        if not all_analyses:
+            return TeamOverviewResponse(
+                total_colaboradores=total_colabs, avg_v_score=0, avg_stress_level=0,
+                distribution={"verde": 0, "amarelo": 0, "vermelho": 0},
+                trend_7d=[], lei_14831_alerts=0, engagement_rate=0
+            )
+
+        # V-Score médio global
+        all_scores = [a["v_score"] for a in all_analyses]
+        avg_v_score = round(sum(all_scores) / len(all_scores), 1)
+        avg_stress = round(100 - avg_v_score, 1)
+
+        # Distribuição
+        verde = sum(1 for a in all_analyses if a["v_score"] >= 80)
+        amarelo = sum(1 for a in all_analyses if 50 <= a["v_score"] < 80)
+        vermelho = sum(1 for a in all_analyses if a["v_score"] < 50)
+
+        # Tendência diária (7 dias) — anonimizado
+        daily = {}
+        for a in all_analyses:
+            day = a["timestamp"][:10]
+            daily.setdefault(day, []).append(a["v_score"])
+
+        trend_7d = [{"date": d, "avg_v_score": round(sum(s)/len(s), 1), "total_analyses": len(s)} for d, s in sorted(daily.items())]
+
+        # Alertas Lei 14.831: contar colaboradores únicos com V-Score médio < 50 nos 7 dias
+        colab_scores = {}
+        for a in all_analyses:
+            cid = a.get("colaborador_id", "unknown")
+            colab_scores.setdefault(cid, []).append(a["v_score"])
+
+        lei_alerts = sum(1 for scores in colab_scores.values() if sum(scores)/len(scores) < 50)
+
+        # Engagement: % de colaboradores que fizeram pelo menos 1 análise nos 7 dias
+        active = len(colab_scores)
+        engagement = round((active / total_colabs) * 100, 1) if total_colabs > 0 else 0
+
+        return TeamOverviewResponse(
+            total_colaboradores=total_colabs,
+            avg_v_score=avg_v_score,
+            avg_stress_level=avg_stress,
+            distribution={"verde": verde, "amarelo": amarelo, "vermelho": vermelho},
+            trend_7d=trend_7d,
+            lei_14831_alerts=lei_alerts,
+            engagement_rate=engagement
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting team overview: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# WEARABLE OAUTH MOCK (Google Fit)
+@api_router.post("/wearables/oauth/callback")
+async def wearable_oauth_callback(request: Request):
+    """
+    Simula callback OAuth do Google Fit / Apple HealthKit.
+    Em produção: receberia authorization_code e trocaria por access_token.
+    Aqui: cria device + dispara primeira sincronização simulada.
+    """
+    try:
+        colaborador = await get_current_colaborador(request)
+        body = await request.json()
+        provider = body.get("provider", "google_health_connect")
+        # auth_code seria usado em produção para trocar por access_token
+
+        import random
+
+        # Simula dados do wearable
+        sync_data = {
+            "hrv": random.randint(35, 85),
+            "bpm": random.randint(58, 110),
+            "bpm_average": random.randint(60, 80),
+            "sleep_hours": round(random.uniform(4.5, 9.0), 1),
+            "steps": random.randint(2000, 15000),
+            "source": provider
+        }
+
+        # Cria ou atualiza device
+        existing = await db.wearable_devices.find_one(
+            {"colaborador_id": colaborador["id"], "provider": provider}, {"_id": 0}
+        )
+
+        device_id = existing["id"] if existing else str(uuid.uuid4())
+
+        if existing:
+            await db.wearable_devices.update_one(
+                {"id": device_id},
+                {"$set": {"is_connected": True, "last_sync": datetime.now(timezone.utc).isoformat(), "oauth_token": "mock-token"}}
+            )
+        else:
+            device = {
+                "id": device_id,
+                "colaborador_id": colaborador["id"],
+                "provider": provider,
+                "device_name": f"{provider.replace('_', ' ').title()}",
+                "is_connected": True,
+                "last_sync": datetime.now(timezone.utc).isoformat(),
+                "oauth_token": "mock-token",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.wearable_devices.insert_one(device)
+
+        return {
+            "status": "authorized",
+            "device_id": device_id,
+            "provider": provider,
+            "sync_data": sync_data,
+            "message": f"Dispositivo {provider} autorizado e sincronizado automaticamente."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in OAuth callback: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Root

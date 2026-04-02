@@ -10,7 +10,7 @@ import HistoryChart from "../components/HistoryChart";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Lock, Zap, Flame, Trophy } from "lucide-react";
+import { Lock, Zap, Flame, Trophy, Shield } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -25,6 +25,7 @@ const Dashboard = () => {
   const [connectedDevices, setConnectedDevices] = useState([]);
   const [predictiveAlert, setPredictiveAlert] = useState(null);
   const [gamStats, setGamStats] = useState(null);
+  const [healthTrend, setHealthTrend] = useState(null);
   const pollingIntervalRef = useRef(null);
   const lastAnalysisIdRef = useRef(null);
 
@@ -33,6 +34,7 @@ const Dashboard = () => {
     fetchConnectedDevices();
     fetchPredictiveAlert();
     fetchGamificationStats();
+    fetchHealthTrend();
     startPolling();
     return () => stopPolling();
   }, []);
@@ -74,6 +76,15 @@ const Dashboard = () => {
       setGamStats(data);
     } catch (error) {
       console.error("Erro ao buscar gamificacao:", error);
+    }
+  };
+
+  const fetchHealthTrend = async () => {
+    try {
+      const { data } = await axios.get(`${API}/health/trend`, { withCredentials: true });
+      setHealthTrend(data);
+    } catch (error) {
+      console.error("Erro ao buscar tendencia:", error);
     }
   };
 
@@ -223,6 +234,22 @@ const Dashboard = () => {
                 >
                   Upgrade Premium
                 </button>
+              </motion.div>
+            )}
+
+            {/* Health Trend - Lei 14.831 Intervention Alert */}
+            {healthTrend?.requires_intervention && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="border border-rose-500/40 bg-rose-500/8 rounded-md p-4 flex items-start gap-3"
+                data-testid="intervention-alert"
+              >
+                <Shield className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-rose-400">Intervencao Necessaria</p>
+                  <p className="text-xs text-neutral-300 mt-1">{healthTrend.intervention_message}</p>
+                </div>
               </motion.div>
             )}
 
