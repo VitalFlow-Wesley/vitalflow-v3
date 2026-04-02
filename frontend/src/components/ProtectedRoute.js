@@ -22,4 +22,26 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+export const GestorRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
+
+  if (!user || user === false) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.nivel_acesso !== 'Gestor') {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 export default ProtectedRoute;

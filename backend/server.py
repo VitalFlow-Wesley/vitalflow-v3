@@ -1351,10 +1351,61 @@ async def get_predictive_alert(request: Request):
         logger.error(f"Error getting predictive alert: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.post("/dashboard/add-employee")
+async def add_employee(request: Request):
+    """Gestor cadastra novo funcionário na plataforma."""
+    try:
+        gestor = await get_current_colaborador(request)
+        if gestor["nivel_acesso"] != "Gestor":
+            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+
+        body = await request.json()
+        nome = body.get("nome", "").strip()
+        email = body.get("email", "").strip().lower()
+        setor = body.get("setor", "Operacional")
+        cargo = body.get("cargo", "")
+
+        if not nome or not email:
+            raise HTTPException(status_code=400, detail="Nome e email sao obrigatorios.")
+
+        existing = await db.colaboradores.find_one({"email": email}, {"_id": 0, "id": 1})
+        if existing:
+            raise HTTPException(status_code=400, detail="Email ja cadastrado.")
+
+        # Detecta domínio corporativo
+        domain = email.split("@")[1] if "@" in email else None
+        corp = await db.corporate_domains.find_one({"domain": domain}, {"_id": 0}) if domain else None
+        account_type = "corporate" if corp else "personal"
+
+        # Senha temporária
+        temp_password = f"Temp{uuid.uuid4().hex[:6]}!"
+        new_colab = Colaborador(
+            nome=nome, email=email, password_hash=hash_password(temp_password),
+            data_nascimento="2000-01-01", setor=setor, nivel_acesso="User",
+            cargo=cargo, account_type=account_type, domain=domain
+        )
+        doc = new_colab.model_dump()
+        doc["created_at"] = doc["created_at"].isoformat()
+        doc["updated_at"] = doc["updated_at"].isoformat()
+        await db.colaboradores.insert_one(doc)
+
+        return {
+            "id": new_colab.id, "nome": nome, "email": email,
+            "setor": setor, "cargo": cargo, "account_type": account_type,
+            "temp_password": temp_password,
+            "message": f"Funcionario {nome} cadastrado com sucesso."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding employee: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/dashboard/export-pdf")
-async def export_dashboard_pdf(request: Request):
+async def export_dashboard_pdf(request: Request, period: str = "7d"):
     """
-    Exporta relatório do Dashboard do Gestor em PDF
+    Exporta relatório PDF real com indicadores de saúde mental e risco de burnout.
+    period: 7d, 30d, 6m
     """
     try:
         colaborador = await get_current_colaborador(request)
@@ -1362,48 +1413,134 @@ async def export_dashboard_pdf(request: Request):
         if colaborador["nivel_acesso"] != "Gestor":
             raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
         
-        # Busca métricas
-        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        # Calcula período
+        now = datetime.now(timezone.utc)
+        period_map = {"7d": 7, "30d": 30, "6m": 180}
+        days = period_map.get(period, 7)
+        period_start = now - timedelta(days=days)
+        period_label = {"7d": "7 dias", "30d": "30 dias", "6m": "6 meses"}.get(period, "7 dias")
         
-        analyses = await db.smartwatch_analyses.find(
-            {"timestamp": {"$gte": twenty_four_hours_ago.isoformat()}},
-            {"_id": 0}
-        ).to_list(1000)
+        # Busca análises do período
+        analyses = await db.analyses.find(
+            {"timestamp": {"$gte": period_start.isoformat()}},
+            {"_id": 0, "v_score": 1, "status_visual": 1, "timestamp": 1, "area_afetada": 1, "colaborador_id": 1}
+        ).to_list(10000)
         
-        # Calcula métricas
+        # Métricas agregadas
         total = len(analyses)
-        critical = sum(1 for a in analyses if a.get("risk_level") == "Alto")
-        medium = sum(1 for a in analyses if a.get("risk_level") == "Médio")
-        normal = total - critical - medium
+        all_scores = [a["v_score"] for a in analyses]
+        avg_v = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0
+        verde = sum(1 for a in analyses if a["v_score"] >= 80)
+        amarelo = sum(1 for a in analyses if 50 <= a["v_score"] < 80)
+        vermelho = sum(1 for a in analyses if a["v_score"] < 50)
         
-        stress_scores = []
+        # Colaboradores únicos com risco
+        colab_scores = {}
         for a in analyses:
-            if a.get("risk_level") == "Alto":
-                stress_scores.append(100)
-            elif a.get("risk_level") == "Médio":
-                stress_scores.append(60)
-            else:
-                stress_scores.append(20)
+            cid = a.get("colaborador_id", "unknown")
+            colab_scores.setdefault(cid, []).append(a["v_score"])
+        burnout_risk = sum(1 for s in colab_scores.values() if sum(s)/len(s) < 50)
+        total_colabs = len(colab_scores)
         
-        avg_stress = sum(stress_scores) / len(stress_scores) if stress_scores else 0
+        # Áreas mais afetadas
+        area_count = {}
+        for a in analyses:
+            for area in a.get("area_afetada", []):
+                area_count[area] = area_count.get(area, 0) + 1
+        top_areas = sorted(area_count.items(), key=lambda x: x[1], reverse=True)[:4]
         
-        # Gera PDF simples (em produção, usar reportlab ou weasyprint)
-        # Por enquanto, retorna JSON que o frontend pode converter
-        report_data = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "generated_by": colaborador["nome"],
-            "period": "Últimas 24 horas",
-            "metrics": {
-                "total_analyses": total,
-                "average_stress_level": round(avg_stress, 1),
-                "critical_alerts": critical,
-                "medium_alerts": medium,
-                "normal_status": normal
-            },
-            "summary": f"Relatório gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}. Total de {total} análises com nível médio de estresse de {avg_stress:.1f}/100. {critical} alertas críticos detectados."
-        }
+        # Gera PDF com reportlab
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.colors import HexColor
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import mm
+        import io
         
-        return report_data
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=25*mm, bottomMargin=20*mm, leftMargin=20*mm, rightMargin=20*mm)
+        
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=22, textColor=HexColor('#111111'), spaceAfter=5*mm)
+        subtitle_style = ParagraphStyle('Subtitle', parent=styles['Normal'], fontSize=11, textColor=HexColor('#666666'), spaceAfter=8*mm)
+        h2_style = ParagraphStyle('H2', parent=styles['Heading2'], fontSize=14, textColor=HexColor('#222222'), spaceBefore=6*mm, spaceAfter=3*mm)
+        body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=10, textColor=HexColor('#333333'), spaceAfter=2*mm)
+        
+        elements = []
+        
+        # Header
+        elements.append(Paragraph("VitalFlow - Relatorio de Saude Mental", title_style))
+        elements.append(Paragraph(f"Periodo: Ultimos {period_label} | Gerado em {now.strftime('%d/%m/%Y as %H:%M')} | Por: {colaborador['nome']}", subtitle_style))
+        
+        # Resumo executivo
+        elements.append(Paragraph("Resumo Executivo", h2_style))
+        elements.append(Paragraph(f"Total de analises no periodo: {total}", body_style))
+        elements.append(Paragraph(f"V-Score medio da equipe: {avg_v}/100", body_style))
+        elements.append(Paragraph(f"Colaboradores ativos: {total_colabs}", body_style))
+        risk_pct = round((burnout_risk / total_colabs) * 100, 1) if total_colabs > 0 else 0
+        elements.append(Paragraph(f"Colaboradores em risco de burnout: {burnout_risk} ({risk_pct}%)", body_style))
+        elements.append(Spacer(1, 5*mm))
+        
+        # Distribuição
+        elements.append(Paragraph("Distribuicao de Status", h2_style))
+        dist_data = [
+            ["Status", "Quantidade", "Percentual"],
+            ["Verde (V-Score >= 80)", str(verde), f"{round(verde/total*100,1)}%" if total else "0%"],
+            ["Amarelo (V-Score 50-79)", str(amarelo), f"{round(amarelo/total*100,1)}%" if total else "0%"],
+            ["Vermelho (V-Score < 50)", str(vermelho), f"{round(vermelho/total*100,1)}%" if total else "0%"],
+        ]
+        dist_table = Table(dist_data, colWidths=[200, 100, 100])
+        dist_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), HexColor('#1a1a2e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dddddd')),
+            ('BACKGROUND', (0, 1), (-1, 1), HexColor('#d1fae5')),
+            ('BACKGROUND', (0, 2), (-1, 2), HexColor('#fef3c7')),
+            ('BACKGROUND', (0, 3), (-1, 3), HexColor('#ffe4e6')),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(dist_table)
+        elements.append(Spacer(1, 5*mm))
+        
+        # Áreas afetadas
+        if top_areas:
+            elements.append(Paragraph("Areas Mais Afetadas", h2_style))
+            area_data = [["Area", "Ocorrencias"]] + [[a[0], str(a[1])] for a in top_areas]
+            area_table = Table(area_data, colWidths=[250, 100])
+            area_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), HexColor('#1a1a2e')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dddddd')),
+                ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(area_table)
+            elements.append(Spacer(1, 5*mm))
+        
+        # Lei 14.831
+        elements.append(Paragraph("Conformidade Lei 14.831/2024 (Saude Mental no Trabalho)", h2_style))
+        if burnout_risk > 0:
+            elements.append(Paragraph(f"ATENCAO: {burnout_risk} colaborador(es) com V-Score medio abaixo de 50 no periodo. A legislacao exige intervencao preventiva.", body_style))
+        else:
+            elements.append(Paragraph("Nenhum colaborador em risco critico no periodo analisado. Empresa em conformidade.", body_style))
+        
+        elements.append(Spacer(1, 10*mm))
+        elements.append(Paragraph("Dados 100% anonimizados conforme LGPD. Nenhum colaborador individual e identificado neste relatorio.", ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=HexColor('#999999'))))
+        
+        doc.build(elements)
+        buffer.seek(0)
+        
+        from fastapi.responses import StreamingResponse
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=vitalflow_relatorio_{period}_{now.strftime('%Y%m%d')}.pdf"}
+        )
         
     except HTTPException:
         raise
@@ -1486,11 +1623,9 @@ async def get_team_stress_metrics(request: Request):
     """
     try:
         colaborador = await get_current_colaborador(request)
-        
-        # Apenas gestores podem acessar
         if colaborador["nivel_acesso"] != "Gestor":
             raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
-        
+
         # Período: últimas 24h
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         
@@ -2016,11 +2151,11 @@ async def get_health_trend(request: Request):
 
 # TEAM OVERVIEW (Gestor - V-Score agregado + LGPD)
 @api_router.get("/dashboard/team-overview")
-async def get_team_overview(request: Request):
+async def get_team_overview(request: Request, period: str = "7d"):
     """
     Visão geral do time para o Gestor.
-    V-Score agregado, tendência de 7 dias, alertas Lei 14.831.
-    Dados 100% anonimizados - nenhum nome individual exposto.
+    V-Score agregado, tendência, alertas Lei 14.831.
+    period: 7d, 30d, 6m
     """
     try:
         colaborador = await get_current_colaborador(request)
@@ -2028,11 +2163,13 @@ async def get_team_overview(request: Request):
             raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
 
         total_colabs = await db.colaboradores.count_documents({})
-        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        period_map = {"7d": 7, "30d": 30, "6m": 180}
+        days = period_map.get(period, 7)
+        period_start = datetime.now(timezone.utc) - timedelta(days=days)
 
         # V-Score agregado de todas as análises
         all_analyses = await db.analyses.find(
-            {"timestamp": {"$gte": seven_days_ago.isoformat()}},
+            {"timestamp": {"$gte": period_start.isoformat()}},
             {"_id": 0, "v_score": 1, "timestamp": 1, "status_visual": 1, "colaborador_id": 1}
         ).sort("timestamp", 1).to_list(5000)
 

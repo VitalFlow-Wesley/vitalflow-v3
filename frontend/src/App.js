@@ -1,7 +1,7 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute, { GestorRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import ConnectDevices from "./pages/ConnectDevices";
 import Profile from "./pages/Profile";
@@ -45,9 +45,9 @@ function App() {
             <Route
               path="/gestor"
               element={
-                <ProtectedRoute>
+                <GestorRoute>
                   <GestorDashboard />
-                </ProtectedRoute>
+                </GestorRoute>
               }
             />
           </Routes>
