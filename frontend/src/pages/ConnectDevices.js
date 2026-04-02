@@ -67,6 +67,14 @@ const ConnectDevices = () => {
 
   useEffect(() => {
     fetchConnectedDevices();
+
+    // Verificar se voltou do callback do Google Fit
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_fit") === "success") {
+      toast.success("Google Fit conectado e sincronizado com sucesso!", { duration: 5000 });
+      // Limpar query string da URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   const fetchConnectedDevices = async () => {
@@ -79,16 +87,33 @@ const ConnectDevices = () => {
   };
 
   const handleConnect = async (providerId) => {
+    // Google Fit: usar fluxo OAuth real quando configurado
+    if (providerId === "google_health_connect") {
+      try {
+        const { data: statusData } = await axios.get(`${API}/wearables/google-fit/status`, { withCredentials: true });
+        if (statusData.configured) {
+          // Fluxo OAuth REAL
+          const { data: authData } = await axios.get(`${API}/wearables/google-fit/auth`, { withCredentials: true });
+          if (authData.auth_url) {
+            toast.info("Redirecionando para o Google...", { duration: 2000 });
+            window.location.href = authData.auth_url;
+            return;
+          }
+        }
+      } catch (error) {
+        console.log("Google Fit real nao disponivel, usando fluxo simulado");
+      }
+    }
+
+    // Fluxo simulado para outros providers
     setOauthFlow({ provider: providerId, step: 0 });
     setSyncResult(null);
 
-    // Simula fluxo OAuth passo a passo
     for (let i = 0; i < OAUTH_STEPS.length; i++) {
       setOauthFlow({ provider: providerId, step: i });
       await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
     }
 
-    // Chama backend OAuth callback (simulado)
     try {
       const { data } = await axios.post(
         `${API}/wearables/oauth/callback`,
