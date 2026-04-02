@@ -1041,7 +1041,9 @@ async def get_me(request: Request):
 
 @api_router.put("/auth/profile", response_model=AuthResponse)
 async def update_profile(data: ColaboradorUpdate, request: Request):
-    """Atualiza o perfil do colaborador logado"""
+    """Atualiza o perfil do colaborador logado.
+    Campos corporativos (setor, cargo, nivel_acesso) sao bloqueados para usuarios vinculados a empresa.
+    """
     try:
         colaborador = await get_current_colaborador(request)
         
@@ -1062,6 +1064,14 @@ async def update_profile(data: ColaboradorUpdate, request: Request):
         # Get updated colaborador
         updated = await db.colaboradores.find_one({"id": colaborador["id"]}, {"_id": 0})
         
+        company_name = None
+        if updated.get("account_type") == "corporate" and updated.get("domain"):
+            corp = await db.corporate_domains.find_one(
+                {"domain": updated["domain"]}, {"_id": 0, "company_name": 1}
+            )
+            if corp:
+                company_name = corp["company_name"]
+        
         return AuthResponse(
             id=updated["id"],
             nome=updated["nome"],
@@ -1069,12 +1079,51 @@ async def update_profile(data: ColaboradorUpdate, request: Request):
             data_nascimento=updated["data_nascimento"],
             foto_url=updated.get("foto_url"),
             setor=updated["setor"],
-            nivel_acesso=updated["nivel_acesso"]
+            nivel_acesso=updated["nivel_acesso"],
+            matricula=updated.get("matricula"),
+            cargo=updated.get("cargo"),
+            account_type=updated.get("account_type", "personal"),
+            domain=updated.get("domain"),
+            company_name=company_name,
+            is_premium=updated.get("is_premium", False),
+            energy_points=updated.get("energy_points", 0),
+            current_streak=updated.get("current_streak", 0)
         )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error updating profile: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest):
+    """Gera nova senha temporaria e a retorna. Em producao, enviaria por email."""
+    try:
+        email_lower = data.email.lower()
+        colaborador = await db.colaboradores.find_one({"email": email_lower}, {"_id": 0, "id": 1, "nome": 1})
+        if not colaborador:
+            raise HTTPException(status_code=404, detail="Email nao encontrado no sistema.")
+        
+        temp_password = f"Reset{uuid.uuid4().hex[:6]}!"
+        await db.colaboradores.update_one(
+            {"id": colaborador["id"]},
+            {"$set": {
+                "password_hash": hash_password(temp_password),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        return {
+            "message": f"Senha temporaria gerada para {colaborador['nome']}. Em producao, seria enviada por email.",
+            "temp_password": temp_password
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in forgot_password: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ANALYSIS ENDPOINTS
@@ -1379,9 +1428,13 @@ async def add_employee(request: Request):
 
         # Senha temporária
         temp_password = f"Temp{uuid.uuid4().hex[:6]}!"
+        nivel_acesso = body.get("nivel_acesso", "User")
+        if nivel_acesso not in ("User", "Gestor"):
+            nivel_acesso = "User"
+
         new_colab = Colaborador(
             nome=nome, email=email, password_hash=hash_password(temp_password),
-            data_nascimento="2000-01-01", setor=setor, nivel_acesso="User",
+            data_nascimento="2000-01-01", setor=setor, nivel_acesso=nivel_acesso,
             cargo=cargo, account_type=account_type, domain=domain
         )
         doc = new_colab.model_dump()
@@ -2294,6 +2347,57 @@ async def wearable_oauth_callback(request: Request):
 async def root():
     return {"message": "VitalFlow API - Copiloto Corporativo de Longevidade"}
 
+@api_router.post("/seed-admin")
+async def seed_admin_endpoint():
+    """Re-seed admin user with correct password and account_type. For testing purposes."""
+    try:
+        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@vitalflow.com').lower()
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'Admin123!@#')
+        
+        # Check if admin email is from a corporate domain
+        admin_domain = admin_email.split('@')[1] if '@' in admin_email else None
+        admin_is_corporate = False
+        if admin_domain:
+            corp_domain = await db.corporate_domains.find_one({"domain": admin_domain}, {"_id": 0})
+            admin_is_corporate = corp_domain is not None
+        
+        # Update or create admin
+        existing_admin = await db.colaboradores.find_one({"email": admin_email}, {"_id": 0, "id": 1})
+        
+        if existing_admin:
+            # Update existing admin
+            await db.colaboradores.update_one(
+                {"email": admin_email},
+                {"$set": {
+                    "password_hash": hash_password(admin_password),
+                    "account_type": "corporate" if admin_is_corporate else "personal",
+                    "domain": admin_domain if admin_is_corporate else None,
+                    "nivel_acesso": "Gestor",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            return {"message": f"Admin updated: {admin_email}", "account_type": "corporate" if admin_is_corporate else "personal"}
+        else:
+            # Create new admin
+            admin = Colaborador(
+                nome="Administrador",
+                email=admin_email,
+                password_hash=hash_password(admin_password),
+                data_nascimento="1990-01-01",
+                setor="Administrativo",
+                nivel_acesso="Gestor",
+                account_type="corporate" if admin_is_corporate else "personal",
+                domain=admin_domain if admin_is_corporate else None
+            )
+            doc = admin.model_dump()
+            doc['created_at'] = doc['created_at'].isoformat()
+            doc['updated_at'] = doc['updated_at'].isoformat()
+            await db.colaboradores.insert_one(doc)
+            return {"message": f"Admin created: {admin_email}", "account_type": "corporate" if admin_is_corporate else "personal"}
+    except Exception as e:
+        logger.error(f"Error seeding admin: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include router
 app.include_router(api_router)
 
@@ -2335,6 +2439,13 @@ async def startup_event():
         existing_admin = await db.colaboradores.find_one({"email": admin_email}, {"_id": 0})
         
         if not existing_admin:
+            # Check if admin email is from a corporate domain
+            admin_domain = admin_email.split('@')[1] if '@' in admin_email else None
+            admin_is_corporate = False
+            if admin_domain:
+                corp_domain = await db.corporate_domains.find_one({"domain": admin_domain}, {"_id": 0})
+                admin_is_corporate = corp_domain is not None
+            
             admin = Colaborador(
                 nome="Administrador",
                 email=admin_email,
@@ -2342,8 +2453,8 @@ async def startup_event():
                 data_nascimento="1990-01-01",
                 setor="Administrativo",
                 nivel_acesso="Gestor",
-                account_type="personal",
-                domain=None
+                account_type="corporate" if admin_is_corporate else "personal",
+                domain=admin_domain if admin_is_corporate else None
             )
             doc = admin.model_dump()
             doc['created_at'] = doc['created_at'].isoformat()

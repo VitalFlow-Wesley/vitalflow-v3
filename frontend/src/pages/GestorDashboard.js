@@ -30,7 +30,7 @@ const GestorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("7d");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ nome: "", email: "", setor: "Operacional", cargo: "" });
+  const [addForm, setAddForm] = useState({ nome: "", email: "", setor: "Operacional", cargo: "", nivel_acesso: "User" });
   const [addLoading, setAddLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
 
@@ -93,7 +93,7 @@ const GestorDashboard = () => {
       const { data } = await axios.post(`${API_URL}/api/dashboard/add-employee`, addForm, { withCredentials: true });
       toast.success(`${data.nome} cadastrado! Senha temporaria: ${data.temp_password}`, { duration: 10000 });
       setShowAddModal(false);
-      setAddForm({ nome: "", email: "", setor: "Operacional", cargo: "" });
+      setAddForm({ nome: "", email: "", setor: "Operacional", cargo: "", nivel_acesso: "User" });
       fetchAllMetrics();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Erro ao cadastrar.");
@@ -408,6 +408,18 @@ const GestorDashboard = () => {
                       className="w-full px-3 py-2.5 bg-neutral-800 border border-white/10 rounded-md text-white text-sm focus:outline-none focus:border-cyan-500"
                     />
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-400 font-medium block mb-1">Nivel de Acesso</label>
+                  <select
+                    value={addForm.nivel_acesso}
+                    onChange={(e) => setAddForm({ ...addForm, nivel_acesso: e.target.value })}
+                    data-testid="employee-nivel-select"
+                    className="w-full px-3 py-2.5 bg-neutral-800 border border-white/10 rounded-md text-white text-sm focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="User">Colaborador (User)</option>
+                    <option value="Gestor">Gestor (Admin)</option>
+                  </select>
                 </div>
                 <button
                   type="submit"

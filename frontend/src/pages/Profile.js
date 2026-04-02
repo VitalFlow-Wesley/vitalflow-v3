@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { motion } from 'framer-motion';
-import { User, Calendar, Camera, Save, ArrowLeft } from 'lucide-react';
+import { User, Calendar, Camera, Save, ArrowLeft, Lock, Briefcase, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -20,14 +20,14 @@ const Profile = () => {
   const [previewUrl, setPreviewUrl] = useState(user?.foto_url || null);
   const [loading, setLoading] = useState(false);
 
+  const isCorporate = user?.account_type === 'corporate';
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
-        // Convert to base64 (remove data:image/...;base64, prefix)
         const base64 = reader.result.split(',')[1];
         setFormData({ ...formData, foto_base64: base64 });
       };
@@ -80,7 +80,7 @@ const Profile = () => {
             Meu Perfil
           </h1>
           <p className="text-neutral-400 mt-2">
-            Gerencie suas informações pessoais
+            Gerencie suas informacoes pessoais
           </p>
         </div>
 
@@ -121,11 +121,12 @@ const Profile = () => {
                   />
                 </label>
               </div>
-              <p className="text-xs text-neutral-500">Clique no ícone para alterar a foto</p>
+              <p className="text-xs text-neutral-500">Clique no icone para alterar a foto</p>
             </div>
 
             {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Editable: Nome */}
               <div className="space-y-2">
                 <Label htmlFor="nome" className="text-neutral-300">Nome Completo</Label>
                 <div className="relative">
@@ -143,6 +144,7 @@ const Profile = () => {
                 </div>
               </div>
 
+              {/* Editable: Data de Nascimento */}
               <div className="space-y-2">
                 <Label htmlFor="data_nascimento" className="text-neutral-300">Data de Nascimento</Label>
                 <div className="relative">
@@ -159,7 +161,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* Read-only fields */}
+              {/* Read-only: Email */}
               <div className="space-y-2">
                 <Label className="text-neutral-300">Email</Label>
                 <Input
@@ -167,27 +169,80 @@ const Profile = () => {
                   value={user?.email || ''}
                   disabled
                   className="bg-neutral-950/50 border-white/10 text-neutral-500"
+                  data-testid="input-email-readonly"
                 />
               </div>
 
+              {/* Setor - Locked for corporate */}
               <div className="space-y-2">
-                <Label className="text-neutral-300">Setor</Label>
-                <Input
-                  type="text"
-                  value={user?.setor || ''}
-                  disabled
-                  className="bg-neutral-950/50 border-white/10 text-neutral-500"
-                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-neutral-300">Setor</Label>
+                  {isCorporate && <Lock className="w-3.5 h-3.5 text-amber-400" data-testid="lock-setor" />}
+                </div>
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-600" />
+                  <Input
+                    type="text"
+                    value={user?.setor || ''}
+                    disabled
+                    className="pl-10 bg-neutral-950/50 border-white/10 text-neutral-500"
+                    data-testid="input-setor-readonly"
+                  />
+                </div>
+                {isCorporate && (
+                  <p className="text-[11px] text-amber-400/70 flex items-center gap-1" data-testid="lock-msg-setor">
+                    <Lock className="w-3 h-3" />
+                    Alteracao permitida apenas pelo gestor da sua empresa
+                  </p>
+                )}
               </div>
 
+              {/* Cargo/Funcao - Locked for corporate */}
               <div className="space-y-2">
-                <Label className="text-neutral-300">Nível de Acesso</Label>
-                <Input
-                  type="text"
-                  value={user?.nivel_acesso || ''}
-                  disabled
-                  className="bg-neutral-950/50 border-white/10 text-neutral-500"
-                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-neutral-300">Funcao / Cargo</Label>
+                  {isCorporate && <Lock className="w-3.5 h-3.5 text-amber-400" data-testid="lock-cargo" />}
+                </div>
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-600" />
+                  <Input
+                    type="text"
+                    value={user?.cargo || '-'}
+                    disabled
+                    className="pl-10 bg-neutral-950/50 border-white/10 text-neutral-500"
+                    data-testid="input-cargo-readonly"
+                  />
+                </div>
+                {isCorporate && (
+                  <p className="text-[11px] text-amber-400/70 flex items-center gap-1" data-testid="lock-msg-cargo">
+                    <Lock className="w-3 h-3" />
+                    Alteracao permitida apenas pelo gestor da sua empresa
+                  </p>
+                )}
+              </div>
+
+              {/* Nivel de Acesso - Locked for corporate */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label className="text-neutral-300">Nivel de Acesso</Label>
+                  {isCorporate && <Lock className="w-3.5 h-3.5 text-amber-400" data-testid="lock-nivel" />}
+                </div>
+                <div className="relative">
+                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-600" />
+                  <Input
+                    type="text"
+                    value={user?.nivel_acesso || ''}
+                    disabled
+                    className="pl-10 bg-neutral-950/50 border-white/10 text-neutral-500"
+                    data-testid="input-nivel-readonly"
+                  />
+                </div>
+                {isCorporate && (
+                  <p className="text-[11px] text-amber-400/70 flex items-center gap-1" data-testid="lock-msg-nivel">
+                    <Lock className="w-3 h-3" />
+                    Alteracao permitida apenas pelo gestor da sua empresa
+                  </p>
+                )}
               </div>
             </div>
 
@@ -207,7 +262,7 @@ const Profile = () => {
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Salvar Alterações
+                    Salvar Alteracoes
                   </>
                 )}
               </Button>
@@ -219,11 +274,16 @@ const Profile = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           <div className="border border-white/5 bg-neutral-900/40 rounded-md p-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-2">
-              Informações da Conta
+              Informacoes da Conta
             </h3>
             <p className="text-xs text-neutral-500">
               Cadastrado em: {user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
             </p>
+            {isCorporate && user?.company_name && (
+              <p className="text-xs text-cyan-400 mt-1">
+                Vinculado a: {user.company_name}
+              </p>
+            )}
           </div>
 
           <div className="border border-white/5 bg-neutral-900/40 rounded-md p-4">
@@ -231,8 +291,13 @@ const Profile = () => {
               Privacidade
             </h3>
             <p className="text-xs text-neutral-500">
-              Seus dados são protegidos e criptografados
+              Seus dados sao protegidos e criptografados
             </p>
+            {isCorporate && (
+              <p className="text-xs text-amber-400/70 mt-1">
+                Campos corporativos gerenciados pelo administrador
+              </p>
+            )}
           </div>
         </div>
       </div>
