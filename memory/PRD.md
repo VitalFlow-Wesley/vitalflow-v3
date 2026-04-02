@@ -1,6 +1,6 @@
 # VitalFlow - Product Requirements Document (PRD)
 
-## Status: v2.4 (Abril 2026) - Backend Refatorado + Botao Painel Administrativo
+## Status: v2.5 (Abril 2026) - Onboarding + Sync Feedback + Google Fit Preparado
 
 ## Stack: React 19 + FastAPI + MongoDB + GPT-4o (Emergent LLM)
 
@@ -14,6 +14,7 @@
   services/
     ai_service.py    (Analise biometrica + smartwatch via GPT-4o)
     domain_service.py (Dominio corporativo + stress patterns + push)
+    google_fit_service.py (OAuth 2.0 Google Fit - PREPARADO)
   routes/
     auth.py          (register, login, logout, me, profile, forgot-password)
     analysis.py      (analyze, history)
@@ -21,7 +22,7 @@
     smartwatch.py    (analyze, webhook, history, energy-status)
     gamification.py  (follow-nudge, stats, leaderboard, billing)
     health.py        (trend Lei 14.831, predictive alert)
-    wearables.py     (connect, list, disconnect, oauth callback)
+    wearables.py     (connect, list, disconnect, oauth, google-fit/status/auth/callback)
 ```
 
 ## Funcionalidades Implementadas
@@ -49,22 +50,33 @@
 - [x] GestorDashboard desktop-only
 
 ### Permissoes e Restricoes (v2.3)
-- [x] Profile: campos Setor, Cargo, Nivel de Acesso read-only com cadeado para corporativos
-- [x] Register: simplificado para contas pessoais (B2C)
-- [x] Login: "Esqueci minha senha" com geracao de senha temporaria
-- [x] GestorDashboard: modal com campo Nivel de Acesso (User/Gestor)
+- [x] Profile: campos corporativos read-only com cadeado
+- [x] Register: simplificado B2C
+- [x] Login: "Esqueci minha senha"
+- [x] GestorDashboard: modal com campo Nivel de Acesso
 
-### Refatoracao Backend (v2.4) - Abril 2026
-- [x] server.py dividido de 2534 linhas para 13 arquivos modulares
-- [x] APIRouter pattern em routes/
-- [x] Services isolados (AI, Domain, Push)
-- [x] Models centralizados em models.py
-- [x] Botao "Painel Administrativo" visivel para Gestores (link externo https://vitalflow.ia.br/gestor)
+### Refatoracao Backend (v2.4)
+- [x] server.py dividido em 13 arquivos modulares
+- [x] APIRouter pattern + Services isolados
 
-### Testes: 24/24 backend + 16/16 frontend (iteration 7) = 100%
+### Onboarding + Sync Feedback + Google Fit (v2.5) - Abril 2026
+- [x] Botao Navbar renomeado para "Gestao"
+- [x] Onboarding Interativo: 4 passos (Welcome, V-Score, Gamificacao, Conectar)
+- [x] Tour usa localStorage para nao repetir
+- [x] Passo final redireciona para /devices
+- [x] Dashboard: estado "Aguardando sincronizacao" ou "Conecte um dispositivo"
+- [x] HistoryChart: estado vazio com icone pulsante + CTA
+- [x] Google Fit: arquitetura OAuth preparada (env vars + rotas + service)
+- [x] Endpoint /api/wearables/google-fit/status para verificar configuracao
+
+### Testes: 8/8 backend + 16/16 frontend (iteration 8) = 100%
 
 ## Backlog
-- [ ] P0: Onboarding Interativo (Aha moment nos primeiros 60s)
-- [ ] P1: Stripe real, Push FCM, Google Fit/Apple Health real
+- [ ] P1: Ativar Google Fit (credenciais OAuth do Google Cloud Console)
+- [ ] P1: Stripe real (substituir mock Premium)
+- [ ] P1: Push FCM real
 - [ ] P2: Mobile React Native, Watch face
 - [ ] P3: Redis, Service Worker real
+
+## Integracoes Preparadas (Aguardando Credenciais)
+- Google Fit: Adicionar GOOGLE_FIT_CLIENT_ID e GOOGLE_FIT_CLIENT_SECRET no .env
