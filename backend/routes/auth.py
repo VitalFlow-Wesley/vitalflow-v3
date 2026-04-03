@@ -1,7 +1,7 @@
 import os
 import uuid
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, Response, HTTPException
 from database import db
 from auth_utils import (
@@ -40,7 +40,22 @@ async def _get_company_name(account_type: str, domain: str | None) -> str | None
     return None
 
 
+def _check_premium_expired(colab: dict) -> tuple:
+    """Verifica se o trial Premium expirou. Retorna (is_premium, premium_expires_at)."""
+    is_premium = colab.get("is_premium", False)
+    expires_at = colab.get("premium_expires_at")
+    if is_premium and expires_at:
+        try:
+            exp_date = datetime.fromisoformat(expires_at)
+            if datetime.now(timezone.utc) > exp_date:
+                return False, expires_at
+        except (ValueError, TypeError):
+            pass
+    return is_premium, expires_at
+
+
 def _build_auth_response(colab: dict, company_name: str | None = None) -> AuthResponse:
+    is_premium, premium_expires_at = _check_premium_expired(colab)
     return AuthResponse(
         id=colab["id"], nome=colab["nome"], email=colab["email"],
         data_nascimento=colab["data_nascimento"], foto_url=colab.get("foto_url"),
@@ -48,7 +63,8 @@ def _build_auth_response(colab: dict, company_name: str | None = None) -> AuthRe
         matricula=colab.get("matricula"), cargo=colab.get("cargo"),
         account_type=colab.get("account_type", "personal"),
         domain=colab.get("domain"), company_name=company_name,
-        is_premium=colab.get("is_premium", False),
+        is_premium=is_premium,
+        premium_expires_at=premium_expires_at,
         energy_points=colab.get("energy_points", 0),
         current_streak=colab.get("current_streak", 0)
     )
@@ -79,12 +95,16 @@ async def register(data: RegisterRequest, response: Response):
         is_corporate, domain, company_name = await check_corporate_domain(email_lower)
         account_type = "corporate" if is_corporate else "personal"
 
+        # 7 dias de Premium Trial para todo novo cadastro
+        trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+
         colaborador = Colaborador(
             nome=data.nome, email=email_lower,
             password_hash=hash_password(data.password),
             data_nascimento=data.data_nascimento.isoformat(),
             setor=data.setor, nivel_acesso=data.nivel_acesso,
-            account_type=account_type, domain=domain
+            account_type=account_type, domain=domain,
+            is_premium=True, premium_expires_at=trial_expires
         )
 
         doc = colaborador.model_dump()

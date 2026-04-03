@@ -1,4 +1,4 @@
-import { Brain, Settings, User, LogOut, BarChart3, Radio, ExternalLink } from "lucide-react";
+import { Brain, Settings, User, LogOut, BarChart3, Radio } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
@@ -59,28 +59,16 @@ const Navbar = () => {
               <span className="text-[11px] text-neutral-400">Sincronizado com wearables</span>
             </div>
 
-            {/* Painel Administrativo - visivel apenas para Gestores */}
+            {/* Gestao - visivel apenas para Gestores */}
             {user?.nivel_acesso === 'Gestor' && (
-              <>
-                <button
-                  onClick={() => navigate("/gestor")}
-                  data-testid="gestor-dashboard-button"
-                  className="hidden md:flex px-3 py-2 border border-purple-500/30 text-purple-400 text-sm font-semibold rounded-md hover:bg-purple-500/10 transition-all duration-200 items-center gap-2"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  <span className="hidden lg:inline">Painel RH</span>
-                </button>
-                <a
-                  href="https://vitalflow.ia.br/gestor"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  data-testid="painel-administrativo-button"
-                  className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Gestao</span>
-                </a>
-              </>
+              <button
+                onClick={() => navigate("/gestor")}
+                data-testid="gestor-dashboard-button"
+                className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Gestao</span>
+              </button>
             )}
 
             <button

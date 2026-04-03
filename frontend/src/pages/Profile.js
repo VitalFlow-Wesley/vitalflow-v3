@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { motion } from 'framer-motion';
-import { User, Calendar, Camera, Save, ArrowLeft, Lock, Briefcase, Shield } from 'lucide-react';
+import { User, Calendar, Camera, Save, ArrowLeft, Lock, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -171,54 +171,6 @@ const Profile = () => {
                   className="bg-neutral-950/50 border-white/10 text-neutral-500"
                   data-testid="input-email-readonly"
                 />
-              </div>
-
-              {/* Setor - Locked for corporate */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label className="text-neutral-300">Setor</Label>
-                  {isCorporate && <Lock className="w-3.5 h-3.5 text-amber-400" data-testid="lock-setor" />}
-                </div>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-600" />
-                  <Input
-                    type="text"
-                    value={user?.setor || ''}
-                    disabled
-                    className="pl-10 bg-neutral-950/50 border-white/10 text-neutral-500"
-                    data-testid="input-setor-readonly"
-                  />
-                </div>
-                {isCorporate && (
-                  <p className="text-[11px] text-amber-400/70 flex items-center gap-1" data-testid="lock-msg-setor">
-                    <Lock className="w-3 h-3" />
-                    Alteracao permitida apenas pelo gestor da sua empresa
-                  </p>
-                )}
-              </div>
-
-              {/* Cargo/Funcao - Locked for corporate */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label className="text-neutral-300">Funcao / Cargo</Label>
-                  {isCorporate && <Lock className="w-3.5 h-3.5 text-amber-400" data-testid="lock-cargo" />}
-                </div>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-600" />
-                  <Input
-                    type="text"
-                    value={user?.cargo || '-'}
-                    disabled
-                    className="pl-10 bg-neutral-950/50 border-white/10 text-neutral-500"
-                    data-testid="input-cargo-readonly"
-                  />
-                </div>
-                {isCorporate && (
-                  <p className="text-[11px] text-amber-400/70 flex items-center gap-1" data-testid="lock-msg-cargo">
-                    <Lock className="w-3 h-3" />
-                    Alteracao permitida apenas pelo gestor da sua empresa
-                  </p>
-                )}
               </div>
 
               {/* Nivel de Acesso - Locked for corporate */}

@@ -168,6 +168,21 @@ async def get_plan(request: Request):
         colaborador = await get_current_colaborador(request)
         account_type = colaborador.get("account_type", "personal")
         is_premium = colaborador.get("is_premium", False)
+        premium_expires_at = colaborador.get("premium_expires_at")
+
+        # Verificar se trial expirou
+        if is_premium and premium_expires_at:
+            try:
+                exp_date = datetime.fromisoformat(premium_expires_at)
+                if datetime.now(timezone.utc) > exp_date:
+                    # Trial expirou - reverter para Free
+                    await db.colaboradores.update_one(
+                        {"id": colaborador["id"]},
+                        {"$set": {"is_premium": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+                    )
+                    is_premium = False
+            except (ValueError, TypeError):
+                pass
 
         if account_type == "corporate":
             return PlanInfoResponse(

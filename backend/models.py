@@ -37,6 +37,7 @@ class AuthResponse(BaseModel):
     domain: Optional[str] = None
     company_name: Optional[str] = None
     is_premium: bool = False
+    premium_expires_at: Optional[str] = None
     energy_points: int = 0
     current_streak: int = 0
 
@@ -64,6 +65,7 @@ class Colaborador(BaseModel):
     account_type: str = Field(default="personal")
     domain: Optional[str] = None
     is_premium: bool = False
+    premium_expires_at: Optional[str] = None
     energy_points: int = 0
     current_streak: int = 0
     longest_streak: int = 0
