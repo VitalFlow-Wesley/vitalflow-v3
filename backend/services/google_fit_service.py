@@ -1,16 +1,7 @@
 """
-Google Fit Integration Service
-Preparado para receber credenciais OAuth 2.0 reais.
-
-Para ativar:
-1. Crie um projeto no Google Cloud Console
-2. Ative a Fitness API
-3. Configure a tela de consentimento OAuth
-4. Gere credenciais OAuth 2.0 (Web Application)
-5. Adicione as chaves no .env:
-   GOOGLE_FIT_CLIENT_ID=seu_client_id
-   GOOGLE_FIT_CLIENT_SECRET=seu_client_secret
-   GOOGLE_FIT_REDIRECT_URI=https://seudominio.com/api/wearables/google-fit/callback
+Google Fit Integration Service v3.1
+Extracao real de BPM, Steps e Sleep com granularidade horaria.
+Deteccao de exercicio, calculo de recuperacao por sono.
 """
 import os
 import logging
@@ -32,6 +23,16 @@ GOOGLE_FIT_SCOPES = [
 GOOGLE_FIT_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_FIT_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_FIT_API_BASE = "https://www.googleapis.com/fitness/v1/users/me"
+
+# Sleep segment types (Google Fit classification)
+SLEEP_TYPES = {
+    1: "awake",
+    2: "sleep",       # generic sleep
+    3: "out_of_bed",
+    4: "light_sleep",
+    5: "deep_sleep",
+    6: "rem",
+}
 
 
 def is_configured() -> bool:
@@ -76,100 +77,6 @@ async def exchange_code(code: str) -> dict | None:
         return None
 
 
-async def fetch_biometrics(access_token: str) -> dict | None:
-    if not access_token:
-        return None
-    try:
-        import httpx
-        headers = {"Authorization": f"Bearer {access_token}"}
-        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-        day_ms = 86400000
-
-        async with httpx.AsyncClient() as client:
-            # Heart rate (BPM)
-            hr_response = await client.post(
-                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
-                headers=headers,
-                json={
-                    "aggregateBy": [{"dataTypeName": "com.google.heart_rate.bpm"}],
-                    "bucketByTime": {"durationMillis": day_ms},
-                    "startTimeMillis": now_ms - day_ms,
-                    "endTimeMillis": now_ms,
-                }
-            )
-
-            # Sleep
-            sleep_response = await client.post(
-                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
-                headers=headers,
-                json={
-                    "aggregateBy": [{"dataTypeName": "com.google.sleep.segment"}],
-                    "bucketByTime": {"durationMillis": day_ms},
-                    "startTimeMillis": now_ms - day_ms,
-                    "endTimeMillis": now_ms,
-                }
-            )
-
-            # Steps
-            steps_response = await client.post(
-                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
-                headers=headers,
-                json={
-                    "aggregateBy": [{"dataTypeName": "com.google.step_count.delta"}],
-                    "bucketByTime": {"durationMillis": day_ms},
-                    "startTimeMillis": now_ms - day_ms,
-                    "endTimeMillis": now_ms,
-                }
-            )
-
-            result = {"source": "google_fit", "synced_at": datetime.now(timezone.utc).isoformat()}
-
-            # Parse heart rate
-            if hr_response.status_code == 200:
-                hr_data = hr_response.json()
-                bpm_values = []
-                for bucket in hr_data.get("bucket", []):
-                    for dataset in bucket.get("dataset", []):
-                        for point in dataset.get("point", []):
-                            for val in point.get("value", []):
-                                if "fpVal" in val:
-                                    bpm_values.append(val["fpVal"])
-                if bpm_values:
-                    result["bpm"] = round(sum(bpm_values) / len(bpm_values))
-                    result["bpm_average"] = round(min(bpm_values))
-                    result["hrv"] = max(10, round(60 - (max(bpm_values) - min(bpm_values))))
-
-            # Parse sleep
-            if sleep_response.status_code == 200:
-                sleep_data = sleep_response.json()
-                total_sleep_ms = 0
-                for bucket in sleep_data.get("bucket", []):
-                    for dataset in bucket.get("dataset", []):
-                        for point in dataset.get("point", []):
-                            start = int(point.get("startTimeNanos", 0)) / 1e6
-                            end = int(point.get("endTimeNanos", 0)) / 1e6
-                            total_sleep_ms += (end - start)
-                if total_sleep_ms > 0:
-                    result["sleep_hours"] = round(total_sleep_ms / 3600000, 1)
-
-            # Parse steps
-            if steps_response.status_code == 200:
-                steps_data = steps_response.json()
-                total_steps = 0
-                for bucket in steps_data.get("bucket", []):
-                    for dataset in bucket.get("dataset", []):
-                        for point in dataset.get("point", []):
-                            for val in point.get("value", []):
-                                if "intVal" in val:
-                                    total_steps += val["intVal"]
-                result["steps"] = total_steps
-
-            return result
-    except Exception as e:
-        logger.error(f"Error fetching Google Fit biometrics: {e}")
-        return None
-
-
 async def refresh_access_token(refresh_token: str) -> dict | None:
     """Usa o refresh_token para obter um novo access_token do Google."""
     if not is_configured() or not refresh_token:
@@ -189,4 +96,221 @@ async def refresh_access_token(refresh_token: str) -> dict | None:
             return None
     except Exception as e:
         logger.error(f"Error refreshing Google Fit token: {e}")
+        return None
+
+
+async def fetch_biometrics(access_token: str) -> dict | None:
+    """Busca dados reais do Google Fit: BPM, Steps, Sleep com granularidade horaria."""
+    if not access_token:
+        return None
+    try:
+        import httpx
+        headers = {"Authorization": f"Bearer {access_token}"}
+        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        day_ms = 86400000
+        hour_ms = 3600000
+        start_ms = now_ms - day_ms
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Heart rate (hourly buckets for exercise detection)
+            hr_response = await client.post(
+                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
+                headers=headers,
+                json={
+                    "aggregateBy": [{"dataTypeName": "com.google.heart_rate.bpm"}],
+                    "bucketByTime": {"durationMillis": hour_ms},
+                    "startTimeMillis": start_ms,
+                    "endTimeMillis": now_ms,
+                }
+            )
+
+            # Steps (hourly buckets for exercise detection)
+            steps_response = await client.post(
+                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
+                headers=headers,
+                json={
+                    "aggregateBy": [{"dataTypeName": "com.google.step_count.delta"}],
+                    "bucketByTime": {"durationMillis": hour_ms},
+                    "startTimeMillis": start_ms,
+                    "endTimeMillis": now_ms,
+                }
+            )
+
+            # Sleep segments (last 24h)
+            sleep_response = await client.post(
+                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
+                headers=headers,
+                json={
+                    "aggregateBy": [{"dataTypeName": "com.google.sleep.segment"}],
+                    "bucketByTime": {"durationMillis": day_ms},
+                    "startTimeMillis": start_ms,
+                    "endTimeMillis": now_ms,
+                }
+            )
+
+            result = {
+                "source": "google_fit",
+                "synced_at": datetime.now(timezone.utc).isoformat(),
+                "has_real_data": False,
+            }
+
+            # ── Parse Heart Rate (hourly) ──
+            all_bpm = []
+            hourly_bpm = {}
+            if hr_response.status_code == 200:
+                hr_data = hr_response.json()
+                for bucket in hr_data.get("bucket", []):
+                    bucket_start = int(bucket.get("startTimeMillis", 0))
+                    hour_key = datetime.fromtimestamp(bucket_start / 1000, tz=timezone.utc).strftime("%H:00")
+                    bucket_bpm = []
+                    for dataset in bucket.get("dataset", []):
+                        for point in dataset.get("point", []):
+                            for val in point.get("value", []):
+                                if "fpVal" in val:
+                                    bpm_val = round(val["fpVal"])
+                                    all_bpm.append(bpm_val)
+                                    bucket_bpm.append(bpm_val)
+                    if bucket_bpm:
+                        hourly_bpm[hour_key] = {
+                            "avg": round(sum(bucket_bpm) / len(bucket_bpm)),
+                            "max": max(bucket_bpm),
+                            "min": min(bucket_bpm),
+                            "count": len(bucket_bpm),
+                        }
+
+                if all_bpm:
+                    result["bpm"] = round(sum(all_bpm) / len(all_bpm))
+                    result["bpm_max"] = max(all_bpm)
+                    result["bpm_min"] = min(all_bpm)
+                    result["bpm_average"] = result["bpm_min"]
+                    # HRV estimado pela variacao (Google Fit nao retorna HRV diretamente)
+                    result["hrv"] = max(10, round(60 - (max(all_bpm) - min(all_bpm))))
+                    result["hourly_bpm"] = hourly_bpm
+                    result["has_real_data"] = True
+
+            # ── Parse Steps (hourly) ──
+            total_steps = 0
+            hourly_steps = {}
+            if steps_response.status_code == 200:
+                steps_data = steps_response.json()
+                for bucket in steps_data.get("bucket", []):
+                    bucket_start = int(bucket.get("startTimeMillis", 0))
+                    hour_key = datetime.fromtimestamp(bucket_start / 1000, tz=timezone.utc).strftime("%H:00")
+                    bucket_steps = 0
+                    for dataset in bucket.get("dataset", []):
+                        for point in dataset.get("point", []):
+                            for val in point.get("value", []):
+                                if "intVal" in val:
+                                    bucket_steps += val["intVal"]
+                    total_steps += bucket_steps
+                    if bucket_steps > 0:
+                        hourly_steps[hour_key] = bucket_steps
+
+                result["steps"] = total_steps
+                result["hourly_steps"] = hourly_steps
+                if total_steps > 0:
+                    result["has_real_data"] = True
+
+            # ── Parse Sleep (quality breakdown) ──
+            sleep_segments = []
+            total_sleep_ms = 0
+            deep_sleep_ms = 0
+            light_sleep_ms = 0
+            rem_sleep_ms = 0
+            if sleep_response.status_code == 200:
+                sleep_data = sleep_response.json()
+                for bucket in sleep_data.get("bucket", []):
+                    for dataset in bucket.get("dataset", []):
+                        for point in dataset.get("point", []):
+                            start_ns = int(point.get("startTimeNanos", 0))
+                            end_ns = int(point.get("endTimeNanos", 0))
+                            duration_ms = (end_ns - start_ns) / 1e6
+                            segment_type = 2  # default generic sleep
+                            for val in point.get("value", []):
+                                if "intVal" in val:
+                                    segment_type = val["intVal"]
+
+                            type_name = SLEEP_TYPES.get(segment_type, "sleep")
+                            if type_name in ("sleep", "light_sleep", "deep_sleep", "rem"):
+                                total_sleep_ms += duration_ms
+                            if type_name == "deep_sleep":
+                                deep_sleep_ms += duration_ms
+                            elif type_name == "light_sleep" or type_name == "sleep":
+                                light_sleep_ms += duration_ms
+                            elif type_name == "rem":
+                                rem_sleep_ms += duration_ms
+
+                            sleep_segments.append({
+                                "type": type_name,
+                                "duration_min": round(duration_ms / 60000, 1),
+                            })
+
+                if total_sleep_ms > 0:
+                    result["sleep_hours"] = round(total_sleep_ms / 3600000, 1)
+                    result["sleep_quality"] = {
+                        "deep_hours": round(deep_sleep_ms / 3600000, 1),
+                        "light_hours": round(light_sleep_ms / 3600000, 1),
+                        "rem_hours": round(rem_sleep_ms / 3600000, 1),
+                        "segments": sleep_segments[:20],  # limite para nao encher o doc
+                    }
+                    result["has_real_data"] = True
+
+            # ── Exercise Detection (hourly cross-reference) ──
+            exercise_hours = []
+            rest_high_bpm_hours = []
+            for hour_key, bpm_data in hourly_bpm.items():
+                steps_in_hour = hourly_steps.get(hour_key, 0)
+                avg_bpm = bpm_data["avg"]
+                # BPM alto COM passos altos = exercicio
+                if avg_bpm > 90 and steps_in_hour > 300:
+                    exercise_hours.append({
+                        "hour": hour_key,
+                        "avg_bpm": avg_bpm,
+                        "steps": steps_in_hour,
+                        "classification": "exercicio"
+                    })
+                # BPM alto SEM passos = potencial estresse
+                elif avg_bpm > 95 and steps_in_hour < 100:
+                    rest_high_bpm_hours.append({
+                        "hour": hour_key,
+                        "avg_bpm": avg_bpm,
+                        "steps": steps_in_hour,
+                        "classification": "estresse_potencial"
+                    })
+
+            result["activity_analysis"] = {
+                "exercise_hours": exercise_hours,
+                "rest_high_bpm_hours": rest_high_bpm_hours,
+                "exercise_detected": len(exercise_hours) > 0,
+                "stress_periods_detected": len(rest_high_bpm_hours) > 0,
+                "total_exercise_hours": len(exercise_hours),
+                "total_stress_hours": len(rest_high_bpm_hours),
+            }
+
+            # ── Sleep Recovery Factor ──
+            sleep_h = result.get("sleep_hours", 7)
+            if sleep_h >= 7:
+                recovery_factor = 1.0
+                recovery_label = "Recuperacao Otima"
+            elif sleep_h >= 6:
+                recovery_factor = 0.85
+                recovery_label = "Recuperacao Moderada"
+            elif sleep_h >= 5:
+                recovery_factor = 0.7
+                recovery_label = "Recuperacao Insuficiente"
+            else:
+                recovery_factor = 0.55
+                recovery_label = "Recuperacao Critica"
+
+            result["recovery"] = {
+                "factor": recovery_factor,
+                "label": recovery_label,
+                "sleep_hours": sleep_h,
+                "stress_threshold_adjustment": round((1 - recovery_factor) * 15),
+            }
+
+            return result
+
+    except Exception as e:
+        logger.error(f"Error fetching Google Fit biometrics: {e}")
         return None

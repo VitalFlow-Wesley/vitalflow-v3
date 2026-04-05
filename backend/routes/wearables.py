@@ -232,7 +232,7 @@ async def _activate_premium_trial_on_first_wearable(colaborador_id: str):
 
 @router.post("/wearables/sync")
 async def sync_wearable_data(request: Request):
-    """Sincronizacao em background: usa tokens salvos para buscar dados atualizados do Google Fit."""
+    """Sincronizacao em background: busca dados reais do Google Fit, detecta exercicio e auto-analisa."""
     try:
         colaborador = await get_current_colaborador(request)
         cid = colaborador["id"]
@@ -274,7 +274,84 @@ async def sync_wearable_data(request: Request):
                 {"$set": {"last_sync": datetime.now(timezone.utc).isoformat()}}
             )
 
-            return {"status": "synced", "data": {k: v for k, v in biometrics.items() if k != "_id"}}
+            # ── Auto-analise com dados reais ──
+            analysis_result = None
+            if biometrics.get("has_real_data") and biometrics.get("bpm"):
+                from services.ai_service import analyze_biometrics, classify_activity, calculate_sleep_recovery
+                from models import BiometricInput, Analysis
+
+                sleep_h = biometrics.get("sleep_hours", 7)
+                steps = biometrics.get("steps", 0)
+                bpm = biometrics.get("bpm", 70)
+                hrv = biometrics.get("hrv", 50)
+                bpm_avg = biometrics.get("bpm_average", 70)
+
+                # Deteccao de exercicio vs estresse
+                activity_analysis = biometrics.get("activity_analysis", {})
+                exercise_detected = activity_analysis.get("exercise_detected", False)
+                avg_steps_per_hour = steps // 24 if steps > 0 else 0
+                activity_ctx = classify_activity(bpm, steps, avg_steps_per_hour)
+
+                # Recuperacao por sono
+                recovery = calculate_sleep_recovery(sleep_h, biometrics.get("sleep_quality"))
+
+                # Preparar input para analise
+                input_data = BiometricInput(
+                    hrv=max(0, min(200, hrv)),
+                    bpm=max(40, min(200, bpm)),
+                    bpm_average=max(40, min(120, bpm_avg)),
+                    sleep_hours=min(24, sleep_h),
+                    cognitive_load=5,
+                    colaborador_id=cid,
+                    user_name=colaborador.get("nome", "Colaborador"),
+                    age=30
+                )
+
+                ai_result = await analyze_biometrics(input_data, activity_ctx, recovery)
+
+                # Salvar analise
+                analysis = Analysis(
+                    v_score=ai_result["v_score"],
+                    area_afetada=ai_result["area_afetada"],
+                    status_visual=ai_result["status_visual"],
+                    tag_rapida=ai_result["tag_rapida"],
+                    causa_provavel=ai_result["causa_provavel"],
+                    nudge_acao=ai_result["nudge_acao"],
+                    input_data=input_data,
+                    colaborador_id=cid
+                )
+                doc = analysis.model_dump()
+                doc['timestamp'] = doc['timestamp'].isoformat()
+                doc['input_data'] = input_data.model_dump()
+                doc['source'] = 'google_fit_auto'
+                doc['activity_context'] = activity_ctx
+                doc['recovery'] = recovery
+                doc['real_data'] = {
+                    "steps": steps,
+                    "sleep_hours": sleep_h,
+                    "exercise_detected": exercise_detected,
+                    "exercise_hours": activity_analysis.get("total_exercise_hours", 0),
+                    "stress_periods": activity_analysis.get("total_stress_hours", 0),
+                }
+                await db.analyses.insert_one(doc)
+
+                analysis_result = {
+                    "v_score": ai_result["v_score"],
+                    "status_visual": ai_result["status_visual"],
+                    "tag_rapida": ai_result["tag_rapida"],
+                    "exercise_detected": exercise_detected,
+                    "recovery_label": recovery["label"],
+                    "sleep_hours": sleep_h,
+                    "steps": steps,
+                }
+
+            safe_biometrics = {k: v for k, v in biometrics.items() if k not in ("_id", "hourly_bpm", "hourly_steps")}
+            return {
+                "status": "synced",
+                "has_real_data": biometrics.get("has_real_data", False),
+                "data": safe_biometrics,
+                "auto_analysis": analysis_result,
+            }
 
         return {"status": "no_data", "message": "Nenhum dado novo disponivel do Google Fit."}
     except HTTPException:

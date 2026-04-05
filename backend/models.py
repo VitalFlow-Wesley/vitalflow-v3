@@ -232,6 +232,7 @@ class SmartwatchAnalysisResult(BaseModel):
     detected_at: str
     risk_level: str
     push_notification_sent: bool = False
+    is_exercise: bool = False
 
 
 class EnergyStatus(BaseModel):

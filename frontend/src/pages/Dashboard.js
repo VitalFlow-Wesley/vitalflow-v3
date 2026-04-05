@@ -124,11 +124,23 @@ const Dashboard = () => {
   };
 
   // Background sync: sincroniza dados do wearable a cada 30 min
+  const [lastSyncData, setLastSyncData] = useState(null);
+
   const backgroundSync = useCallback(async () => {
     try {
       const { data } = await axios.post(`${API}/wearables/sync`, {}, { withCredentials: true });
       if (data.status === "synced") {
-        toast.success("Dados do wearable sincronizados automaticamente!", { duration: 3000 });
+        setLastSyncData(data);
+        if (data.has_real_data && data.auto_analysis) {
+          const a = data.auto_analysis;
+          const exerciseMsg = a.exercise_detected ? " | Exercicio detectado!" : "";
+          toast.success(
+            `Sync Real: V-Score ${a.v_score} (${a.status_visual}) - ${a.recovery_label}${exerciseMsg}`,
+            { duration: 5000 }
+          );
+        } else {
+          toast.success("Dados do wearable sincronizados!", { duration: 3000 });
+        }
         fetchHistory();
         fetchConnectedDevices();
       }
@@ -384,6 +396,56 @@ const Dashboard = () => {
                   <span className="text-xs text-neutral-500">Confianca: {predictiveAlert.alert.confidence}%</span>
                 </div>
                 <p className="text-sm text-neutral-200">{predictiveAlert.alert.message}</p>
+              </motion.div>
+            )}
+
+            {/* Real Wearable Data Card */}
+            {lastSyncData?.has_real_data && lastSyncData?.auto_analysis && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="border border-cyan-500/30 bg-cyan-500/5 rounded-md p-4"
+                data-testid="real-data-card"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">Sensores Reais - Google Fit</span>
+                  {lastSyncData.auto_analysis.exercise_detected && (
+                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30">
+                      Exercicio Detectado
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-neutral-900/50 rounded-md p-2.5 border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">BPM</p>
+                    <p className="text-lg font-mono font-bold text-rose-400" data-testid="real-bpm">
+                      {lastSyncData.data?.bpm || "—"}
+                    </p>
+                  </div>
+                  <div className="bg-neutral-900/50 rounded-md p-2.5 border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Passos</p>
+                    <p className="text-lg font-mono font-bold text-blue-400" data-testid="real-steps">
+                      {lastSyncData.auto_analysis.steps?.toLocaleString() || "0"}
+                    </p>
+                  </div>
+                  <div className="bg-neutral-900/50 rounded-md p-2.5 border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Sono</p>
+                    <p className="text-lg font-mono font-bold text-indigo-400" data-testid="real-sleep">
+                      {lastSyncData.auto_analysis.sleep_hours || "—"}h
+                    </p>
+                  </div>
+                  <div className="bg-neutral-900/50 rounded-md p-2.5 border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Recuperacao</p>
+                    <p className={`text-xs font-bold ${
+                      lastSyncData.auto_analysis.recovery_label?.includes("Otima") ? "text-emerald-400" :
+                      lastSyncData.auto_analysis.recovery_label?.includes("Moderada") ? "text-amber-400" :
+                      "text-rose-400"
+                    }`} data-testid="real-recovery">
+                      {lastSyncData.auto_analysis.recovery_label || "—"}
+                    </p>
+                  </div>
+                </div>
               </motion.div>
             )}
 

@@ -1,0 +1,59 @@
+# VitalFlow v3.1 - Docker Compose (dev local + Railway)
+# Uso: docker compose up --build
+
+services:
+  # MongoDB
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Backend (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - DB_NAME=vitalflow_dev
+      - JWT_SECRET=dev-secret-change-in-production
+      - ADMIN_EMAIL=admin@vitalflow.com
+      - ADMIN_PASSWORD=Admin123!@#
+      - EMERGENT_LLM_KEY=${EMERGENT_LLM_KEY}
+      - GOOGLE_FIT_CLIENT_ID=${GOOGLE_FIT_CLIENT_ID}
+      - GOOGLE_FIT_CLIENT_SECRET=${GOOGLE_FIT_CLIENT_SECRET}
+      - GOOGLE_FIT_REDIRECT_URI=http://localhost:8001/api/wearables/google-fit/callback
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+
+  # Frontend (React dev server)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:8001
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+    command: yarn start
+
+volumes:
+  mongo_data:

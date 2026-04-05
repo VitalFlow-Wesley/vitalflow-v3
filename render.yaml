@@ -1,0 +1,57 @@
+# VitalFlow v3.1 - Render.com Blueprint
+# Deploy: connect repo → Render auto-detects this file
+
+services:
+  # ── Web Service (Backend + Frontend) ──
+  - type: web
+    name: vitalflow
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter  # $7/mo, 24/7 uptime (free tier sleeps after 15 min)
+    region: oregon
+    healthCheckPath: /api/
+    buildFilter:
+      paths:
+        - backend/**
+        - frontend/**
+        - Dockerfile
+
+    envVars:
+      # MongoDB Atlas (free tier: mongodb.com/atlas)
+      - key: MONGO_URL
+        sync: false  # set manually in Render dashboard
+
+      - key: DB_NAME
+        value: vitalflow_prod
+
+      # Auth
+      - key: JWT_SECRET
+        generateValue: true
+
+      - key: ADMIN_EMAIL
+        value: admin@vitalflow.com
+
+      - key: ADMIN_PASSWORD
+        sync: false  # set manually
+
+      # AI (Emergent LLM)
+      - key: EMERGENT_LLM_KEY
+        sync: false  # set manually
+
+      # Google Fit OAuth
+      - key: GOOGLE_FIT_CLIENT_ID
+        sync: false
+
+      - key: GOOGLE_FIT_CLIENT_SECRET
+        sync: false
+
+      - key: GOOGLE_FIT_REDIRECT_URI
+        sync: false  # https://vitalflow.onrender.com/api/wearables/google-fit/callback
+
+      # Frontend URL (for CORS)
+      - key: FRONTEND_URL
+        value: https://vitalflow.onrender.com
+
+      # React build-time variable
+      - key: REACT_APP_BACKEND_URL
+        value: https://vitalflow.onrender.com
