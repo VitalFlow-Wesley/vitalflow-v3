@@ -1,4 +1,4 @@
-import { Brain, Settings, User, LogOut, BarChart3, Radio } from "lucide-react";
+import { Brain, Settings, User, LogOut, BarChart3, Radio, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
@@ -78,6 +78,16 @@ const Navbar = () => {
             >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Dispositivos</span>
+            </button>
+
+            {/* Meu Relatorio */}
+            <button
+              onClick={() => navigate("/relatorio")}
+              data-testid="meu-relatorio-button"
+              className="px-3 py-2 border border-white/20 text-white text-sm font-semibold rounded-md hover:bg-white/5 transition-all duration-200 flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Relatorio</span>
             </button>
 
             {/* User Dropdown */}

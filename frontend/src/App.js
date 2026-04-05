@@ -5,6 +5,7 @@ import ProtectedRoute, { GestorRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import ConnectDevices from "./pages/ConnectDevices";
 import Profile from "./pages/Profile";
+import MeuRelatorio from "./pages/MeuRelatorio";
 import GestorDashboard from "./pages/GestorDashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -39,6 +40,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorio"
+              element={
+                <ProtectedRoute>
+                  <MeuRelatorio />
                 </ProtectedRoute>
               }
             />

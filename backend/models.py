@@ -40,6 +40,8 @@ class AuthResponse(BaseModel):
     premium_expires_at: Optional[str] = None
     energy_points: int = 0
     current_streak: int = 0
+    must_change_password: bool = False
+    must_accept_lgpd: bool = False
 
 
 # ─── Colaborador ───
@@ -71,6 +73,10 @@ class Colaborador(BaseModel):
     longest_streak: int = 0
     last_nudge_date: Optional[str] = None
     badges: List[dict] = Field(default_factory=list)
+    must_change_password: bool = False
+    must_accept_lgpd: bool = False
+    lgpd_accepted_at: Optional[str] = None
+    registered_by_rh: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

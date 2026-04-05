@@ -29,6 +29,8 @@ const GestorDashboard = () => {
   const [teamOverview, setTeamOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("7d");
+  const [setor, setSetor] = useState("");
+  const [setores, setSetores] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ nome: "", email: "", setor: "Operacional", cargo: "", nivel_acesso: "User" });
   const [addLoading, setAddLoading] = useState(false);
@@ -39,15 +41,23 @@ const GestorDashboard = () => {
       navigate('/');
       return;
     }
+    fetchSetores();
     fetchAllMetrics();
-  }, [user, navigate, period]);
+  }, [user, navigate, period, setor]);
+
+  const fetchSetores = async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/dashboard/setores`, { withCredentials: true });
+      setSetores(data.setores || []);
+    } catch (err) {}
+  };
 
   const fetchAllMetrics = async () => {
     setLoading(true);
     try {
       const [stressRes, overviewRes] = await Promise.all([
         axios.get(`${API_URL}/api/dashboard/team-stress`, { withCredentials: true }),
-        axios.get(`${API_URL}/api/dashboard/team-overview?period=${period}`, { withCredentials: true })
+        axios.get(`${API_URL}/api/dashboard/team-overview?period=${period}&setor=${setor}`, { withCredentials: true })
       ]);
       setStressMetrics(stressRes.data);
       setTeamOverview(overviewRes.data);

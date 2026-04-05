@@ -139,6 +139,16 @@ async def google_fit_callback(code: str = "", state: str = ""):
         }
         await db.wearable_devices.insert_one(device)
 
+    # Ativar Premium Trial 7 dias no primeiro vinculo com wearable
+    colab = await db.colaboradores.find_one({"id": state}, {"_id": 0, "is_premium": 1, "premium_expires_at": 1})
+    if colab and not colab.get("is_premium") and not colab.get("premium_expires_at"):
+        from datetime import timedelta
+        trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+        await db.colaboradores.update_one(
+            {"id": state},
+            {"$set": {"is_premium": True, "premium_expires_at": trial_expires, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+
     # Fetch initial biometrics
     biometrics = await google_fit_service.fetch_biometrics(tokens.get("access_token"))
     if biometrics:
@@ -190,6 +200,9 @@ async def wearable_oauth_callback(request: Request):
             }
             await db.wearable_devices.insert_one(device)
 
+        # Ativar Premium Trial no primeiro vinculo
+        await _activate_premium_trial_on_first_wearable(colaborador["id"])
+
         return {
             "status": "authorized", "device_id": device_id,
             "provider": provider, "sync_data": sync_data,
@@ -200,3 +213,17 @@ async def wearable_oauth_callback(request: Request):
     except Exception as e:
         logger.error(f"Error in OAuth callback: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _activate_premium_trial_on_first_wearable(colaborador_id: str):
+    """Ativa Premium Trial 7 dias no primeiro vinculo com wearable."""
+    colab = await db.colaboradores.find_one(
+        {"id": colaborador_id}, {"_id": 0, "is_premium": 1, "premium_expires_at": 1}
+    )
+    if colab and not colab.get("is_premium") and not colab.get("premium_expires_at"):
+        from datetime import timedelta
+        trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+        await db.colaboradores.update_one(
+            {"id": colaborador_id},
+            {"$set": {"is_premium": True, "premium_expires_at": trial_expires, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )

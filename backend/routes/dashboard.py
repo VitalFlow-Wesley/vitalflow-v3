@@ -73,6 +73,23 @@ async def get_colaboradores(request: Request, setor: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/dashboard/setores")
+async def get_setores(request: Request):
+    """Lista os setores disponíveis para filtro."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        if colaborador["nivel_acesso"] != "Gestor":
+            raise HTTPException(status_code=403, detail="Acesso negado.")
+        setores = await db.colaboradores.distinct("setor")
+        return {"setores": sorted(setores)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching setores: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 @router.post("/dashboard/add-employee")
 async def add_employee(request: Request):
     try:
@@ -93,9 +110,18 @@ async def add_employee(request: Request):
         if existing:
             raise HTTPException(status_code=400, detail="Email ja cadastrado.")
 
+        # B2B: vincular mesmo emails pessoais (@gmail etc) ao gestor que cadastrou
+        gestor_domain = gestor.get("domain")
+        gestor_company = None
+        if gestor_domain:
+            corp_check = await db.corporate_domains.find_one({"domain": gestor_domain}, {"_id": 0})
+            if corp_check:
+                gestor_company = corp_check.get("company_name")
+
         domain = email.split("@")[1] if "@" in email else None
-        corp = await db.corporate_domains.find_one({"domain": domain}, {"_id": 0}) if domain else None
-        account_type = "corporate" if corp else "personal"
+        # Se o gestor pertence a uma empresa, vincular o funcionario a mesma empresa
+        account_type = "corporate" if gestor_domain else ("corporate" if domain and await db.corporate_domains.find_one({"domain": domain}, {"_id": 0}) else "personal")
+        linked_domain = gestor_domain if gestor_domain else domain
 
         temp_password = f"Temp{uuid.uuid4().hex[:6]}!"
         nivel_acesso = body.get("nivel_acesso", "User")
@@ -105,7 +131,8 @@ async def add_employee(request: Request):
         new_colab = Colaborador(
             nome=nome, email=email, password_hash=hash_password(temp_password),
             data_nascimento="2000-01-01", setor=setor, nivel_acesso=nivel_acesso,
-            cargo=cargo, account_type=account_type, domain=domain
+            cargo=cargo, account_type=account_type, domain=linked_domain,
+            must_change_password=True, must_accept_lgpd=True, registered_by_rh=True
         )
         doc = new_colab.model_dump()
         doc["created_at"] = doc["created_at"].isoformat()
@@ -126,19 +153,33 @@ async def add_employee(request: Request):
 
 
 @router.get("/dashboard/team-overview")
-async def get_team_overview(request: Request, period: str = "7d"):
+async def get_team_overview(request: Request, period: str = "7d", setor: str = ""):
     try:
         colaborador = await get_current_colaborador(request)
         if colaborador["nivel_acesso"] != "Gestor":
             raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
 
-        total_colabs = await db.colaboradores.count_documents({})
+        colab_filter = {}
+        if setor:
+            colab_filter["setor"] = setor
+
+        total_colabs = await db.colaboradores.count_documents(colab_filter)
+
+        # Get filtered colaborador IDs
+        colab_ids = None
+        if setor:
+            colabs = await db.colaboradores.find(colab_filter, {"_id": 0, "id": 1}).to_list(10000)
+            colab_ids = [c["id"] for c in colabs]
         period_map = {"7d": 7, "30d": 30, "6m": 180}
         days = period_map.get(period, 7)
         period_start = datetime.now(timezone.utc) - timedelta(days=days)
 
+        analysis_query = {"timestamp": {"$gte": period_start.isoformat()}}
+        if colab_ids is not None:
+            analysis_query["colaborador_id"] = {"$in": colab_ids}
+
         all_analyses = await db.analyses.find(
-            {"timestamp": {"$gte": period_start.isoformat()}},
+            analysis_query,
             {"_id": 0, "v_score": 1, "timestamp": 1, "status_visual": 1, "colaborador_id": 1}
         ).sort("timestamp", 1).to_list(5000)
 

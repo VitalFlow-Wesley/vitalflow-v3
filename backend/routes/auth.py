@@ -66,7 +66,9 @@ def _build_auth_response(colab: dict, company_name: str | None = None) -> AuthRe
         is_premium=is_premium,
         premium_expires_at=premium_expires_at,
         energy_points=colab.get("energy_points", 0),
-        current_streak=colab.get("current_streak", 0)
+        current_streak=colab.get("current_streak", 0),
+        must_change_password=colab.get("must_change_password", False),
+        must_accept_lgpd=colab.get("must_accept_lgpd", False)
     )
 
 
@@ -89,22 +91,45 @@ async def register(data: RegisterRequest, response: Response):
     try:
         email_lower = data.email.lower()
         existing = await db.colaboradores.find_one({"email": email_lower}, {"_id": 0})
+
+        # B2B por pre-cadastro: se email ja foi cadastrado pelo RH, vincular
         if existing:
+            if existing.get("registered_by_rh") and existing.get("must_change_password"):
+                # Usuario cadastrado pelo RH fazendo primeiro acesso — atualizar senha
+                await db.colaboradores.update_one(
+                    {"id": existing["id"]},
+                    {"$set": {
+                        "password_hash": hash_password(data.password),
+                        "nome": data.nome,
+                        "data_nascimento": data.data_nascimento.isoformat(),
+                        "must_change_password": True,
+                        "must_accept_lgpd": True,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                updated = await db.colaboradores.find_one({"id": existing["id"]}, {"_id": 0})
+                _set_auth_cookies(
+                    response,
+                    create_access_token(updated["id"], updated["email"]),
+                    create_refresh_token(updated["id"])
+                )
+                company_name = await _get_company_name(
+                    updated.get("account_type", "personal"), updated.get("domain")
+                )
+                return _build_auth_response(updated, company_name)
             raise HTTPException(status_code=400, detail="Email ja cadastrado")
 
         is_corporate, domain, company_name = await check_corporate_domain(email_lower)
         account_type = "corporate" if is_corporate else "personal"
 
-        # 7 dias de Premium Trial para todo novo cadastro
-        trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
-
+        # Premium Trial NAO ativa no cadastro — ativa ao vincular wearable
         colaborador = Colaborador(
             nome=data.nome, email=email_lower,
             password_hash=hash_password(data.password),
             data_nascimento=data.data_nascimento.isoformat(),
             setor=data.setor, nivel_acesso=data.nivel_acesso,
             account_type=account_type, domain=domain,
-            is_premium=True, premium_expires_at=trial_expires
+            is_premium=False, premium_expires_at=None
         )
 
         doc = colaborador.model_dump()
@@ -157,6 +182,51 @@ async def logout(response: Response):
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("refresh_token", path="/")
     return {"message": "Logout realizado com sucesso"}
+
+
+@router.post("/auth/change-password")
+async def change_password(request: Request):
+    """Troca de senha obrigatoria para usuarios cadastrados pelo RH."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        body = await request.json()
+        new_password = body.get("new_password", "")
+        if len(new_password) < 6:
+            raise HTTPException(status_code=400, detail="Senha deve ter no minimo 6 caracteres.")
+
+        await db.colaboradores.update_one(
+            {"id": colaborador["id"]},
+            {"$set": {
+                "password_hash": hash_password(new_password),
+                "must_change_password": False,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Senha alterada com sucesso."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error changing password: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/auth/accept-lgpd")
+async def accept_lgpd(request: Request):
+    """Aceite dos Termos de Privacidade (LGPD)."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        await db.colaboradores.update_one(
+            {"id": colaborador["id"]},
+            {"$set": {
+                "must_accept_lgpd": False,
+                "lgpd_accepted_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Termos aceitos com sucesso."}
+    except Exception as e:
+        logger.error(f"Error accepting LGPD: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/auth/me", response_model=AuthResponse)

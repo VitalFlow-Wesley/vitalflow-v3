@@ -11,7 +11,7 @@ const STEPS = [
     iconBg: "bg-cyan-500/10 border-cyan-500/30",
     title: "Bem-vindo ao VitalFlow",
     subtitle: "Seu copiloto de longevidade e saude mental",
-    body: "O VitalFlow analisa seus dados biometricos em tempo real e transforma numeros em acoes praticas para voce viver melhor.",
+    body: "O VitalFlow analisa seus dados biometricos em tempo real e transforma numeros em sugestoes de rotina para voce viver melhor. Importante: o VitalFlow e uma ferramenta de suporte ao bem-estar e nao substitui consulta medica profissional.",
     highlight: null,
   },
   {
@@ -21,7 +21,7 @@ const STEPS = [
     iconBg: "bg-emerald-500/10 border-emerald-500/30",
     title: "Seu V-Score",
     subtitle: "O termometro da sua vitalidade",
-    body: "O StatusOrb pulsa e muda de cor conforme sua saude: Verde (80-100) voce esta otimo, Amarelo (50-79) atencao necessaria, Vermelho (0-49) alerta critico. Cada analise gera um Nudge: uma acao rapida de 5 minutos para melhorar seu estado agora.",
+    body: "O StatusOrb pulsa e muda de cor conforme seus indicadores de bem-estar: Verde (80-100) voce esta otimo, Amarelo (50-79) atencao necessaria, Vermelho (0-49) alerta critico. Cada analise gera uma Sugestao de Rotina: uma acao rapida de 5 minutos para melhorar seu estado agora.",
     highlight: "status-orb-container",
   },
   {

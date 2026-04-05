@@ -8,6 +8,7 @@ import AIAnalysis from "../components/AIAnalysis";
 import NudgeCard from "../components/NudgeCard";
 import HistoryChart from "../components/HistoryChart";
 import OnboardingTour from "../components/OnboardingTour";
+import FirstAccessFlow from "../components/FirstAccessFlow";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -27,6 +28,7 @@ const Dashboard = () => {
   const [gamStats, setGamStats] = useState(null);
   const [healthTrend, setHealthTrend] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showFirstAccess, setShowFirstAccess] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const pollingIntervalRef = useRef(null);
   const lastAnalysisIdRef = useRef(null);
@@ -45,10 +47,15 @@ const Dashboard = () => {
     };
     init();
 
-    // Check if onboarding should be shown
-    const onboardingDone = localStorage.getItem("vitalflow_onboarding_done");
-    if (!onboardingDone) {
-      setShowOnboarding(true);
+    // Check if first access flow is needed (RH-registered user)
+    if (user?.must_change_password || user?.must_accept_lgpd) {
+      setShowFirstAccess(true);
+    } else {
+      // Check if onboarding should be shown
+      const onboardingDone = localStorage.getItem("vitalflow_onboarding_done");
+      if (!onboardingDone) {
+        setShowOnboarding(true);
+      }
     }
 
     return () => stopPolling();
@@ -152,8 +159,21 @@ const Dashboard = () => {
     <div className="min-h-screen bg-neutral-950">
       <Navbar />
 
+      {/* First Access Flow (RH-registered users) */}
+      {showFirstAccess && (
+        <FirstAccessFlow
+          user={user}
+          onComplete={() => {
+            setShowFirstAccess(false);
+            refreshUser();
+            const onboardingDone = localStorage.getItem("vitalflow_onboarding_done");
+            if (!onboardingDone) setShowOnboarding(true);
+          }}
+        />
+      )}
+
       {/* Onboarding Tour */}
-      {showOnboarding && (
+      {showOnboarding && !showFirstAccess && (
         <OnboardingTour onComplete={() => setShowOnboarding(false)} />
       )}
 

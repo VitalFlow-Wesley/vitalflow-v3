@@ -66,7 +66,7 @@ const AIAnalysis = ({ tag, cause, status }) => {
       {/* Cause */}
       <div>
         <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
-          CAUSA PROVÁVEL
+          ANALISE DE TENDENCIAS
         </h4>
         <p className="text-sm sm:text-base text-white leading-relaxed font-body" data-testid="analysis-cause">
           {cause}

@@ -100,10 +100,10 @@ async def get_health_trend(request: Request):
 
         if avg_7d < 50:
             requires_intervention = True
-            intervention_message = f"Lei 14.831 - Intervencao Necessaria: V-Score medio de {avg_7d}/100 nos ultimos 7 dias indica risco a saude mental do colaborador."
+            intervention_message = f"Atencao: Seus indicadores de bem-estar estao com media de {avg_7d}/100 nos ultimos 7 dias. Recomendamos que voce consulte um profissional de saude para uma avaliacao completa."
         elif trend == "falling" and avg_7d < 60:
             requires_intervention = True
-            intervention_message = f"Lei 14.831 - Atencao: Tendencia de queda no V-Score (media {avg_7d}/100). Recomenda-se intervencao preventiva."
+            intervention_message = f"Seus indicadores de bem-estar mostram tendencia de queda (media {avg_7d}/100). Considere ajustar sua rotina e, se persistir, procure orientacao profissional."
 
         consecutive_bad = 0
         for d in reversed(v_scores_7d):
@@ -113,7 +113,7 @@ async def get_health_trend(request: Request):
                 break
         if consecutive_bad >= 3:
             requires_intervention = True
-            intervention_message = f"Lei 14.831 - ALERTA CRITICO: {consecutive_bad} dias consecutivos com V-Score abaixo de 50. Intervencao obrigatoria."
+            intervention_message = f"ALERTA: {consecutive_bad} dias consecutivos com indicadores de bem-estar abaixo de 50. O VitalFlow nao substitui consulta medica. Recomendamos fortemente que voce agende uma consulta com um profissional de saude para investigacao."
 
         return HealthTrendResponse(
             trend=trend, v_scores_7d=v_scores_7d, avg_7d=avg_7d,
@@ -124,4 +124,188 @@ async def get_health_trend(request: Request):
         raise
     except Exception as e:
         logger.error(f"Error getting health trend: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/report/personal")
+async def get_personal_report(request: Request, period: str = "7d"):
+    """Retorna dados do relatorio pessoal do usuario."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        period_map = {"7d": 7, "30d": 30, "6m": 180}
+        days = period_map.get(period, 7)
+        period_start = datetime.now(timezone.utc) - timedelta(days=days)
+
+        analyses = await db.analyses.find(
+            {"colaborador_id": colaborador["id"], "timestamp": {"$gte": period_start.isoformat()}},
+            {"_id": 0, "v_score": 1, "timestamp": 1, "status_visual": 1, "area_afetada": 1,
+             "tag_rapida": 1, "nudge_acao": 1, "causa_provavel": 1}
+        ).sort("timestamp", 1).to_list(5000)
+
+        total = len(analyses)
+        if total == 0:
+            return {
+                "total_analyses": 0, "avg_v_score": 0,
+                "distribution": {"verde": 0, "amarelo": 0, "vermelho": 0},
+                "trend": [], "top_areas": [], "period": period
+            }
+
+        all_scores = [a["v_score"] for a in analyses]
+        avg_v = round(sum(all_scores) / len(all_scores), 1)
+        verde = sum(1 for a in analyses if a["v_score"] >= 80)
+        amarelo = sum(1 for a in analyses if 50 <= a["v_score"] < 80)
+        vermelho = sum(1 for a in analyses if a["v_score"] < 50)
+
+        daily = {}
+        for a in analyses:
+            day = a["timestamp"][:10]
+            daily.setdefault(day, []).append(a["v_score"])
+        trend = [{"date": d, "avg_v_score": round(sum(s)/len(s), 1), "count": len(s)}
+                 for d, s in sorted(daily.items())]
+
+        area_count = {}
+        for a in analyses:
+            for area in a.get("area_afetada", []):
+                area_count[area] = area_count.get(area, 0) + 1
+        top_areas = sorted(area_count.items(), key=lambda x: x[1], reverse=True)[:5]
+
+        return {
+            "total_analyses": total, "avg_v_score": avg_v,
+            "distribution": {"verde": verde, "amarelo": amarelo, "vermelho": vermelho},
+            "trend": trend, "top_areas": [{"area": a[0], "count": a[1]} for a in top_areas],
+            "period": period
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting personal report: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/report/personal/export-pdf")
+async def export_personal_pdf(request: Request, period: str = "7d"):
+    """Exporta PDF do relatorio pessoal. Exclusivo para Premium/Corporate."""
+    try:
+        import io
+        from fastapi.responses import StreamingResponse
+
+        colaborador = await get_current_colaborador(request)
+
+        # Verificar premium
+        is_premium = colaborador.get("is_premium", False)
+        account_type = colaborador.get("account_type", "personal")
+        premium_expires_at = colaborador.get("premium_expires_at")
+
+        if account_type == "personal":
+            if not is_premium:
+                raise HTTPException(status_code=403, detail="Recurso exclusivo do plano Premium.")
+            if premium_expires_at:
+                try:
+                    exp = datetime.fromisoformat(premium_expires_at)
+                    if datetime.now(timezone.utc) > exp:
+                        raise HTTPException(status_code=403, detail="Seu trial Premium expirou. Faca upgrade para exportar PDF.")
+                except (ValueError, TypeError):
+                    pass
+
+        now = datetime.now(timezone.utc)
+        period_map = {"7d": 7, "30d": 30, "6m": 180}
+        days = period_map.get(period, 7)
+        period_start = now - timedelta(days=days)
+        period_label = {"7d": "7 dias", "30d": "30 dias", "6m": "6 meses"}.get(period, "7 dias")
+
+        analyses = await db.analyses.find(
+            {"colaborador_id": colaborador["id"], "timestamp": {"$gte": period_start.isoformat()}},
+            {"_id": 0, "v_score": 1, "status_visual": 1, "timestamp": 1, "area_afetada": 1,
+             "tag_rapida": 1, "nudge_acao": 1, "causa_provavel": 1}
+        ).sort("timestamp", 1).to_list(5000)
+
+        total = len(analyses)
+        all_scores = [a["v_score"] for a in analyses]
+        avg_v = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0
+        verde = sum(1 for a in analyses if a["v_score"] >= 80)
+        amarelo = sum(1 for a in analyses if 50 <= a["v_score"] < 80)
+        vermelho = sum(1 for a in analyses if a["v_score"] < 50)
+
+        area_count = {}
+        for a in analyses:
+            for area in a.get("area_afetada", []):
+                area_count[area] = area_count.get(area, 0) + 1
+        top_areas = sorted(area_count.items(), key=lambda x: x[1], reverse=True)[:4]
+
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.colors import HexColor
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import mm
+
+        buffer = io.BytesIO()
+        pdf_doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=25*mm, bottomMargin=20*mm, leftMargin=20*mm, rightMargin=20*mm)
+
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=22, textColor=HexColor('#111111'), spaceAfter=5*mm)
+        subtitle_style = ParagraphStyle('Subtitle', parent=styles['Normal'], fontSize=11, textColor=HexColor('#666666'), spaceAfter=8*mm)
+        h2_style = ParagraphStyle('H2', parent=styles['Heading2'], fontSize=14, textColor=HexColor('#222222'), spaceBefore=6*mm, spaceAfter=3*mm)
+        body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=10, textColor=HexColor('#333333'), spaceAfter=2*mm)
+
+        elements = []
+        elements.append(Paragraph("VitalFlow - Meu Relatorio de Saude", title_style))
+        elements.append(Paragraph(f"Periodo: Ultimos {period_label} | Gerado em {now.strftime('%d/%m/%Y as %H:%M')} | {colaborador['nome']}", subtitle_style))
+
+        elements.append(Paragraph("Resumo", h2_style))
+        elements.append(Paragraph(f"Total de analises no periodo: {total}", body_style))
+        elements.append(Paragraph(f"V-Score medio: {avg_v}/100", body_style))
+        elements.append(Spacer(1, 5*mm))
+
+        elements.append(Paragraph("Distribuicao de Status", h2_style))
+        dist_data = [
+            ["Status", "Quantidade", "Percentual"],
+            ["Verde (V-Score >= 80)", str(verde), f"{round(verde/total*100,1)}%" if total else "0%"],
+            ["Amarelo (V-Score 50-79)", str(amarelo), f"{round(amarelo/total*100,1)}%" if total else "0%"],
+            ["Vermelho (V-Score < 50)", str(vermelho), f"{round(vermelho/total*100,1)}%" if total else "0%"],
+        ]
+        dist_table = Table(dist_data, colWidths=[200, 100, 100])
+        dist_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), HexColor('#1a1a2e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dddddd')),
+            ('BACKGROUND', (0, 1), (-1, 1), HexColor('#d1fae5')),
+            ('BACKGROUND', (0, 2), (-1, 2), HexColor('#fef3c7')),
+            ('BACKGROUND', (0, 3), (-1, 3), HexColor('#ffe4e6')),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(dist_table)
+        elements.append(Spacer(1, 5*mm))
+
+        if top_areas:
+            elements.append(Paragraph("Areas Mais Afetadas", h2_style))
+            area_data = [["Area", "Ocorrencias"]] + [[a[0], str(a[1])] for a in top_areas]
+            area_table = Table(area_data, colWidths=[250, 100])
+            area_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), HexColor('#1a1a2e')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dddddd')),
+                ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(area_table)
+
+        elements.append(Spacer(1, 10*mm))
+        elements.append(Paragraph("Relatorio gerado pelo VitalFlow. Dados confidenciais do usuario.", ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=HexColor('#999999'))))
+
+        pdf_doc.build(elements)
+        buffer.seek(0)
+
+        return StreamingResponse(
+            buffer, media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=vitalflow_meu_relatorio_{period}_{now.strftime('%Y%m%d')}.pdf"}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting personal PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
