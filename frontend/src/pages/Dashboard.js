@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -11,12 +11,13 @@ import OnboardingTour from "../components/OnboardingTour";
 import FirstAccessFlow from "../components/FirstAccessFlow";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
-import { Lock, Zap, Flame, Trophy, Shield, Smartphone, Radio } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Lock, Zap, Flame, Trophy, Shield, Smartphone, Radio, Stethoscope, X } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 const POLLING_INTERVAL = 10000;
+const BACKGROUND_SYNC_INTERVAL = 30 * 60 * 1000; // 30 min
 
 const Dashboard = () => {
   const { user, refreshUser } = useAuth();
@@ -29,8 +30,11 @@ const Dashboard = () => {
   const [healthTrend, setHealthTrend] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showFirstAccess, setShowFirstAccess] = useState(false);
+  const [showMedicalAlert, setShowMedicalAlert] = useState(false);
+  const [medicalAlertData, setMedicalAlertData] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const pollingIntervalRef = useRef(null);
+  const bgSyncRef = useRef(null);
   const lastAnalysisIdRef = useRef(null);
 
   useEffect(() => {
@@ -105,10 +109,43 @@ const Dashboard = () => {
     try {
       const { data } = await axios.get(`${API}/health/trend`, { withCredentials: true });
       setHealthTrend(data);
+      // Check for critical medical alert
+      if (data?.medical_alert?.show) {
+        const dismissed = localStorage.getItem("vitalflow_medical_alert_dismissed");
+        const today = new Date().toISOString().split("T")[0];
+        if (dismissed !== today) {
+          setMedicalAlertData(data.medical_alert);
+          setShowMedicalAlert(true);
+        }
+      }
     } catch (error) {
       console.error("Erro ao buscar tendencia:", error);
     }
   };
+
+  // Background sync: sincroniza dados do wearable a cada 30 min
+  const backgroundSync = useCallback(async () => {
+    try {
+      const { data } = await axios.post(`${API}/wearables/sync`, {}, { withCredentials: true });
+      if (data.status === "synced") {
+        toast.success("Dados do wearable sincronizados automaticamente!", { duration: 3000 });
+        fetchHistory();
+        fetchConnectedDevices();
+      }
+    } catch {
+      // Silencioso quando nao ha token
+    }
+  }, []);
+
+  // Background sync timer
+  useEffect(() => {
+    bgSyncRef.current = setInterval(backgroundSync, BACKGROUND_SYNC_INTERVAL);
+    // Initial sync on mount
+    backgroundSync();
+    return () => {
+      if (bgSyncRef.current) clearInterval(bgSyncRef.current);
+    };
+  }, [backgroundSync]);
 
   const checkForNewAnalysis = async () => {
     try {
@@ -171,6 +208,78 @@ const Dashboard = () => {
           }}
         />
       )}
+
+      {/* Medical Consultation Alert Popup */}
+      <AnimatePresence>
+        {showMedicalAlert && medicalAlertData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            data-testid="medical-alert-overlay"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-md mx-4 bg-neutral-900 border-2 border-rose-500/40 rounded-xl overflow-hidden shadow-2xl shadow-rose-500/10"
+              data-testid="medical-alert-modal"
+            >
+              <div className="h-1.5 bg-gradient-to-r from-rose-500 to-amber-500 w-full" />
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center">
+                    <Stethoscope className="w-6 h-6 text-rose-400" />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowMedicalAlert(false);
+                      localStorage.setItem("vitalflow_medical_alert_dismissed", new Date().toISOString().split("T")[0]);
+                    }}
+                    className="text-neutral-500 hover:text-white transition-colors"
+                    data-testid="dismiss-medical-alert"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <h2 className="text-lg font-black text-rose-400 mb-2" data-testid="medical-alert-title">
+                  Recomendacao de Consulta Profissional
+                </h2>
+                <p className="text-sm text-neutral-300 leading-relaxed mb-4">
+                  {medicalAlertData.message}
+                </p>
+                <div className="bg-rose-500/5 border border-rose-500/20 rounded-md p-3 mb-4">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-neutral-400">V-Score medio</span>
+                    <span className="text-rose-400 font-mono font-bold">{medicalAlertData.avg_score}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs mt-1">
+                    <span className="text-neutral-400">Dias consecutivos</span>
+                    <span className="text-rose-400 font-mono font-bold">{medicalAlertData.days} dias</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-md bg-amber-500/5 border border-amber-500/20 flex items-start gap-2">
+                  <Shield className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-300/70">
+                    O VitalFlow e uma ferramenta de suporte ao bem-estar. Nao substitui diagnostico ou tratamento medico profissional.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMedicalAlert(false);
+                    localStorage.setItem("vitalflow_medical_alert_dismissed", new Date().toISOString().split("T")[0]);
+                  }}
+                  className="w-full mt-4 py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-semibold text-sm rounded-md border border-rose-500/30 transition-all"
+                  data-testid="medical-alert-understood"
+                >
+                  Entendi
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Onboarding Tour */}
       {showOnboarding && !showFirstAccess && (

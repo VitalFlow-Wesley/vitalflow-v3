@@ -282,3 +282,4 @@ class HealthTrendResponse(BaseModel):
     avg_7d: float
     requires_intervention: bool
     intervention_message: Optional[str] = None
+    medical_alert: Optional[dict] = None

@@ -115,10 +115,27 @@ async def get_health_trend(request: Request):
             requires_intervention = True
             intervention_message = f"ALERTA: {consecutive_bad} dias consecutivos com indicadores de bem-estar abaixo de 50. O VitalFlow nao substitui consulta medica. Recomendamos fortemente que voce agende uma consulta com um profissional de saude para investigacao."
 
+        # Alerta critico de consulta medica (V-Score < 40 por 3+ dias)
+        consecutive_critical = 0
+        for d in reversed(v_scores_7d):
+            if d["avg_v_score"] < 40:
+                consecutive_critical += 1
+            else:
+                break
+        medical_alert = None
+        if consecutive_critical >= 3:
+            medical_alert = {
+                "show": True,
+                "days": consecutive_critical,
+                "avg_score": round(sum(d["avg_v_score"] for d in v_scores_7d[-consecutive_critical:]) / consecutive_critical, 1),
+                "message": f"Seus indicadores de bem-estar estao criticamente baixos ha {consecutive_critical} dias consecutivos (media: {round(sum(d['avg_v_score'] for d in v_scores_7d[-consecutive_critical:]) / consecutive_critical, 1)}/100). Recomendamos fortemente que voce agende uma consulta com um profissional de saude o mais breve possivel. O VitalFlow e uma ferramenta de apoio e nao substitui orientacao medica."
+            }
+
         return HealthTrendResponse(
             trend=trend, v_scores_7d=v_scores_7d, avg_7d=avg_7d,
             requires_intervention=requires_intervention,
-            intervention_message=intervention_message
+            intervention_message=intervention_message,
+            medical_alert=medical_alert
         )
     except HTTPException:
         raise
