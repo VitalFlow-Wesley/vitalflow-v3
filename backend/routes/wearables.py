@@ -109,31 +109,32 @@ async def google_fit_callback(code: str = "", state: str = ""):
     if not tokens:
         raise HTTPException(status_code=502, detail="Falha ao trocar codigo por token no Google.")
 
-    # Save tokens
+    # Save tokens persistently
     await db.wearable_tokens.update_one(
-        {"colaborador_id": state, "provider": "google_fit"},
+        {"colaborador_id": state, "provider": "google_health_connect"},
         {"$set": {
             "access_token": tokens.get("access_token"),
             "refresh_token": tokens.get("refresh_token"),
             "expires_in": tokens.get("expires_in"),
+            "token_type": tokens.get("token_type", "Bearer"),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }},
         upsert=True
     )
 
-    # Create/update device record
+    # Create/update device record (use google_health_connect to match frontend)
     existing = await db.wearable_devices.find_one(
-        {"colaborador_id": state, "provider": "google_fit"}, {"_id": 0}
+        {"colaborador_id": state, "provider": {"$in": ["google_fit", "google_health_connect"]}}, {"_id": 0}
     )
     if existing:
         await db.wearable_devices.update_one(
             {"id": existing["id"]},
-            {"$set": {"is_connected": True, "last_sync": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"is_connected": True, "provider": "google_health_connect", "last_sync": datetime.now(timezone.utc).isoformat()}}
         )
     else:
         device = {
             "id": str(uuid.uuid4()), "colaborador_id": state,
-            "provider": "google_fit", "device_name": "Google Fit",
+            "provider": "google_health_connect", "device_name": "Google Fit",
             "is_connected": True, "last_sync": datetime.now(timezone.utc).isoformat(),
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -227,3 +228,58 @@ async def _activate_premium_trial_on_first_wearable(colaborador_id: str):
             {"id": colaborador_id},
             {"$set": {"is_premium": True, "premium_expires_at": trial_expires, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
+
+
+@router.post("/wearables/sync")
+async def sync_wearable_data(request: Request):
+    """Sincronizacao em background: usa tokens salvos para buscar dados atualizados do Google Fit."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        cid = colaborador["id"]
+
+        token_doc = await db.wearable_tokens.find_one(
+            {"colaborador_id": cid, "provider": "google_health_connect"}, {"_id": 0}
+        )
+        if not token_doc or not token_doc.get("access_token"):
+            raise HTTPException(status_code=404, detail="Nenhum token salvo. Conecte o Google Fit primeiro.")
+
+        access_token = token_doc["access_token"]
+        refresh_token = token_doc.get("refresh_token")
+
+        # Tenta buscar dados com o access_token atual
+        biometrics = await google_fit_service.fetch_biometrics(access_token)
+
+        # Se falhou e tem refresh_token, tenta renovar
+        if not biometrics and refresh_token:
+            new_tokens = await google_fit_service.refresh_access_token(refresh_token)
+            if new_tokens and new_tokens.get("access_token"):
+                access_token = new_tokens["access_token"]
+                await db.wearable_tokens.update_one(
+                    {"colaborador_id": cid, "provider": "google_health_connect"},
+                    {"$set": {
+                        "access_token": access_token,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                biometrics = await google_fit_service.fetch_biometrics(access_token)
+
+        if biometrics:
+            biometrics["colaborador_id"] = cid
+            biometrics["synced_at"] = datetime.now(timezone.utc).isoformat()
+            await db.google_fit_data.insert_one(biometrics)
+
+            # Atualiza last_sync no device
+            await db.wearable_devices.update_one(
+                {"colaborador_id": cid, "provider": "google_health_connect"},
+                {"$set": {"last_sync": datetime.now(timezone.utc).isoformat()}}
+            )
+
+            return {"status": "synced", "data": {k: v for k, v in biometrics.items() if k != "_id"}}
+
+        return {"status": "no_data", "message": "Nenhum dado novo disponivel do Google Fit."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error syncing wearable data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+

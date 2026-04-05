@@ -168,3 +168,25 @@ async def fetch_biometrics(access_token: str) -> dict | None:
     except Exception as e:
         logger.error(f"Error fetching Google Fit biometrics: {e}")
         return None
+
+
+async def refresh_access_token(refresh_token: str) -> dict | None:
+    """Usa o refresh_token para obter um novo access_token do Google."""
+    if not is_configured() or not refresh_token:
+        return None
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.post(GOOGLE_FIT_TOKEN_URL, data={
+                "client_id": GOOGLE_FIT_CLIENT_ID,
+                "client_secret": GOOGLE_FIT_CLIENT_SECRET,
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token",
+            })
+            if response.status_code == 200:
+                return response.json()
+            logger.error(f"Google Fit token refresh failed: {response.text}")
+            return None
+    except Exception as e:
+        logger.error(f"Error refreshing Google Fit token: {e}")
+        return None

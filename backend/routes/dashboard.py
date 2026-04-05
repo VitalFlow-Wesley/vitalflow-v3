@@ -106,27 +106,42 @@ async def add_employee(request: Request):
         if not nome or not email:
             raise HTTPException(status_code=400, detail="Nome e email sao obrigatorios.")
 
-        existing = await db.colaboradores.find_one({"email": email}, {"_id": 0, "id": 1})
-        if existing:
-            raise HTTPException(status_code=400, detail="Email ja cadastrado.")
-
-        # B2B: vincular mesmo emails pessoais (@gmail etc) ao gestor que cadastrou
+        # Preparar contexto B2B do gestor
         gestor_domain = gestor.get("domain")
-        gestor_company = None
-        if gestor_domain:
-            corp_check = await db.corporate_domains.find_one({"domain": gestor_domain}, {"_id": 0})
-            if corp_check:
-                gestor_company = corp_check.get("company_name")
-
         domain = email.split("@")[1] if "@" in email else None
-        # Se o gestor pertence a uma empresa, vincular o funcionario a mesma empresa
-        account_type = "corporate" if gestor_domain else ("corporate" if domain and await db.corporate_domains.find_one({"domain": domain}, {"_id": 0}) else "personal")
         linked_domain = gestor_domain if gestor_domain else domain
-
-        temp_password = f"Temp{uuid.uuid4().hex[:6]}!"
         nivel_acesso = body.get("nivel_acesso", "User")
         if nivel_acesso not in ("User", "Gestor"):
             nivel_acesso = "User"
+
+        existing = await db.colaboradores.find_one({"email": email}, {"_id": 0})
+        if existing:
+            # B2B Hibrido: se o usuario ja existe como personal e RH quer vincular
+            if existing.get("account_type") == "personal" and not existing.get("registered_by_rh"):
+                await db.colaboradores.update_one(
+                    {"id": existing["id"]},
+                    {"$set": {
+                        "account_type": "corporate",
+                        "domain": linked_domain,
+                        "setor": setor,
+                        "cargo": cargo,
+                        "nivel_acesso": nivel_acesso,
+                        "registered_by_rh": True,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                return {
+                    "id": existing["id"], "nome": existing["nome"], "email": email,
+                    "setor": setor, "cargo": cargo, "account_type": "corporate",
+                    "message": f"Funcionario {existing['nome']} vinculado ao modo corporativo com sucesso.",
+                    "already_registered": True
+                }
+            raise HTTPException(status_code=400, detail="Email ja cadastrado.")
+
+        # Se o gestor pertence a uma empresa, vincular o funcionario a mesma empresa
+        account_type = "corporate" if gestor_domain else ("corporate" if domain and await db.corporate_domains.find_one({"domain": domain}, {"_id": 0}) else "personal")
+
+        temp_password = f"Temp{uuid.uuid4().hex[:6]}!"
 
         new_colab = Colaborador(
             nome=nome, email=email, password_hash=hash_password(temp_password),

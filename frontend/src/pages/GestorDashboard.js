@@ -181,24 +181,56 @@ const GestorDashboard = () => {
           </div>
         </div>
 
-        {/* Period Filter */}
-        <div className="flex items-center gap-2 mb-6" data-testid="period-filter">
-          <Calendar className="w-4 h-4 text-neutral-500" />
-          <span className="text-xs text-neutral-500 mr-2">Periodo:</span>
-          {PERIODS.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setPeriod(p.value)}
-              data-testid={`period-${p.value}`}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                period === p.value
-                  ? "bg-cyan-500 text-black"
-                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
-              }`}
+        {/* Filters Row: Period + Setor */}
+        <div className="flex flex-wrap items-center gap-4 mb-6" data-testid="filters-row">
+          {/* Period Filter */}
+          <div className="flex items-center gap-2" data-testid="period-filter">
+            <Calendar className="w-4 h-4 text-neutral-500" />
+            <span className="text-xs text-neutral-500 mr-1">Periodo:</span>
+            {PERIODS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setPeriod(p.value)}
+                data-testid={`period-${p.value}`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  period === p.value
+                    ? "bg-cyan-500 text-black"
+                    : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Separator */}
+          <div className="w-px h-6 bg-white/10 hidden sm:block" />
+
+          {/* Setor Filter */}
+          <div className="flex items-center gap-2" data-testid="setor-filter">
+            <Shield className="w-4 h-4 text-neutral-500" />
+            <span className="text-xs text-neutral-500 mr-1">Setor:</span>
+            <select
+              value={setor}
+              onChange={(e) => setSetor(e.target.value)}
+              data-testid="setor-select"
+              className="px-3 py-1.5 text-xs font-semibold rounded-md bg-neutral-800 text-neutral-300 border border-white/10 focus:outline-none focus:border-cyan-500 transition-all cursor-pointer"
             >
-              {p.label}
-            </button>
-          ))}
+              <option value="">Todos os Setores</option>
+              {setores.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            {setor && (
+              <button
+                onClick={() => setSetor("")}
+                data-testid="clear-setor-filter"
+                className="px-2 py-1 text-[10px] font-bold rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-all"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Lei 14.831 Alert */}
