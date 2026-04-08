@@ -32,6 +32,7 @@ from routes.dashboard import router as dashboard_router
 from routes.smartwatch import router as smartwatch_router
 from routes.gamification import router as gamification_router
 from routes.health import router as health_router
+from routes.payments import router as payments_router
 
 # ─── Include all routers ───
 api_router.include_router(auth_router)
@@ -41,6 +42,7 @@ api_router.include_router(dashboard_router)
 api_router.include_router(smartwatch_router)
 api_router.include_router(gamification_router)
 api_router.include_router(health_router)
+api_router.include_router(payments_router)
 
 
 @api_router.get("/")

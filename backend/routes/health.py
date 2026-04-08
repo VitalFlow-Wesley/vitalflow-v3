@@ -326,3 +326,73 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
     except Exception as e:
         logger.error(f"Error exporting personal PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.get("/health/morning-report")
+async def get_morning_report(request: Request):
+    """Morning Report: resumo da noite anterior baseado nos dados do Google Fit."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        cid = colaborador["id"]
+
+        # Buscar ultimo sync com dados de sono
+        last_sync = await db.google_fit_data.find_one(
+            {"colaborador_id": cid, "sleep_hours": {"$exists": True, "$gt": 0}},
+            {"_id": 0},
+            sort=[("synced_at", -1)]
+        )
+
+        if not last_sync:
+            return {
+                "available": False,
+                "message": "Nenhum dado de sono disponivel. Conecte o Google Fit para receber o Morning Report."
+            }
+
+        sleep_h = last_sync.get("sleep_hours", 0)
+        sleep_quality = last_sync.get("sleep_quality", {})
+        recovery = last_sync.get("recovery", {})
+
+        deep_h = sleep_quality.get("deep_hours", 0)
+        light_h = sleep_quality.get("light_hours", 0)
+        rem_h = sleep_quality.get("rem_hours", 0)
+        total_tracked = deep_h + light_h + rem_h
+
+        deep_pct = round((deep_h / total_tracked * 100) if total_tracked > 0 else 0, 1)
+        rem_pct = round((rem_h / total_tracked * 100) if total_tracked > 0 else 0, 1)
+
+        # Gerar mensagem personalizada
+        if sleep_h >= 7.5:
+            greeting = f"Excelente noite! Voce dormiu {sleep_h}h."
+            tip = "Seu corpo esta recuperado. Otimo dia para desafios cognitivos intensos."
+        elif sleep_h >= 6:
+            greeting = f"Noite razoavel: {sleep_h}h de sono."
+            tip = "Evite reunioes muito longas no final da tarde. Faca pausas de 5 min a cada hora."
+        elif sleep_h >= 5:
+            greeting = f"Sono insuficiente: apenas {sleep_h}h."
+            tip = "Hoje seus limiares de estresse estao mais baixos. Evite decisoes complexas apos as 15h."
+        else:
+            greeting = f"Noite critica: apenas {sleep_h}h de sono."
+            tip = "Alerta maximo: qualquer BPM acima de 85 em repouso ja e preocupante hoje. Priorize descanso."
+
+        from services.ai_service import calculate_sleep_recovery
+        rec = calculate_sleep_recovery(sleep_h, sleep_quality)
+
+        return {
+            "available": True,
+            "greeting": greeting,
+            "sleep_hours": sleep_h,
+            "deep_sleep_pct": deep_pct,
+            "rem_sleep_pct": rem_pct,
+            "recovery_factor": rec["factor"],
+            "recovery_label": rec["label"],
+            "bpm_stress_threshold": rec["bpm_stress_threshold"],
+            "hrv_stress_threshold": rec["hrv_stress_threshold"],
+            "personalized_tip": tip,
+            "synced_at": last_sync.get("synced_at"),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating morning report: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

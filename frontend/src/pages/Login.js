@@ -223,7 +223,6 @@ const Login = () => {
         {/* Demo Credentials */}
         <div className="mt-4 p-3 rounded-md bg-neutral-900/40 border border-white/5">
           <p className="text-xs text-neutral-500 text-center">
-            Demo: admin@vitalflow.com / Admin123!@#
           </p>
         </div>
       </motion.div>

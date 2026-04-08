@@ -9,10 +9,11 @@ import NudgeCard from "../components/NudgeCard";
 import HistoryChart from "../components/HistoryChart";
 import OnboardingTour from "../components/OnboardingTour";
 import FirstAccessFlow from "../components/FirstAccessFlow";
+import { queueOfflineData } from "../components/ConnectionStatus";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Zap, Flame, Trophy, Shield, Smartphone, Radio, Stethoscope, X } from "lucide-react";
+import { Lock, Zap, Flame, Trophy, Shield, Smartphone, Radio, Stethoscope, X, Moon, Sun } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const [showMedicalAlert, setShowMedicalAlert] = useState(false);
   const [medicalAlertData, setMedicalAlertData] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [morningReport, setMorningReport] = useState(null);
   const pollingIntervalRef = useRef(null);
   const bgSyncRef = useRef(null);
   const lastAnalysisIdRef = useRef(null);
@@ -45,6 +47,7 @@ const Dashboard = () => {
         fetchPredictiveAlert(),
         fetchGamificationStats(),
         fetchHealthTrend(),
+        fetchMorningReport(),
       ]);
       setDataLoaded(true);
       startPolling();
@@ -123,6 +126,15 @@ const Dashboard = () => {
     }
   };
 
+  const fetchMorningReport = async () => {
+    try {
+      const { data } = await axios.get(`${API}/health/morning-report`, { withCredentials: true });
+      if (data.available) setMorningReport(data);
+    } catch {
+      // Silencioso
+    }
+  };
+
   // Background sync: sincroniza dados do wearable a cada 30 min
   const [lastSyncData, setLastSyncData] = useState(null);
 
@@ -143,9 +155,11 @@ const Dashboard = () => {
         }
         fetchHistory();
         fetchConnectedDevices();
+        fetchMorningReport();
       }
     } catch {
-      // Silencioso quando nao ha token
+      // Offline: enfileirar sync para quando voltar online
+      queueOfflineData("wearables/sync", {});
     }
   }, []);
 
@@ -189,18 +203,13 @@ const Dashboard = () => {
     refreshUser();
   };
 
-  const handleUpgrade = async () => {
+const handleUpgrade = async () => {
     try {
-      await axios.post(`${API}/billing/upgrade`, {}, { withCredentials: true });
-      toast.success("Upgrade para Premium realizado!");
-      refreshUser();
-      fetchPredictiveAlert();
+      await fetchPredictiveAlert();
     } catch (error) {
       toast.error("Erro ao realizar upgrade.");
     }
   };
-
-  const isFreeLocked = predictiveAlert?.locked === true;
   const hasDevices = connectedDevices.length > 0;
   const hasData = currentAnalysis !== null;
 

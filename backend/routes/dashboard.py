@@ -368,3 +368,116 @@ async def export_dashboard_pdf(request: Request, period: str = "7d"):
     except Exception as e:
         logger.error(f"Error exporting PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.get("/dashboard/heatmap")
+async def get_stress_heatmap(request: Request, period: str = "7d"):
+    """Heatmap de estresse por setor e hora/dia para o painel do Gestor."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        if colaborador["nivel_acesso"] != "Gestor":
+            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+
+        days = 7 if period == "7d" else 30 if period == "30d" else 180
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+        # Buscar todos os colaboradores e suas analises
+        all_colabs = await db.colaboradores.find(
+            {}, {"_id": 0, "id": 1, "setor": 1}
+        ).to_list(5000)
+
+        colab_setores = {c["id"]: c.get("setor", "Geral") for c in all_colabs}
+        colab_ids = list(colab_setores.keys())
+
+        analyses = await db.analyses.find(
+            {"colaborador_id": {"$in": colab_ids}, "timestamp": {"$gte": cutoff}},
+            {"_id": 0, "colaborador_id": 1, "v_score": 1, "timestamp": 1}
+        ).to_list(50000)
+
+        # Montar heatmap: setor x hora do dia
+        WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"]
+        heatmap_data = {}
+        setor_day_data = {}
+
+        for a in analyses:
+            setor = colab_setores.get(a["colaborador_id"], "Geral")
+            try:
+                ts = datetime.fromisoformat(a["timestamp"].replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                continue
+
+            hour = ts.hour
+            day_idx = ts.weekday()
+            day_name = WEEKDAYS[day_idx]
+            v_score = a.get("v_score", 50)
+            stress = max(0, 100 - v_score)
+
+            # Heatmap por setor x hora
+            key = (setor, hour)
+            if key not in heatmap_data:
+                heatmap_data[key] = {"values": [], "count": 0}
+            heatmap_data[key]["values"].append(stress)
+            heatmap_data[key]["count"] += 1
+
+            # Heatmap por setor x dia da semana
+            day_key = (setor, day_name, day_idx)
+            if day_key not in setor_day_data:
+                setor_day_data[day_key] = {"values": [], "count": 0}
+            setor_day_data[day_key]["values"].append(stress)
+            setor_day_data[day_key]["count"] += 1
+
+        # Formatar saida: setor x hora (para heatmap grid)
+        setores_list = sorted(set(colab_setores.values()))
+        hourly_heatmap = []
+        for setor in setores_list:
+            row = {"setor": setor, "hours": {}}
+            for hour in range(8, 20):  # Horario comercial 8h-19h
+                key = (setor, hour)
+                if key in heatmap_data:
+                    avg = round(sum(heatmap_data[key]["values"]) / len(heatmap_data[key]["values"]), 1)
+                    row["hours"][f"{hour:02d}:00"] = {
+                        "avg_stress": avg,
+                        "count": heatmap_data[key]["count"],
+                    }
+                else:
+                    row["hours"][f"{hour:02d}:00"] = {"avg_stress": 0, "count": 0}
+            hourly_heatmap.append(row)
+
+        # Formatar saida: setor x dia
+        daily_heatmap = []
+        for setor in setores_list:
+            row = {"setor": setor, "days": {}}
+            for day_name, day_idx in zip(WEEKDAYS, range(7)):
+                key = (setor, day_name, day_idx)
+                if key in setor_day_data:
+                    avg = round(sum(setor_day_data[key]["values"]) / len(setor_day_data[key]["values"]), 1)
+                    row["days"][day_name] = {
+                        "avg_stress": avg,
+                        "count": setor_day_data[key]["count"],
+                    }
+                else:
+                    row["days"][day_name] = {"avg_stress": 0, "count": 0}
+            daily_heatmap.append(row)
+
+        # Pico de estresse global
+        peak = {"setor": "N/A", "hour": "N/A", "stress": 0}
+        for (setor, hour), data in heatmap_data.items():
+            avg = sum(data["values"]) / len(data["values"])
+            if avg > peak["stress"]:
+                peak = {"setor": setor, "hour": f"{hour:02d}:00", "stress": round(avg, 1)}
+
+        return {
+            "period": period,
+            "hourly_heatmap": hourly_heatmap,
+            "daily_heatmap": daily_heatmap,
+            "peak_stress": peak,
+            "setores": setores_list,
+            "hours": [f"{h:02d}:00" for h in range(8, 20)],
+            "weekdays": WEEKDAYS,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating heatmap: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
