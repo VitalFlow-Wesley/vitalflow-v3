@@ -3,6 +3,7 @@ VitalFlow API - Copiloto Corporativo de Longevidade
 Arquivo principal: configuracao da app, CORS, startup/shutdown.
 """
 from database import db, client
+from fastapi.staticfiles import StaticFiles
 from auth_utils import hash_password
 from models import Colaborador, CorporateDomain
 
@@ -176,3 +177,5 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+# Servir o frontend (Site)
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
