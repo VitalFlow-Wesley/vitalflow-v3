@@ -129,8 +129,8 @@ async def startup_event():
                 logger.info(f"Corporate domain seeded: {domain_data['domain']}")
 
         # Write test credentials
-        Path("/app/memory").mkdir(exist_ok=True)
-        with open("/app/memory/test_credentials.md", "w") as f:
+        Path("memory").mkdir(exist_ok=True)
+        with open("memory/test_credentials.md", "w") as f:
             f.write(f"""# VitalFlow - Credenciais de Teste
 
 ## Admin/Gestor
@@ -168,7 +168,7 @@ async def startup_event():
 - POST /api/smartwatch/webhook - Webhook para dados reais
 - GET /api/smartwatch/history - Historico de alertas
 """)
-        logger.info("Test credentials written to /app/memory/test_credentials.md")
+        logger.info("Test credentials written to memory/test_credentials.md")
 
     except Exception as e:
         logger.error(f"Startup error: {str(e)}")
