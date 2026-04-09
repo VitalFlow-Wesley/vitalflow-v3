@@ -34,24 +34,18 @@ api_router.include_router(payments_router)
 
 app.include_router(api_router)
 
-# --- CORS CORRIGIDO COM O LINK DO '1hjc' ---
-origins = [
-    "https://vitalflow-api-1hjc.onrender.com",
-    "http://localhost:3000"
-]
+# --- CORS PARA O LINK 1HJC ---
+origins = ["https://vitalflow-api-1hjc.onrender.com", "http://localhost:3000"]
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+# --- GPS DOS ARQUIVOS ---
 static_path = Path(__file__).parent / "static"
-if static_path.exists():
-    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
+# Servir a subpasta static (onde ficam JS e CSS)
+if (static_path / "static").exists():
+    app.mount("/static", StaticFiles(directory=str(static_path / "static")), name="static")
+
+# Catch-all: Entrega o index.html para qualquer outra rota
 @app.get("/{catchall:path}")
 async def serve_react_app(request: Request, catchall: str):
     if catchall.startswith("api"): return {"detail": "Not Found"}
