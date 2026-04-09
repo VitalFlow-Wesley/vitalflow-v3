@@ -1,7 +1,5 @@
 from database import db, client
 from fastapi.staticfiles import StaticFiles
-from auth_utils import hash_password
-from models import Colaborador, CorporateDomain
 from fastapi import FastAPI, APIRouter, Request
 from fastapi.responses import FileResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -15,6 +13,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# Rotas (Importações automáticas)
 from routes.auth import router as auth_router
 from routes.analysis import router as analysis_router
 from routes.wearables import router as wearables_router
@@ -32,30 +31,33 @@ api_router.include_router(smartwatch_router)
 api_router.include_router(gamification_router)
 api_router.include_router(health_router)
 api_router.include_router(payments_router)
-
 app.include_router(api_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-@app.on_event("startup")
-async def startup_event():
-    try:
-        await db.colaboradores.create_index("email", unique=True)
-    except:
-        pass
+# GPS das pastas
+BASE_DIR = Path(__file__).parent
+STATIC_DIR = BASE_DIR / "static"
 
-static_path = Path(__file__).parent / "static"
+# Servir os arquivos de CSS/JS (Se o site pedir /static/js, ele olha na pasta static/js)
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-if static_path.exists():
-    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
-    @app.get("/{catchall:path}")
-    async def serve_react_app(request: Request, catchall: str):
-        if catchall.startswith("api"): return {"detail": "Not Found"}
-        index_file = static_path / "index.html"
-        return FileResponse(index_file) if index_file.exists() else {"detail": "Frontend missing"}
+# O segredo da Tela Branca: Servir os arquivos que o React joga na raiz
+@app.get("/{file_path:path}")
+async def catch_all(request: Request, file_path: str):
+    # Se for API, ignora
+    if file_path.startswith("api"):
+        return {"detail": "Not Found"}
+    
+    # Tenta achar o arquivo real (ex: main.js ou logo.png)
+    file_full_path = STATIC_DIR / file_path
+    if file_full_path.is_file():
+        return FileResponse(file_full_path)
+    
+    # Se não for um arquivo, entrega o index.html (pro React assumir o controle)
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    
+    return {"detail": "Frontend não encontrado"}
