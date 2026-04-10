@@ -13,12 +13,12 @@ import { queueOfflineData } from "../components/ConnectionStatus";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Zap, Flame, Trophy, Shield, Smartphone, Radio, Stethoscope, X, Moon, Sun } from "lucide-react";
+import { Lock, Zap, Flame, Trophy, Shield, Smartphone, Radio, Stethoscope, X } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 const POLLING_INTERVAL = 10000;
-const BACKGROUND_SYNC_INTERVAL = 30 * 60 * 1000; // 30 min
+const BACKGROUND_SYNC_INTERVAL = 30 * 60 * 1000;
 
 const Dashboard = () => {
   const { user, refreshUser } = useAuth();
@@ -34,10 +34,79 @@ const Dashboard = () => {
   const [showMedicalAlert, setShowMedicalAlert] = useState(false);
   const [medicalAlertData, setMedicalAlertData] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [morningReport, setMorningReport] = useState(null);
   const pollingIntervalRef = useRef(null);
   const bgSyncRef = useRef(null);
   const lastAnalysisIdRef = useRef(null);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/history?limit=30`, { withCredentials: true });
+      setHistory(response.data);
+      if (response.data.length > 0 && !currentAnalysis) {
+        setCurrentAnalysis(response.data[0]);
+        lastAnalysisIdRef.current = response.data[0].id;
+      }
+    } catch (error) { console.error(error); }
+  }, [currentAnalysis]);
+
+  const fetchConnectedDevices = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/wearables`, { withCredentials: true });
+      setConnectedDevices(response.data.filter((d) => d.is_connected));
+    } catch (error) { console.error(error); }
+  }, []);
+
+  const fetchPredictiveAlert = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API}/predictive/alert`, { withCredentials: true });
+      setPredictiveAlert(data);
+    } catch (error) { console.error(error); }
+  }, []);
+
+  const fetchGamificationStats = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API}/gamification/stats`, { withCredentials: true });
+      setGamStats(data);
+    } catch (error) { console.error(error); }
+  }, []);
+
+  const fetchHealthTrend = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API}/health/trend`, { withCredentials: true });
+      setHealthTrend(data);
+      if (data?.medical_alert?.show) {
+        const dismissed = localStorage.getItem("vitalflow_medical_alert_dismissed");
+        if (dismissed !== new Date().toISOString().split("T")[0]) {
+          setMedicalAlertData(data.medical_alert);
+          setShowMedicalAlert(true);
+        }
+      }
+    } catch (error) { console.error(error); }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await axios.get(`${API}/history?limit=1`, { withCredentials: true });
+        if (response.data.length > 0 && lastAnalysisIdRef.current !== response.data[0].id) {
+          lastAnalysisIdRef.current = response.data[0].id;
+          setCurrentAnalysis(response.data[0]);
+          fetchHistory();
+          toast.success("Nova analise disponivel!");
+        }
+      } catch (error) { console.error(error); }
+    }, POLLING_INTERVAL);
+  }, [fetchHistory]);
+
+  const backgroundSync = useCallback(async () => {
+    try {
+      const { data } = await axios.post(`${API}/wearables/sync`, {}, { withCredentials: true });
+      if (data.status === "synced") {
+        fetchHistory();
+        fetchConnectedDevices();
+      }
+    } catch { queueOfflineData("wearables/sync", {}); }
+  }, [fetchHistory, fetchConnectedDevices]);
 
   useEffect(() => {
     const init = async () => {
@@ -46,181 +115,102 @@ const Dashboard = () => {
         fetchConnectedDevices(),
         fetchPredictiveAlert(),
         fetchGamificationStats(),
-        fetchHealthTrend(),
-        fetchMorningReport(),
+        fetchHealthTrend()
       ]);
       setDataLoaded(true);
       startPolling();
     };
     init();
 
-    // Check if first access flow is needed (RH-registered user)
     if (user?.must_change_password || user?.must_accept_lgpd) {
       setShowFirstAccess(true);
     } else {
-      // Check if onboarding should be shown
       const onboardingDone = localStorage.getItem("vitalflow_onboarding_done");
-      if (!onboardingDone) {
-        setShowOnboarding(true);
-      }
+      if (!onboardingDone) setShowOnboarding(true);
     }
 
-    return () => stopPolling();
-  }, [user]);
-
-  const fetchHistory = async () => {
-    try {
-      const response = await axios.get(`${API}/history?limit=30`, { withCredentials: true });
-      setHistory(response.data);
-      if (response.data.length > 0 && !currentAnalysis) {
-        setCurrentAnalysis(response.data[0]);
-        lastAnalysisIdRef.current = response.data[0].id;
-      }
-    } catch (error) {
-      console.error("Erro ao buscar historico:", error);
-    }
-  };
-
-  const fetchConnectedDevices = async () => {
-    try {
-      const response = await axios.get(`${API}/wearables`, { withCredentials: true });
-      setConnectedDevices(response.data.filter((d) => d.is_connected));
-    } catch (error) {
-      console.error("Erro ao buscar dispositivos:", error);
-    }
-  };
-
-  const fetchPredictiveAlert = async () => {
-    try {
-      const { data } = await axios.get(`${API}/predictive/alert`, { withCredentials: true });
-      setPredictiveAlert(data);
-    } catch (error) {
-      console.error("Erro ao buscar alerta preditivo:", error);
-    }
-  };
-
-  const fetchGamificationStats = async () => {
-    try {
-      const { data } = await axios.get(`${API}/gamification/stats`, { withCredentials: true });
-      setGamStats(data);
-    } catch (error) {
-      console.error("Erro ao buscar gamificacao:", error);
-    }
-  };
-
-  const fetchHealthTrend = async () => {
-    try {
-      const { data } = await axios.get(`${API}/health/trend`, { withCredentials: true });
-      setHealthTrend(data);
-      // Check for critical medical alert
-      if (data?.medical_alert?.show) {
-        const dismissed = localStorage.getItem("vitalflow_medical_alert_dismissed");
-        const today = new Date().toISOString().split("T")[0];
-        if (dismissed !== today) {
-          setMedicalAlertData(data.medical_alert);
-          setShowMedicalAlert(true);
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao buscar tendencia:", error);
-    }
-  };
-
-  const fetchMorningReport = async () => {
-    try {
-      const { data } = await axios.get(`${API}/health/morning-report`, { withCredentials: true });
-      if (data.available) setMorningReport(data);
-    } catch {
-      // Silencioso
-    }
-  };
-
-  // Background sync: sincroniza dados do wearable a cada 30 min
-  const [lastSyncData, setLastSyncData] = useState(null);
-
-  const backgroundSync = useCallback(async () => {
-    try {
-      const { data } = await axios.post(`${API}/wearables/sync`, {}, { withCredentials: true });
-      if (data.status === "synced") {
-        setLastSyncData(data);
-        if (data.has_real_data && data.auto_analysis) {
-          const a = data.auto_analysis;
-          const exerciseMsg = a.exercise_detected ? " | Exercicio detectado!" : "";
-          toast.success(
-            `Sync Real: V-Score ${a.v_score} (${a.status_visual}) - ${a.recovery_label}${exerciseMsg}`,
-            { duration: 5000 }
-          );
-        } else {
-          toast.success("Dados do wearable sincronizados!", { duration: 3000 });
-        }
-        fetchHistory();
-        fetchConnectedDevices();
-        fetchMorningReport();
-      }
-    } catch {
-      // Offline: enfileirar sync para quando voltar online
-      queueOfflineData("wearables/sync", {});
-    }
-  }, []);
-
-  // Background sync timer
-  useEffect(() => {
     bgSyncRef.current = setInterval(backgroundSync, BACKGROUND_SYNC_INTERVAL);
-    // Initial sync on mount
     backgroundSync();
+
     return () => {
-      if (bgSyncRef.current) clearInterval(bgSyncRef.current);
+      clearInterval(pollingIntervalRef.current);
+      clearInterval(bgSyncRef.current);
     };
-  }, [backgroundSync]);
+  }, [user, fetchHistory, fetchConnectedDevices, fetchPredictiveAlert, fetchGamificationStats, fetchHealthTrend, startPolling, backgroundSync]);
 
-  const checkForNewAnalysis = async () => {
-    try {
-      const response = await axios.get(`${API}/history?limit=1`, { withCredentials: true });
-      if (response.data.length > 0) {
-        const latestAnalysis = response.data[0];
-        if (lastAnalysisIdRef.current !== latestAnalysis.id) {
-          lastAnalysisIdRef.current = latestAnalysis.id;
-          setCurrentAnalysis(latestAnalysis);
-          await fetchHistory();
-          toast.success("Nova analise disponivel!", { duration: 4000 });
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao verificar novas analises:", error);
-    }
-  };
-
-  const startPolling = () => {
-    pollingIntervalRef.current = setInterval(checkForNewAnalysis, POLLING_INTERVAL);
-  };
-
-  const stopPolling = () => {
-    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-  };
-
-  const handlePointsEarned = () => {
-    fetchGamificationStats();
-    refreshUser();
-  };
-
-  const handleUpgrade = async () => {
-    try {
-      await fetchPredictiveAlert();
-    } catch (error) {
-      toast.error("Erro ao realizar upgrade.");
-    }
-  };
-
-  // --- O NOSSO INTERRUPTOR E CORREÇÕES ESTÃO AQUI ---
   const isFreeLocked = !user?.is_premium;
-  const hasDevices = connectedDevices.length > 0 || user?.google_id || user?.wearable_id || user?.provider === 'google';
+  const hasDevices = connectedDevices.length > 0 || user?.google_id || user?.provider === 'google';
   const hasData = currentAnalysis !== null;
 
-  return (
-    <div className="min-h-screen bg-neutral-950">
-      <Navbar />
+  if (!dataLoaded) return <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-white">Carregando...</div>;
 
-      {/* First Access Flow (RH-registered users) */}
-      {showFirstAccess && (
-        <FirstAccessFlow
-          user={user}
+  return (
+    <div className="min-h-screen bg-neutral-950 text-white">
+      <Navbar />
+      {showFirstAccess && <FirstAccessFlow user={user} onComplete={() => { setShowFirstAccess(false); refreshUser(); }} />}
+      <AnimatePresence>
+        {showMedicalAlert && medicalAlertData && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="w-full max-w-md mx-4 bg-neutral-900 border-2 border-rose-500/40 rounded-xl p-6">
+              <div className="flex justify-between mb-4">
+                <Stethoscope className="text-rose-400" />
+                <button onClick={() => setShowMedicalAlert(false)}><X className="text-neutral-500" /></button>
+              </div>
+              <h2 className="text-lg font-black text-rose-400 mb-2">Recomendacao Medica</h2>
+              <p className="text-sm text-neutral-300 mb-4">{medicalAlertData.message}</p>
+              <button onClick={() => setShowMedicalAlert(false)} className="w-full py-2 bg-rose-500/20 text-rose-400 rounded-md border border-rose-500/30">Entendi</button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {showOnboarding && !showFirstAccess && <OnboardingTour onComplete={() => setShowOnboarding(false)} />}
+      <div className="w-full max-w-6xl mx-auto px-4 py-8">
+        {hasData ? (
+          <div className="space-y-6">
+            {gamStats && (
+              <div className="border border-white/10 bg-neutral-900/40 rounded-md p-4 flex justify-between items-center">
+                <div className="flex gap-6">
+                  <span className="flex items-center gap-2 text-amber-400"><Zap size={16}/> {gamStats.energy_points} pts</span>
+                  <span className="flex items-center gap-2 text-orange-400"><Flame size={16}/> {gamStats.current_streak} dias</span>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-4"><StatusOrb status={currentAnalysis.status_visual} vScore={currentAnalysis.v_score} areas={currentAnalysis.area_afetada} tag={currentAnalysis.tag_rapida} /></div>
+              <div className="lg:col-span-4 space-y-6">
+                <AIAnalysis tag={currentAnalysis.tag_rapida} cause={currentAnalysis.causa_provavel} status={currentAnalysis.status_visual} />
+                <NudgeCard nudge={currentAnalysis.nudge_acao} status={currentAnalysis.status_visual} analysisId={currentAnalysis.id} onPointsEarned={() => { fetchGamificationStats(); refreshUser(); }} />
+              </div>
+              <div className="lg:col-span-4"><MetricBars analysis={currentAnalysis} /></div>
+            </div>
+            <HistoryChart history={history} />
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-center space-y-6">
+            <div className="w-20 h-20 rounded-full bg-cyan-500/10 border-2 border-cyan-500/20 flex items-center justify-center animate-pulse">
+              <Radio className="text-cyan-400" size={40} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black">{hasDevices ? "Aguardando sincronizacao" : "Conecte um dispositivo"}</h2>
+              <p className="text-neutral-400 max-w-sm mx-auto">
+                {hasDevices ? "Seu dispositivo está conectado. Assim que os primeiros dados forem sincronizados, sua analise aparecera aqui." : "Para que o VitalFlow analise sua saude, voce precisa conectar um wearable."}
+              </p>
+            </div>
+            {!hasDevices && (
+              <button onClick={() => navigate("/devices")} className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-black font-bold rounded-lg flex items-center gap-2">
+                <Smartphone size={20} /> Conectar Dispositivo
+              </button>
+            )}
+            {hasDevices && (
+              <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-bold">
+                Dispositivo conectado (Google Fit)
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
