@@ -318,6 +318,27 @@ const ConnectDevices = () => {
 
               <div className="flex gap-2">
                 {connected ? (
+                  <>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        console.log('[VitalFlow] Iniciando sync manual...');
+                        const { data } = await axios.post(API + '/wearables/sync', {}, { withCredentials: true });
+                        console.log('[VitalFlow] Sync resultado:', data);
+                        toast.success('Sincronizado com sucesso!');
+                        await fetchConnectedDevices();
+                      } catch (err) {
+                        console.error('[VitalFlow] Erro no sync:', err.response?.status, err.response?.data);
+                        toast.error('Erro ao sincronizar: ' + (err.response?.data?.detail || err.message));
+                      }
+                    }}
+                    disabled={loading}
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold border-0"
+                    data-testid={`sync-${provider.id}`}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Sincronizar Agora
+                  </Button>
                   <Button
                     onClick={() => handleDisconnect(device.id)}
                     disabled={loading}
@@ -327,6 +348,7 @@ const ConnectDevices = () => {
                     <XCircle className="w-4 h-4 mr-2" />
                     Desconectar
                   </Button>
+                  </>
                 ) : (
                   <Button
                     onClick={() => handleConnect(provider.id)}

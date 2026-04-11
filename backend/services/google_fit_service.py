@@ -109,7 +109,7 @@ async def fetch_biometrics(access_token: str) -> dict | None:
         now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
         day_ms = 86400000
         hour_ms = 3600000
-        start_ms = now_ms - day_ms
+        start_ms = now_ms - (day_ms * 7)  # Busca ultimos 7 dias
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Heart rate (hourly buckets for exercise detection)
