@@ -28,6 +28,11 @@ const Navbar = () => {
     navigate('/login');
   };
 
+  const isGestor = user?.nivel_acesso === 'Gestor';
+  const isHome = location.pathname === '/' || location.pathname === '/dashboard';
+  const isRelatorio = location.pathname === '/relatorio';
+  const isGestorPage = location.pathname === '/gestor';
+
   return (
     <nav
       className="sticky top-0 z-50 glass-header border-b border-white/10"
@@ -35,6 +40,8 @@ const Navbar = () => {
     >
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
+
+          {/* Logo + Connection Status */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
               <Brain className="w-8 h-8 text-cyan-400" />
@@ -44,17 +51,25 @@ const Navbar = () => {
             </div>
             <ConnectionStatus />
           </div>
+
+          {/* Energy Status + Gamification (desktop) */}
           <div className="hidden lg:flex items-center gap-4">
             <EnergyStatus />
             <GamificationBar energyPoints={user?.energy_points} currentStreak={user?.current_streak} />
           </div>
+
+          {/* Actions */}
           <div className="flex items-center gap-3">
+
+            {/* Sync indicator */}
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-neutral-800/50" data-testid="sync-indicator">
               <Radio className="w-3 h-3 text-emerald-400" />
               <span className="text-[11px] text-neutral-400">Sincronizado com wearables</span>
             </div>
-            {user?.nivel_acesso === 'Gestor' && (
-              location.pathname === '/gestor' ? (
+
+            {/* Botão Toggle Gestor/Meus Dados - apenas para Gestores */}
+            {isGestor && (
+              isGestorPage ? (
                 <button
                   onClick={() => navigate("/")}
                   data-testid="gestor-dashboard-button"
@@ -74,6 +89,31 @@ const Navbar = () => {
                 </button>
               )
             )}
+
+            {/* Botão Toggle Relatório/Meus Dados - apenas para usuários comuns */}
+            {!isGestor && (
+              isRelatorio ? (
+                <button
+                  onClick={() => navigate("/")}
+                  data-testid="relatorio-home-button"
+                  className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>Meus Dados</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate("/relatorio")}
+                  data-testid="relatorio-home-button"
+                  className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Relatório</span>
+                </button>
+              )
+            )}
+
+            {/* Dispositivos */}
             <button
               onClick={() => navigate("/devices")}
               data-testid="devices-button"
@@ -82,14 +122,20 @@ const Navbar = () => {
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Dispositivos</span>
             </button>
-            <button
-              onClick={() => navigate("/relatorio")}
-              data-testid="meu-relatorio-button"
-              className="px-3 py-2 border border-white/20 text-white text-sm font-semibold rounded-md hover:bg-white/5 transition-all duration-200 flex items-center gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Relatorio</span>
-            </button>
+
+            {/* Relatório - apenas para Gestores (botão fixo) */}
+            {isGestor && (
+              <button
+                onClick={() => navigate("/relatorio")}
+                data-testid="meu-relatorio-button"
+                className="px-3 py-2 border border-white/20 text-white text-sm font-semibold rounded-md hover:bg-white/5 transition-all duration-200 flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">Relatorio</span>
+              </button>
+            )}
+
+            {/* User Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -107,6 +153,7 @@ const Navbar = () => {
                   {user?.nome?.split(' ')[0]}
                 </span>
               </button>
+
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-neutral-900 border border-white/10 rounded-md shadow-xl z-50">
                   <div className="p-3 border-b border-white/10">
@@ -144,6 +191,7 @@ const Navbar = () => {
                 </div>
               )}
             </div>
+
           </div>
         </div>
       </div>
