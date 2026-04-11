@@ -27,17 +27,31 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Interceptor axios para renovar token automaticamente
-axios.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-      originalRequest._retry = true;
-      try {
-        await axios.post(API_URL + '/api/auth/refresh', {}, { withCredentials: true });
         return axios(originalRequest);
       } catch (refreshError) {
         window.location.href = '/login';
         return Promise.reject(refreshError);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+
+axios.interceptors.response.use(
+  function(response) { return response; },
+  async function(error) {
+    var req = error.config;
+    var is401 = error.response && error.response.status === 401;
+    var url = req.url || "";
+    if (is401 && !req._retry && url.indexOf("/auth/refresh") === -1 && url.indexOf("/auth/login") === -1) {
+      req._retry = true;
+      try {
+        await axios.post(API_URL + "/api/auth/refresh", {}, { withCredentials: true });
+        return axios(req);
+      } catch (e) {
+        window.location.href = "/login";
+        return Promise.reject(e);
       }
     }
     return Promise.reject(error);
