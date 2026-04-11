@@ -222,7 +222,7 @@ const Dashboard = () => {
   };
 
   const isFreeLocked = user?.account_type === "personal" && !user?.is_premium;
-  const hasDevices = connectedDevices.length > 0;
+  const hasDevices = connectedDevices.length > 0 || history.length > 0;
   const hasData = currentAnalysis !== null;
 
   return (
