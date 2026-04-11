@@ -3,7 +3,7 @@ import { Wifi, WifiOff } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${"https://vitalflow.ia.br"}/api`;
 const CACHE_KEY = "vitalflow_offline_queue";
 const PING_INTERVAL = 15000;
 

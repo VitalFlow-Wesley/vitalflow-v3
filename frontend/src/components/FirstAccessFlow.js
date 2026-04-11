@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import axios from "axios";
 import { toast } from "sonner";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${"https://vitalflow.ia.br"}/api`;
 
 const FirstAccessFlow = ({ user, onComplete }) => {
   const [step, setStep] = useState(user?.must_change_password ? "password" : "lgpd");

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${"https://vitalflow.ia.br"}/api`;
 
 const PERIOD_OPTIONS = [
   { value: "7d", label: "7 dias" },

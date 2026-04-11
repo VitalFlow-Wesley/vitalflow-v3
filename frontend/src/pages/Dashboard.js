@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Zap, Flame, Trophy, Shield, Smartphone, Radio, Stethoscope, X, Moon, Sun } from "lucide-react";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = "https://vitalflow.ia.br";
 const API = `${BACKEND_URL}/api`;
 const POLLING_INTERVAL = 10000;
 const BACKGROUND_SYNC_INTERVAL = 30 * 60 * 1000; // 30 min

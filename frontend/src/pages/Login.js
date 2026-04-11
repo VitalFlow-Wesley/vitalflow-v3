@@ -9,7 +9,7 @@ import { Label } from '../components/ui/label';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = "https://vitalflow.ia.br";
 
 const Login = () => {
   const navigate = useNavigate();
