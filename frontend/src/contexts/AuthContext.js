@@ -26,17 +26,6 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Interceptor axios para renovar token automaticamente
-        return axios(originalRequest);
-      } catch (refreshError) {
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
 
 axios.interceptors.response.use(
   function(response) { return response; },
@@ -44,7 +33,9 @@ axios.interceptors.response.use(
     var req = error.config;
     var is401 = error.response && error.response.status === 401;
     var url = req.url || "";
-    if (is401 && !req._retry && url.indexOf("/auth/refresh") === -1 && url.indexOf("/auth/login") === -1) {
+    var notRefresh = url.indexOf("/auth/refresh") === -1;
+    var notLogin = url.indexOf("/auth/login") === -1;
+    if (is401 && !req._retry && notRefresh && notLogin) {
       req._retry = true;
       try {
         await axios.post(API_URL + "/api/auth/refresh", {}, { withCredentials: true });
