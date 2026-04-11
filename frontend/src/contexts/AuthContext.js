@@ -26,7 +26,25 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
+  // Interceptor axios para renovar token automaticamente
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+      originalRequest._retry = true;
+      try {
+        await axios.post(API_URL + '/api/auth/refresh', {}, { withCredentials: true });
+        return axios(originalRequest);
+      } catch (refreshError) {
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+const checkAuth = async () => {
     try {
       const { data } = await axios.get(`${API_URL}/api/auth/me`, {
         withCredentials: true,

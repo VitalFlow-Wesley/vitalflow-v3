@@ -38,6 +38,12 @@ def create_refresh_token(colaborador_id: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
+def decode_token(token: str) -> dict | None:
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        return None
+
 async def get_current_colaborador(request: Request) -> dict:
     token = request.cookies.get("access_token")
     if not token:

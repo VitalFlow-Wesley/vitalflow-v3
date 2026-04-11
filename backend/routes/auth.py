@@ -177,6 +177,24 @@ async def login(data: LoginRequest, response: Response, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/auth/refresh")
+async def refresh_token(request: Request, response: Response):
+    """Renova o access_token usando o refresh_token do cookie."""
+    from auth_utils import decode_token
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token nao encontrado.")
+    payload = decode_token(refresh_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Refresh token invalido ou expirado.")
+    colaborador = await db.colaboradores.find_one({"id": payload.get("sub")}, {"_id": 0})
+    if not colaborador:
+        raise HTTPException(status_code=401, detail="Usuario nao encontrado.")
+    new_access = create_access_token(colaborador["id"], colaborador["email"])
+    new_refresh = create_refresh_token(colaborador["id"])
+    _set_auth_cookies(response, new_access, new_refresh)
+    return {"ok": True}
+
 @router.post("/auth/logout")
 async def logout(response: Response):
     response.delete_cookie("access_token", path="/")
