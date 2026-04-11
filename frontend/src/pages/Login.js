@@ -17,7 +17,7 @@ const traduzirErro = (msg) => {
   const m = msg.toLowerCase();
   if (m.includes('value is not a valid email')) return 'Por favor, insira um e-mail valido (ex: nome@exemplo.com)';
   if (m.includes('field required')) return 'Este campo e obrigatorio';
-  if (m.includes('incorrect') or m.includes('invalid credentials')) return 'E-mail ou senha incorretos';
+  if (m.includes('incorrect') || m.includes('invalid credentials')) return 'E-mail ou senha incorretos';
   return msg;
 };
 
