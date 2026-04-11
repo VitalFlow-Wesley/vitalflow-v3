@@ -91,7 +91,7 @@ const Navbar = () => {
             )}
 
             {/* Botão Toggle Relatório/Meus Dados - apenas para usuários comuns */}
-            {!isGestor && (
+            {true {!isGestor && ({!isGestor && ( (
               isRelatorio ? (
                 <button
                   onClick={() => navigate("/")}
