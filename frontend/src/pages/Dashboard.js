@@ -203,13 +203,25 @@ const Dashboard = () => {
     refreshUser();
   };
 
-const handleUpgrade = async () => {
+  const handleUpgrade = async () => {
     try {
-      await fetchPredictiveAlert();
+      const originUrl = window.location.origin;
+      const { data } = await axios.post(`${API}/billing/create-checkout`, {
+        plan_id: "premium_monthly",
+        origin_url: originUrl,
+      }, { withCredentials: true });
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Erro ao iniciar pagamento.");
+      }
     } catch (error) {
-      toast.error("Erro ao realizar upgrade.");
+      const msg = error.response?.data?.detail || "Erro ao processar upgrade.";
+      toast.error(msg);
     }
   };
+
+  const isFreeLocked = user?.account_type === "personal" && !user?.is_premium;
   const hasDevices = connectedDevices.length > 0;
   const hasData = currentAnalysis !== null;
 
@@ -347,6 +359,48 @@ const handleUpgrade = async () => {
                 <span className="text-xs text-neutral-600">
                   Proximo badge em {gamStats.next_badge_in} dia(s)
                 </span>
+              </motion.div>
+            )}
+
+            {/* Morning Report Card */}
+            {morningReport && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="border border-indigo-500/30 bg-indigo-500/5 rounded-md p-4"
+                data-testid="morning-report-card"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
+                    {new Date().getHours() < 12 ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">Morning Report</span>
+                    <p className="text-sm text-neutral-200 font-medium">{morningReport.greeting}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                  <div className="bg-neutral-900/50 rounded-md p-2.5 border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Sono Total</p>
+                    <p className="text-lg font-mono font-bold text-indigo-400" data-testid="morning-sleep-hours">{morningReport.sleep_hours}h</p>
+                  </div>
+                  <div className="bg-neutral-900/50 rounded-md p-2.5 border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Sono Profundo</p>
+                    <p className="text-lg font-mono font-bold text-blue-400" data-testid="morning-deep-sleep">{morningReport.deep_sleep_pct}%</p>
+                  </div>
+                  <div className="bg-neutral-900/50 rounded-md p-2.5 border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Limite BPM</p>
+                    <p className="text-lg font-mono font-bold text-cyan-400" data-testid="morning-bpm-threshold">{morningReport.bpm_stress_threshold}</p>
+                  </div>
+                  <div className="bg-neutral-900/50 rounded-md p-2.5 border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Recuperacao</p>
+                    <p className={`text-xs font-bold ${
+                      morningReport.recovery_factor >= 0.9 ? "text-emerald-400" :
+                      morningReport.recovery_factor >= 0.7 ? "text-amber-400" : "text-rose-400"
+                    }`} data-testid="morning-recovery">{morningReport.recovery_label}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-neutral-400 italic">{morningReport.personalized_tip}</p>
               </motion.div>
             )}
 

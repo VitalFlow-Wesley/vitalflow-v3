@@ -1,5 +1,5 @@
-import { Brain, Settings, User, LogOut, BarChart3, Radio, FileText } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Brain, Settings, User, LogOut, BarChart3, Radio, FileText, LayoutDashboard } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
 import EnergyStatus from "./EnergyStatus";
@@ -8,6 +8,7 @@ import ConnectionStatus from "./ConnectionStatus";
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -34,6 +35,7 @@ const Navbar = () => {
     >
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
+
           {/* Logo + Connection Status */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
@@ -53,24 +55,37 @@ const Navbar = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
+
             {/* Sync indicator */}
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-neutral-800/50" data-testid="sync-indicator">
               <Radio className="w-3 h-3 text-emerald-400" />
               <span className="text-[11px] text-neutral-400">Sincronizado com wearables</span>
             </div>
 
-            {/* Gestao - visivel apenas para Gestores */}
+            {/* Botão Toggle Gestor/Meus Dados - visível apenas para Gestores */}
             {user?.nivel_acesso === 'Gestor' && (
-              <button
-                onClick={() => navigate("/gestor")}
-                data-testid="gestor-dashboard-button"
-                className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span>Gestao</span>
-              </button>
+              location.pathname === '/gestor' ? (
+                <button
+                  onClick={() => navigate("/")}
+                  data-testid="gestor-dashboard-button"
+                  className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>Meus Dados</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate("/gestor")}
+                  data-testid="gestor-dashboard-button"
+                  className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Gestor</span>
+                </button>
+              )
             )}
 
+            {/* Dispositivos */}
             <button
               onClick={() => navigate("/devices")}
               data-testid="devices-button"
@@ -80,7 +95,7 @@ const Navbar = () => {
               <span className="hidden sm:inline">Dispositivos</span>
             </button>
 
-            {/* Meu Relatorio */}
+            {/* Meu Relatório */}
             <button
               onClick={() => navigate("/relatorio")}
               data-testid="meu-relatorio-button"
@@ -146,6 +161,7 @@ const Navbar = () => {
                 </div>
               )}
             </div>
+
           </div>
         </div>
       </div>

@@ -36,6 +36,8 @@ const GestorDashboard = () => {
   const [addLoading, setAddLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
 
+  const [heatmapData, setHeatmapData] = useState(null);
+
   useEffect(() => {
     if (user && user.nivel_acesso !== 'Gestor') {
       navigate('/');
@@ -43,12 +45,20 @@ const GestorDashboard = () => {
     }
     fetchSetores();
     fetchAllMetrics();
+    fetchHeatmap();
   }, [user, navigate, period, setor]);
 
   const fetchSetores = async () => {
     try {
       const { data } = await axios.get(`${API_URL}/api/dashboard/setores`, { withCredentials: true });
       setSetores(data.setores || []);
+    } catch (err) {}
+  };
+
+  const fetchHeatmap = async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/dashboard/heatmap?period=${period}`, { withCredentials: true });
+      setHeatmapData(data);
     } catch (err) {}
   };
 
@@ -363,6 +373,81 @@ const GestorDashboard = () => {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Stress Heatmap by Sector */}
+        {heatmapData && heatmapData.hourly_heatmap?.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+            className="border border-white/10 bg-neutral-900/60 rounded-md p-6 mb-8" data-testid="stress-heatmap">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-orange-400" />
+                <h3 className="text-sm font-bold text-white">Mapa de Calor - Estresse por Setor</h3>
+              </div>
+              {heatmapData.peak_stress?.setor !== "N/A" && (
+                <span className="text-[10px] px-2 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full font-bold" data-testid="peak-stress-badge">
+                  Pico: {heatmapData.peak_stress.setor} as {heatmapData.peak_stress.hour} ({heatmapData.peak_stress.stress}%)
+                </span>
+              )}
+            </div>
+
+            {/* Heatmap Grid */}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left text-[10px] text-neutral-500 uppercase tracking-wider px-2 py-1 w-24">Setor</th>
+                    {heatmapData.hours?.map(h => (
+                      <th key={h} className="text-center text-[10px] text-neutral-500 px-1 py-1 font-mono">{h.slice(0, 2)}h</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {heatmapData.hourly_heatmap.map((row) => (
+                    <tr key={row.setor}>
+                      <td className="text-[11px] text-neutral-300 font-medium px-2 py-1 whitespace-nowrap">{row.setor}</td>
+                      {heatmapData.hours?.map(h => {
+                        const cell = row.hours?.[h] || { avg_stress: 0, count: 0 };
+                        const intensity = Math.min(cell.avg_stress / 80, 1);
+                        const bg = cell.count === 0
+                          ? "rgba(255,255,255,0.02)"
+                          : cell.avg_stress > 60 ? `rgba(239,68,68,${0.15 + intensity * 0.6})`
+                          : cell.avg_stress > 35 ? `rgba(251,191,36,${0.1 + intensity * 0.4})`
+                          : `rgba(34,211,238,${0.05 + intensity * 0.2})`;
+                        return (
+                          <td key={h} className="p-0.5">
+                            <div
+                              className="w-full h-7 rounded-sm flex items-center justify-center text-[9px] font-mono font-bold transition-all hover:scale-110 cursor-default"
+                              style={{ backgroundColor: bg, color: cell.count > 0 ? (cell.avg_stress > 60 ? '#fca5a5' : cell.avg_stress > 35 ? '#fcd34d' : '#67e8f9') : 'transparent' }}
+                              title={`${row.setor} ${h}: Estresse ${cell.avg_stress}% (${cell.count} leituras)`}
+                            >
+                              {cell.count > 0 ? cell.avg_stress : ""}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-4 mt-3 justify-end">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(34,211,238,0.2)' }} />
+                <span className="text-[10px] text-neutral-500">Baixo</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(251,191,36,0.4)' }} />
+                <span className="text-[10px] text-neutral-500">Moderado</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(239,68,68,0.6)' }} />
+                <span className="text-[10px] text-neutral-500">Alto</span>
+              </div>
             </div>
           </motion.div>
         )}

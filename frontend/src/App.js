@@ -7,6 +7,7 @@ import ConnectDevices from "./pages/ConnectDevices";
 import Profile from "./pages/Profile";
 import MeuRelatorio from "./pages/MeuRelatorio";
 import GestorDashboard from "./pages/GestorDashboard";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { Toaster } from "./components/ui/sonner";
@@ -57,6 +58,14 @@ function App() {
                 <GestorRoute>
                   <GestorDashboard />
                 </GestorRoute>
+              }
+            />
+            <Route
+              path="/payment/success"
+              element={
+                <ProtectedRoute>
+                  <PaymentSuccess />
+                </ProtectedRoute>
               }
             />
           </Routes>

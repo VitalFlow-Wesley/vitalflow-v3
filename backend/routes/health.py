@@ -351,7 +351,6 @@ async def get_morning_report(request: Request):
 
         sleep_h = last_sync.get("sleep_hours", 0)
         sleep_quality = last_sync.get("sleep_quality", {})
-        recovery = last_sync.get("recovery", {})
 
         deep_h = sleep_quality.get("deep_hours", 0)
         light_h = sleep_quality.get("light_hours", 0)
