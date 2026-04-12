@@ -31,11 +31,15 @@ const MeuRelatorio = () => {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [hasDevices, setHasDevices] = useState(false);
 
   const canExportPdf = user?.account_type === "corporate" || user?.is_premium;
 
   useEffect(() => {
     fetchReport();
+    axios.get(API.replace('/api','') + '/api/wearables', { withCredentials: true })
+      .then(r => setHasDevices(r.data.some(d => d.is_connected)))
+      .catch(() => {});
   }, [period]);
 
   const fetchReport = async () => {
@@ -178,16 +182,18 @@ const MeuRelatorio = () => {
             </motion.div>
             <p className="text-neutral-300 font-semibold text-base mb-1">Sem dados no periodo</p>
             <p className="text-neutral-500 text-sm text-center max-w-sm mb-4">
-              Conecte um dispositivo e comece a monitorar para gerar seu relatorio personalizado.
+              {hasDevices ? "Aguardando sincronizacao. Seus dados aparecerao aqui em breve." : "Conecte um dispositivo e comece a monitorar para gerar seu relatorio personalizado."}
             </p>
-            <button
-              onClick={() => navigate("/devices")}
-              className="flex items-center gap-2 px-5 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-sm font-semibold rounded-md transition-all"
-              data-testid="report-connect-btn"
-            >
-              <Smartphone className="w-4 h-4" />
-              Conectar dispositivo
-            </button>
+            {!hasDevices && (
+              <button
+                onClick={() => navigate("/devices")}
+                className="flex items-center gap-2 px-5 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-sm font-semibold rounded-md transition-all"
+                data-testid="report-connect-btn"
+              >
+                <Smartphone className="w-4 h-4" />
+                Conectar dispositivo
+              </button>
+            )}
           </motion.div>
         ) : (
           /* Report Content */
