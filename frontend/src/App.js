@@ -11,6 +11,9 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { Toaster } from "./components/ui/sonner";
+import GestaoLayout from "./layouts/GestaoLayout";
+import GestaoColaboradores from "./pages/GestaoColaboradores";
+import SetoresEquipes from "./pages/SetoresEquipes";
 
 function App() {
   return (
@@ -20,54 +23,18 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/devices"
-              element={
-                <ProtectedRoute>
-                  <ConnectDevices />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/relatorio"
-              element={
-                <ProtectedRoute>
-                  <MeuRelatorio />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/gestor"
-              element={
-                <GestorRoute>
-                  <GestorDashboard />
-                </GestorRoute>
-              }
-            />
-            <Route
-              path="/payment/success"
-              element={
-                <ProtectedRoute>
-                  <PaymentSuccess />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/devices" element={<ProtectedRoute><ConnectDevices /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/relatorio" element={<ProtectedRoute><MeuRelatorio /></ProtectedRoute>} />
+            <Route path="/payment/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+
+            {/* Área de Gestão */}
+            <Route path="/gestor" element={<GestorRoute><GestorDashboard /></GestorRoute>} />
+            <Route path="/gestor" element={<GestaoLayout />}>
+              <Route path="colaboradores" element={<GestaoColaboradores />} />
+              <Route path="setores" element={<SetoresEquipes />} />
+            </Route>
           </Routes>
         </BrowserRouter>
         <Toaster position="top-right" richColors />
