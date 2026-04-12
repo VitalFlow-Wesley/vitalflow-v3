@@ -13,7 +13,6 @@ export const ROLE_LEVELS = {
   Colaborador: 8,
 };
 
-export const CAN_ACCESS_GESTAO = (role) => ROLE_LEVELS[role] <= 7;
 export const IS_ADMIN = (role) => ROLE_LEVELS[role] <= 1;
 export const IS_DIRETOR_OR_ABOVE = (role) => ROLE_LEVELS[role] <= 2;
 export const IS_GERENTE_OR_ABOVE = (role) => ROLE_LEVELS[role] <= 4;
@@ -22,27 +21,73 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
-        }
-      } catch (e) {
-        console.error("Erro ao buscar usuário:", e);
-      } finally {
-        setLoading(false);
+  const fetchUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) { setLoading(false); return; }
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
+      } else {
+        localStorage.removeItem("token");
+        setUser(null);
       }
-    };
-    fetchUser();
-  }, []);
-
-  const canAccess = (minRole) => {
-    if (!user) return false;
-    return ROLE_LEVELS[user.role] <= ROLE_LEVELS[minRole];
+    } catch (e) {
+      console.error("Erro ao buscar usuário:", e);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => { fetchUser(); }, []);
+
+  const login = async (email, password) => {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.access_token) {
+        localStorage.setItem("token", data.access_token);
+        await fetchUser();
+        return { success: true };
+      }
+      return { success: false, error: data.detail || "Credenciais inválidas" };
+    } catch (e) {
+      return { success: false, error: "Erro de conexão" };
+    }
+  };
+
+  const register = async (userData) => {
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+      const data = await res.json();
+      if (res.ok && data.access_token) {
+        localStorage.setItem("token", data.access_token);
+        await fetchUser();
+        return { success: true };
+      }
+      return { success: false, error: data.detail || "Erro ao cadastrar" };
+    } catch (e) {
+      return { success: false, error: "Erro de conexão" };
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+  };
+
+  const refreshUser = () => fetchUser();
 
   const getScopeFilter = () => {
     if (!user) return {};
@@ -53,7 +98,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, canAccess, getScopeFilter, ROLE_LEVELS }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register, refreshUser, getScopeFilter, ROLE_LEVELS }}>
       {children}
     </AuthContext.Provider>
   );
