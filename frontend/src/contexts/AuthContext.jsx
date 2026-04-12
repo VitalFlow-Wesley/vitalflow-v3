@@ -1,8 +1,7 @@
-curl -s https://raw.githubusercontent.com/VitalFlow-Wesley/vitalflow-v3/main/frontend/src/components/RoleGuard.jsx 2>/dev/null || echo "sem acesso ao repo"import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
-// Hierarquia de níveis — quanto menor o número, maior o poder
 export const ROLE_LEVELS = {
   CEO: 1,
   Diretor: 2,
@@ -14,16 +13,9 @@ export const ROLE_LEVELS = {
   Colaborador: 8,
 };
 
-// Quem pode acessar a área de gestão
 export const CAN_ACCESS_GESTAO = (role) => ROLE_LEVELS[role] <= 7;
-
-// Quem vê tudo (sem filtro de setor)
 export const IS_ADMIN = (role) => ROLE_LEVELS[role] <= 1;
-
-// Quem vê sua diretoria completa
 export const IS_DIRETOR_OR_ABOVE = (role) => ROLE_LEVELS[role] <= 2;
-
-// Quem vê apenas sua cadeia direta
 export const IS_GERENTE_OR_ABOVE = (role) => ROLE_LEVELS[role] <= 4;
 
 export function AuthProvider({ children }) {
@@ -31,7 +23,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Busca usuário da API real
     const fetchUser = async () => {
       try {
         const res = await fetch("/api/auth/me");
@@ -53,10 +44,9 @@ export function AuthProvider({ children }) {
     return ROLE_LEVELS[user.role] <= ROLE_LEVELS[minRole];
   };
 
-  // Retorna o filtro de setor/equipe baseado no cargo do usuário logado
   const getScopeFilter = () => {
     if (!user) return {};
-    if (IS_ADMIN(user.role)) return {}; // sem filtro
+    if (IS_ADMIN(user.role)) return {};
     if (IS_DIRETOR_OR_ABOVE(user.role)) return { diretoria: user.diretoria };
     if (IS_GERENTE_OR_ABOVE(user.role)) return { gestorId: user.id };
     return { gestorImediatoId: user.id };
