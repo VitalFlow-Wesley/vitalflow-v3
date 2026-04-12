@@ -3,7 +3,7 @@ import { TrendingUp, Radio, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
-const HistoryChart = ({ history }) => {
+const HistoryChart = ({ history, hasDevices }) => {
   const navigate = useNavigate();
 
   // Awaiting sync state
@@ -33,17 +33,10 @@ const HistoryChart = ({ history }) => {
             Aguardando sincronizacao
           </p>
           <p className="text-neutral-500 text-xs text-center max-w-xs mb-4">
-            Conecte um dispositivo wearable para que seus dados biometricos aparecam aqui em tempo real.
+            Seus dados biometricos aparecao aqui em tempo real assim que forem recebidos.
           </p>
 
-          <button
-            onClick={() => navigate('/devices')}
-            className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-semibold rounded-md transition-all"
-            data-testid="chart-connect-device-btn"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            Conectar dispositivo
-          </button>
+          
         </div>
       </div>
     );

@@ -611,7 +611,7 @@ const Dashboard = () => {
             </div>
 
             {/* Empty history chart placeholder */}
-            <HistoryChart history={[]} />
+            <HistoryChart history={[]} hasDevices={hasDevices} />
           </motion.div>
         )}
       </div>
