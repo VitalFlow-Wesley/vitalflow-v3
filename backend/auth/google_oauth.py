@@ -1,3 +1,4 @@
+"""
 backend/auth/google_oauth.py
 
 Configuração do OAuth Google com access_type='offline' para salvar refresh_token.
