@@ -7,6 +7,7 @@ import ConnectDevices from "./pages/ConnectDevices";
 import Profile from "./pages/Profile";
 import MeuRelatorio from "./pages/MeuRelatorio";
 import GestorDashboard from "./pages/GestorDashboard";
+import GestorLanding from "./pages/GestorLanding";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
