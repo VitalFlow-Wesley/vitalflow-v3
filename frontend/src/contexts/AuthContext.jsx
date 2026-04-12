@@ -3,14 +3,8 @@ import { createContext, useContext, useState, useEffect } from "react";
 const AuthContext = createContext(null);
 
 export const ROLE_LEVELS = {
-  CEO: 1,
-  Diretor: 2,
-  "Ger. Executivo": 3,
-  "Ger. Operacional": 4,
-  Coordenador: 5,
-  Supervisor: 6,
-  Gestor: 7,
-  Colaborador: 8,
+  CEO: 1, Diretor: 2, "Ger. Executivo": 3, "Ger. Operacional": 4,
+  Coordenador: 5, Supervisor: 6, Gestor: 7, Colaborador: 8,
 };
 
 export const IS_ADMIN = (role) => ROLE_LEVELS[role] <= 1;
@@ -23,20 +17,15 @@ export function AuthProvider({ children }) {
 
   const fetchUser = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) { setLoading(false); return; }
-      const res = await fetch("/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch("/api/auth/me", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setUser(data);
       } else {
-        localStorage.removeItem("token");
         setUser(null);
       }
     } catch (e) {
-      console.error("Erro ao buscar usuário:", e);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -49,13 +38,13 @@ export function AuthProvider({ children }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (res.ok && data.access_token) {
-        localStorage.setItem("token", data.access_token);
+      if (res.ok) {
         await fetchUser();
-        return { success: true };
+        return { success: true, data };
       }
       return { success: false, error: data.detail || "Credenciais inválidas" };
     } catch (e) {
@@ -68,13 +57,13 @@ export function AuthProvider({ children }) {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(userData),
       });
       const data = await res.json();
-      if (res.ok && data.access_token) {
-        localStorage.setItem("token", data.access_token);
+      if (res.ok) {
         await fetchUser();
-        return { success: true };
+        return { success: true, data };
       }
       return { success: false, error: data.detail || "Erro ao cadastrar" };
     } catch (e) {
@@ -82,8 +71,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } catch (e) {}
     setUser(null);
   };
 
