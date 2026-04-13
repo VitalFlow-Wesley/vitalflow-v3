@@ -19,14 +19,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx supervisor curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Backend setup
+# --- Backend setup ---
 WORKDIR /app/backend
-COPY backend/requirements.txt ./
+
+# AJUSTE CRUCIAL: Copiamos o requirements E o arquivo .whl antes de instalar
+COPY backend/requirements.txt backend/emergentintegrations-0.1.0-py3-none-any.whl ./
+
+# Agora o pip instala sem erro porque o arquivo .whl já está na pasta
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copiamos o restante do código do backend
 COPY backend/ ./
 
-# Frontend static files (served by nginx)
+# --- Frontend static files (served by nginx) ---
 COPY --from=frontend-build /build/build /app/frontend/build
 
 # Nginx config: serve frontend + proxy /api to backend
