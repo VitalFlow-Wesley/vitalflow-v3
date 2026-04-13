@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = "https://vitalflow.ia.br";
+const API_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 
 const PERIODS = [
   { value: "7d", label: "7 dias" },

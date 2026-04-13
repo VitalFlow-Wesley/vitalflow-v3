@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router-dom";
 
-const BACKEND_URL = "https://vitalflow.ia.br";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 const API = `${BACKEND_URL}/api`;
 
 const OAUTH_STEPS = ["Abrindo autorizacao...", "Verificando permissoes...", "Conectando ao dispositivo...", "Sincronizando dados..."];

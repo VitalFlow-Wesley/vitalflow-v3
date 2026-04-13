@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth, ROLE_LEVELS } from "../contexts/AuthContext";
-export default function RoleGuard({ children, minRole="Gestor", redirectTo="/home" }) {
+export default function RoleGuard({ children, minRole="Gestor", redirectTo="/" }) {
   const { user, loading } = useAuth();
   if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0d1117"}}><p style={{color:"#6b7280"}}>Verificando...</p></div>;
   if (!user) return <Navigate to="/login" replace />;

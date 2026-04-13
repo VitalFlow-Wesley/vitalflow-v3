@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
-const API_URL = "https://vitalflow.ia.br";
+const API_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 
 const EnergyStatus = () => {
   const [status, setStatus] = useState(null);

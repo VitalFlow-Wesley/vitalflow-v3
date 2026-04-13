@@ -40,7 +40,7 @@ export default function GestaoLayout() {
   if (isMobile) return <MobileLock />;
 
   return (
-    <RoleGuard minRole="Gestor" redirectTo="/home">
+    <RoleGuard minRole="Gestor" redirectTo="/">
       <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "#0d1117" }}>
         <GestaoSidebar />
         <main style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
