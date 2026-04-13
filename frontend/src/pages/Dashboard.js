@@ -166,8 +166,7 @@ const Dashboard = () => {
   // Background sync timer
   useEffect(() => {
     bgSyncRef.current = setInterval(backgroundSync, BACKGROUND_SYNC_INTERVAL);
-    // Initial sync on mount
-    backgroundSync();
+    // Sync apenas no intervalo, não no mount para evitar toast duplicado
     return () => {
       if (bgSyncRef.current) clearInterval(bgSyncRef.current);
     };
