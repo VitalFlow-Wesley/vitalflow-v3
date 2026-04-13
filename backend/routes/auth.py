@@ -26,7 +26,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
     ]:
         response.set_cookie(
             key=key, value=value, httponly=True,
-            secure=False, samesite="lax", max_age=max_age, path="/"
+            secure=True, samesite="none", max_age=max_age, path="/"
         )
 
 
