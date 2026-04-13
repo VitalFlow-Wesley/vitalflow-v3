@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ShowIfRole } from "../components/RoleGuard";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 
 export default function SetoresEquipes() {
   const [setores, setSetores] = useState([]);
@@ -8,7 +9,7 @@ export default function SetoresEquipes() {
   const [editTarget, setEditTarget] = useState(null);
 
   useEffect(() => {
-    fetch("/api/setores?includeEquipes=true&includeVscore=true")
+    fetch(`${BACKEND_URL}/api/setores?includeEquipes=true&includeVscore=true")
       .then(r => r.ok ? r.json() : [])
       .then(data => { setSetores(data); setLoading(false); })
       .catch(() => setLoading(false));
@@ -16,13 +17,13 @@ export default function SetoresEquipes() {
 
   const handleDeleteSetor = async (id) => {
     if (!confirm("Excluir este setor? Os colaboradores serão movidos para 'Sem setor'.")) return;
-    await fetch(`/api/setores/${id}`, { method: "DELETE" });
+    await fetch(`${BACKEND_URL}/api/setores/${id}`, { method: "DELETE" });
     setSetores(prev => prev.filter(s => s.id !== id));
   };
 
   const handleDeleteEquipe = async (setorId, equipeId) => {
     if (!confirm("Remover esta equipe? O acompanhamento subirá ao nível hierárquico superior.")) return;
-    await fetch(`/api/equipes/${equipeId}`, { method: "DELETE" });
+    await fetch(`${BACKEND_URL}/api/equipes/${equipeId}`, { method: "DELETE" });
     setSetores(prev => prev.map(s =>
       s.id === setorId ? { ...s, equipes: s.equipes.filter(e => e.id !== equipeId) } : s
     ));
@@ -134,7 +135,7 @@ export default function SetoresEquipes() {
           tipo="Setor"
           onClose={() => setModalType(null)}
           onSave={async (id, novoNome) => {
-            await fetch(`/api/setores/${id}`, {
+            await fetch(`${BACKEND_URL}/api/setores/${id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ name: novoNome }),
@@ -277,7 +278,7 @@ function SetorModal({ onClose, onSave }) {
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    const res = await fetch("/api/setores", {
+    const res = await fetch(`${BACKEND_URL}/api/setores", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
@@ -305,7 +306,7 @@ function EquipeModal({ setores, setorPreSelecionado, onClose, onSave }) {
   const handleSave = async () => {
     if (!name.trim() || !setorId) return;
     setSaving(true);
-    const res = await fetch("/api/equipes", {
+    const res = await fetch(`${BACKEND_URL}/api/equipes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, setorId }),

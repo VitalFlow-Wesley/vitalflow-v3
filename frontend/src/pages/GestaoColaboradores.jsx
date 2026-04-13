@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth, IS_ADMIN, IS_DIRETOR_OR_ABOVE, ROLE_LEVELS } from "../contexts/AuthContext";
 import { ShowIfRole } from "../components/RoleGuard";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 
 // Cor e label do V-Score
 function vscoreStyle(score) {
@@ -68,7 +69,7 @@ export default function GestaoColaboradores() {
       try {
         const scope = getScopeFilter();
         const params = new URLSearchParams(scope);
-        const res = await fetch(`/api/colaboradores?${params}`);
+        const res = await fetch(`${BACKEND_URL}/api/colaboradores?${params}`);
         if (res.ok) {
           const data = await res.json();
           setColaboradores(data);
@@ -83,8 +84,8 @@ export default function GestaoColaboradores() {
     const fetchAuxiliares = async () => {
       try {
         const [gRes, sRes] = await Promise.all([
-          fetch("/api/colaboradores?minRole=Gestor"),
-          fetch("/api/setores"),
+          fetch(`${BACKEND_URL}/api/colaboradores?minRole=Gestor"),
+          fetch(`${BACKEND_URL}/api/setores"),
         ]);
         if (gRes.ok) setGestoresDisponiveis(await gRes.json());
         if (sRes.ok) setSetoresDisponiveis(await sRes.json());
@@ -124,7 +125,7 @@ export default function GestaoColaboradores() {
   const handleDelete = async (id) => {
     if (!confirm("Remover este colaborador da organização?")) return;
     try {
-      await fetch(`/api/colaboradores/${id}`, { method: "DELETE" });
+      await fetch(`${BACKEND_URL}/api/colaboradores/${id}`, { method: "DELETE" });
       setColaboradores(prev => prev.filter(c => c.id !== id));
     } catch (e) {
       alert("Erro ao remover colaborador.");
@@ -332,7 +333,7 @@ function AddColaboradorModal({ gestores, setores, onClose, onSave }) {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/colaboradores", {
+      const res = await fetch(`${BACKEND_URL}/api/colaboradores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
