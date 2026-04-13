@@ -47,6 +47,12 @@ export default function GestaoSidebar() {
         </button>
       </div>
 
+      <div style={{ padding:"8px 12px", borderBottom:"1px solid #1e2d3d" }}>
+        <button onClick={() => navigate("/")} style={{ width:"100%", display:"flex", alignItems:"center", gap:"8px", padding:"8px 10px", borderRadius:"8px", border:"1px solid #1e2d3d", background:"transparent", color:"#6b7280", cursor:"pointer", fontSize:"12px" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          {expanded && "Voltar ao Meu Painel"}
+        </button>
+      </div>
       <nav style={{ flex:1, padding:"12px 0", overflowY:"auto", overflowX:"hidden" }}>
         {SIDEBAR_ITEMS.map((group) => (
           <div key={group.group} style={{ marginBottom:"8px" }}>
