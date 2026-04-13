@@ -84,8 +84,8 @@ export default function GestaoColaboradores() {
     const fetchAuxiliares = async () => {
       try {
         const [gRes, sRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/api/colaboradores?minRole=Gestor"),
-          fetch(`${BACKEND_URL}/api/setores"),
+          fetch(`${BACKEND_URL}/api/colaboradores?minRole=Gestor`),
+          fetch(`${BACKEND_URL}/api/setores`),
         ]);
         if (gRes.ok) setGestoresDisponiveis(await gRes.json());
         if (sRes.ok) setSetoresDisponiveis(await sRes.json());
