@@ -9,7 +9,7 @@ export default function SetoresEquipes() {
   const [editTarget, setEditTarget] = useState(null);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/setores?includeEquipes=true&includeVscore=true")
+    fetch(`${BACKEND_URL}/api/setores?includeEquipes=true&includeVscore=true`)
       .then(r => r.ok ? r.json() : [])
       .then(data => { setSetores(data); setLoading(false); })
       .catch(() => setLoading(false));
