@@ -25,7 +25,8 @@ export function AuthProvider({ children }) {
       const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        setUser(data);
+        // Backend retorna nivel_acesso, mapeamos para role
+        setUser({ ...data, role: data.nivel_acesso || data.role });
       } else {
         setUser(null);
       }
