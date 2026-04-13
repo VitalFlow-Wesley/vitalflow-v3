@@ -278,7 +278,7 @@ function SetorModal({ onClose, onSave }) {
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    const res = await fetch(`${BACKEND_URL}/api/setores", {
+    const res = await fetch(`${BACKEND_URL}/api/setores`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
@@ -306,7 +306,7 @@ function EquipeModal({ setores, setorPreSelecionado, onClose, onSave }) {
   const handleSave = async () => {
     if (!name.trim() || !setorId) return;
     setSaving(true);
-    const res = await fetch(`${BACKEND_URL}/api/equipes", {
+    const res = await fetch(`${BACKEND_URL}/api/equipes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, setorId }),
