@@ -41,6 +41,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       // Usando API_URL dinâmica
+      localStorage.removeItem('vf_user');
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,6 +83,7 @@ export function AuthProvider({ children }) {
     try {
       // Usando API_URL dinâmica
       await fetch(`${API_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
+      localStorage.removeItem('vf_user');
     } catch (e) {}
     setUser(null);
   };
