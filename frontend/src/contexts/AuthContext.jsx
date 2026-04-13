@@ -2,6 +2,9 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
+// Definição da URL do Backend (Vercel usa a variável ou o fallback do Railway)
+const API_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+
 export const ROLE_LEVELS = {
   CEO: 1, Diretor: 2, "Ger. Executivo": 3, "Ger. Operacional": 4,
   Coordenador: 5, Supervisor: 6, Gestor: 7, Colaborador: 8,
@@ -17,7 +20,8 @@ export function AuthProvider({ children }) {
 
   const fetchUser = async () => {
     try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
+      // Usando API_URL dinâmica
+      const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setUser(data);
@@ -35,7 +39,8 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const res = await fetch("/api/auth/login", {
+      // Usando API_URL dinâmica
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -54,7 +59,8 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     try {
-      const res = await fetch("/api/auth/register", {
+      // Usando API_URL dinâmica
+      const res = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -73,7 +79,8 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      // Usando API_URL dinâmica
+      await fetch(`${API_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
     } catch (e) {}
     setUser(null);
   };

@@ -9,14 +9,15 @@ import { Label } from '../components/ui/label';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API_URL = "https://vitalflow.ia.br";
+// MUDANÇA: Usando a URL dinâmica para falar com o Railway
+const API_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 
 const validarEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 const traduzirErro = (msg) => {
   const m = msg.toLowerCase();
-  if (m.includes('value is not a valid email')) return 'Por favor, insira um e-mail valido (ex: nome@exemplo.com)';
-  if (m.includes('field required')) return 'Este campo e obrigatorio';
+  if (m.includes('value is not a valid email')) return 'Por favor, insira um e-mail válido (ex: nome@exemplo.com)';
+  if (m.includes('field required')) return 'Este campo é obrigatório';
   if (m.includes('incorrect') || m.includes('invalid credentials')) return 'E-mail ou senha incorretos';
   return msg;
 };
@@ -56,7 +57,7 @@ const Login = () => {
     try {
       const { data } = await axios.post(`${API_URL}/api/auth/forgot-password`, { email: forgotEmail });
       setForgotResult(data);
-      toast.success('Senha temporaria gerada com sucesso!');
+      toast.success('Senha temporária gerada com sucesso!');
     } catch (err) {
       const msg = err.response?.data?.detail || 'Erro ao recuperar senha.';
       toast.error(msg);
@@ -72,7 +73,6 @@ const Login = () => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <Brain className="w-10 h-10 text-cyan-400" />
           <h1 className="text-3xl font-black tracking-tighter text-white font-heading">
@@ -80,7 +80,6 @@ const Login = () => {
           </h1>
         </div>
 
-        {/* Card */}
         <div className="border border-white/10 bg-neutral-900/60 backdrop-blur-xl rounded-lg p-8">
           <AnimatePresence mode="wait">
             {!showForgot ? (
@@ -88,7 +87,6 @@ const Login = () => {
                 <h2 className="text-2xl font-bold text-white mb-2">Bem-vindo</h2>
                 <p className="text-neutral-400 text-sm mb-6">Entre com suas credenciais</p>
 
-                {/* Error Alert */}
                 {error && (
                   <div className="mb-4 p-3 rounded-md bg-rose-500/10 border border-rose-500/30 flex items-start gap-2">
                     <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
@@ -109,7 +107,6 @@ const Login = () => {
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="pl-10 bg-neutral-950 border-white/20 text-white focus:border-cyan-400"
                         required
-                        data-testid="login-email"
                       />
                     </div>
                   </div>
@@ -126,7 +123,6 @@ const Login = () => {
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         className="pl-10 bg-neutral-950 border-white/20 text-white focus:border-cyan-400"
                         required
-                        data-testid="login-password"
                       />
                     </div>
                   </div>
@@ -135,18 +131,15 @@ const Login = () => {
                     type="submit"
                     disabled={loading}
                     className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-semibold"
-                    data-testid="login-submit"
                   >
                     {loading ? 'Entrando...' : 'Entrar'}
                   </Button>
                 </form>
 
-                {/* Forgot password link */}
                 <div className="mt-4 text-center">
                   <button
                     onClick={() => { setShowForgot(true); setError(''); }}
                     className="text-sm text-amber-400 hover:text-amber-300 font-medium transition-colors"
-                    data-testid="forgot-password-link"
                   >
                     Esqueci minha senha
                   </button>
@@ -154,7 +147,7 @@ const Login = () => {
 
                 <div className="mt-4 text-center">
                   <p className="text-sm text-neutral-400">
-                    Nao tem uma conta?{' '}
+                    Não tem uma conta?{' '}
                     <Link to="/register" className="text-cyan-400 hover:text-cyan-300 font-semibold">
                       Cadastre-se
                     </Link>
@@ -168,23 +161,20 @@ const Login = () => {
                   <h2 className="text-xl font-bold text-white">Recuperar Senha</h2>
                 </div>
                 <p className="text-neutral-400 text-sm mb-6">
-                  Informe seu email cadastrado para receber uma senha temporaria.
+                  Informe seu email cadastrado para receber uma senha temporária.
                 </p>
 
                 {forgotResult ? (
-                  <div className="p-4 rounded-md bg-emerald-500/10 border border-emerald-500/30 mb-4" data-testid="forgot-result">
+                  <div className="p-4 rounded-md bg-emerald-500/10 border border-emerald-500/30 mb-4">
                     <div className="flex items-center gap-2 mb-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                       <p className="text-sm font-semibold text-emerald-400">Senha redefinida!</p>
                     </div>
                     <p className="text-xs text-neutral-300 mb-2">{forgotResult.message}</p>
                     <div className="bg-neutral-800 rounded-md px-3 py-2">
-                      <p className="text-xs text-neutral-400">Sua nova senha temporaria:</p>
-                      <p className="text-lg font-mono font-bold text-white mt-1" data-testid="temp-password">{forgotResult.temp_password}</p>
+                      <p className="text-xs text-neutral-400">Sua nova senha temporária:</p>
+                      <p className="text-lg font-mono font-bold text-white mt-1">{forgotResult.temp_password}</p>
                     </div>
-                    <p className="text-[11px] text-neutral-500 mt-2">
-                      Use esta senha para fazer login. Recomendamos altera-la em seguida.
-                    </p>
                   </div>
                 ) : (
                   <form onSubmit={handleForgotPassword} className="space-y-4">
@@ -200,7 +190,6 @@ const Login = () => {
                           onChange={(e) => setForgotEmail(e.target.value)}
                           className="pl-10 bg-neutral-950 border-white/20 text-white focus:border-cyan-400"
                           required
-                          data-testid="forgot-email-input"
                         />
                       </div>
                     </div>
@@ -209,7 +198,6 @@ const Login = () => {
                       type="submit"
                       disabled={forgotLoading}
                       className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold"
-                      data-testid="forgot-submit"
                     >
                       {forgotLoading ? 'Enviando...' : 'Recuperar Senha'}
                     </Button>
@@ -220,7 +208,6 @@ const Login = () => {
                   <button
                     onClick={() => { setShowForgot(false); setForgotResult(null); setForgotEmail(''); }}
                     className="text-sm text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
-                    data-testid="back-to-login"
                   >
                     Voltar ao Login
                   </button>
@@ -228,12 +215,6 @@ const Login = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-
-        {/* Demo Credentials */}
-        <div className="mt-4 p-3 rounded-md bg-neutral-900/40 border border-white/5">
-          <p className="text-xs text-neutral-500 text-center">
-          </p>
         </div>
       </motion.div>
     </div>
