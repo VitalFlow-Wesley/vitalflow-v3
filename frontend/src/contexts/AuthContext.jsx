@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.ia.br";
 
 // Definição da URL do Backend (Vercel usa a variável ou o fallback do Railway)
 const API_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
