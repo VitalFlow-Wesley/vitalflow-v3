@@ -35,7 +35,7 @@ api_router.include_router(payments_router)
 app.include_router(api_router)
 
 # --- CORS PARA O LINK 1HJC ---
-origins = ["https://vitalflow-api-1hjc.onrender.com", "http://localhost:3000"]
+origins = ["https://vitalflow-api-1hjc.onrender.com", "http://localhost:3000", "https://vitalflow.up.railway.app", "https://vitalflow.ia.br", "https://vitalflow-v3-git-main-vitalflow-wesleys-projects.vercel.app"]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # --- GPS DOS ARQUIVOS ---
