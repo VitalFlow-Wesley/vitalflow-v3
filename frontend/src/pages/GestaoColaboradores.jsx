@@ -69,7 +69,7 @@ export default function GestaoColaboradores() {
       try {
         const scope = getScopeFilter();
         const params = new URLSearchParams(scope);
-        const res = await fetch(`${BACKEND_URL}/api/colaboradores?${params}`);
+        const res = await fetch(`${BACKEND_URL}/api/colaboradores?${params}`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setColaboradores(data);
@@ -84,8 +84,8 @@ export default function GestaoColaboradores() {
     const fetchAuxiliares = async () => {
       try {
         const [gRes, sRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/api/colaboradores?minRole=Gestor`),
-          fetch(`${BACKEND_URL}/api/setores`),
+          fetch(`${BACKEND_URL}/api/colaboradores?minRole=Gestor`, { credentials: "include" }),
+          fetch(`${BACKEND_URL}/api/setores`, { credentials: "include" }),
         ]);
         if (gRes.ok) setGestoresDisponiveis(await gRes.json());
         if (sRes.ok) setSetoresDisponiveis(await sRes.json());
