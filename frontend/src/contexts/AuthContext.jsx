@@ -22,7 +22,9 @@ export function AuthProvider({ children }) {
   const fetchUser = async () => {
     try {
       // Usando API_URL dinâmica
-      const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
+      const token = localStorage.getItem("vf_token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include", headers });
       if (res.ok) {
         const data = await res.json();
         // Backend retorna nivel_acesso, mapeamos para role
@@ -51,6 +53,7 @@ export function AuthProvider({ children }) {
       });
       const data = await res.json();
       if (res.ok) {
+        if (data.access_token) localStorage.setItem("vf_token", data.access_token);
         await fetchUser();
         return { success: true, data };
       }
