@@ -335,7 +335,7 @@ async def seed_admin_endpoint():
                     "password_hash": hash_password(admin_password),
                     "account_type": "corporate" if admin_is_corporate else "personal",
                     "domain": admin_domain if admin_is_corporate else None,
-                    "nivel_acesso": "Gestor",
+                    "nivel_acesso": "CEO",
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }}
             )
@@ -345,7 +345,7 @@ async def seed_admin_endpoint():
                 nome="Administrador", email=admin_email,
                 password_hash=hash_password(admin_password),
                 data_nascimento="1990-01-01", setor="Administrativo",
-                nivel_acesso="Gestor",
+                nivel_acesso="CEO",
                 account_type="corporate" if admin_is_corporate else "personal",
                 domain=admin_domain if admin_is_corporate else None
             )
