@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
       if (res.ok) {
         const data = await res.json();
         // Backend retorna nivel_acesso, mapeamos para role
-        setUser({ ...data, role: data.nivel_acesso || data.role });
+        setUser({ ...data, role: data.nivel_acesso || data.role, nivel_acesso: data.nivel_acesso || data.role });
       } else {
         setUser(null);
       }
@@ -96,9 +96,10 @@ export function AuthProvider({ children }) {
 
   const getScopeFilter = () => {
     if (!user) return {};
-    if (IS_ADMIN(user.role)) return {};
-    if (IS_DIRETOR_OR_ABOVE(user.role)) return { diretoria: user.diretoria };
-    if (IS_GERENTE_OR_ABOVE(user.role)) return { gestorId: user.id };
+    const nivel = user.nivel_acesso || user.role;
+    if (IS_ADMIN(nivel)) return {};
+    if (IS_DIRETOR_OR_ABOVE(nivel)) return { diretoria: user.diretoria };
+    if (IS_GERENTE_OR_ABOVE(nivel)) return { gestorId: user.id };
     return { gestorImediatoId: user.id };
   };
 
