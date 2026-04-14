@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth, IS_ADMIN, IS_DIRETOR_OR_ABOVE, ROLE_LEVELS } from "../contexts/AuthContext";
 import { ShowIfRole } from "../components/RoleGuard";
+const canManage = (user) => ROLE_LEVELS[user?.role] <= 7 || ROLE_LEVELS[user?.nivel_acesso] <= 7;
+const canDelete = (user) => ROLE_LEVELS[user?.role] <= 2 || ROLE_LEVELS[user?.nivel_acesso] <= 2;
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 
 // Cor e label do V-Score
@@ -142,7 +144,7 @@ export default function GestaoColaboradores() {
             Gerencie hierarquia, atribuições e níveis de acesso da sua organização
           </p>
         </div>
-        <ShowIfRole minRole="Coordenador">
+        {(ROLE_LEVELS[user?.nivel_acesso] <= 7 || ROLE_LEVELS[user?.role] <= 7) && (
           <button
             onClick={() => setShowModal(true)}
             style={{
@@ -153,7 +155,7 @@ export default function GestaoColaboradores() {
           >
             + Adicionar Colaborador
           </button>
-        </ShowIfRole>
+        )}
       </div>
 
       {/* Métricas */}
@@ -259,38 +261,13 @@ export default function GestaoColaboradores() {
                 <div style={{ fontSize: "13px", color: "#6b7280" }}>{c.gestorImediato || "—"}</div>
                 <div style={{ fontSize: "15px", fontWeight: 600, color: vs.color }}>{vs.label}</div>
                 <div style={{ display: "flex", gap: "6px" }}>
-                  <ShowIfRole minRole="Coordenador">
-                    <button
-                      title="Editar"
-                      style={{
-                        width: "28px", height: "28px", borderRadius: "6px",
-                        border: "1px solid #1e2d3d", background: "transparent",
-                        color: "#6b7280", cursor: "pointer", fontSize: "13px",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >✏️</button>
-                    <button
-                      title="Transferir"
-                      style={{
-                        width: "28px", height: "28px", borderRadius: "6px",
-                        border: "1px solid #1e2d3d", background: "transparent",
-                        color: "#6b7280", cursor: "pointer", fontSize: "13px",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >⇄</button>
-                  </ShowIfRole>
-                  <ShowIfRole minRole="Diretor">
-                    <button
-                      title="Remover"
-                      onClick={() => handleDelete(c.id)}
-                      style={{
-                        width: "28px", height: "28px", borderRadius: "6px",
-                        border: "1px solid #450a0a", background: "transparent",
-                        color: "#f87171", cursor: "pointer", fontSize: "13px",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >✕</button>
-                  </ShowIfRole>
+                  {(ROLE_LEVELS[user?.nivel_acesso] <= 7 || ROLE_LEVELS[user?.role] <= 7) && (<>
+                    <button title="Editar" style={{ width:"28px", height:"28px", borderRadius:"6px", border:"1px solid #1e2d3d", background:"transparent", color:"#6b7280", cursor:"pointer", fontSize:"13px", display:"flex", alignItems:"center", justifyContent:"center" }}>✏️</button>
+                    <button title="Transferir" style={{ width:"28px", height:"28px", borderRadius:"6px", border:"1px solid #1e2d3d", background:"transparent", color:"#6b7280", cursor:"pointer", fontSize:"13px", display:"flex", alignItems:"center", justifyContent:"center" }}>⇄</button>
+                  </>)}
+                  {(ROLE_LEVELS[user?.nivel_acesso] <= 2 || ROLE_LEVELS[user?.role] <= 2) && (
+                    <button title="Remover" onClick={() => handleDelete(c.id)} style={{ width:"28px", height:"28px", borderRadius:"6px", border:"1px solid #450a0a", background:"transparent", color:"#f87171", cursor:"pointer", fontSize:"13px", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+                  )}
                 </div>
               </div>
             );
