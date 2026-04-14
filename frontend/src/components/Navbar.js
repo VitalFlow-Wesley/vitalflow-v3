@@ -28,7 +28,8 @@ const Navbar = () => {
     navigate('/login');
   };
 
-  const isGestor = user?.nivel_acesso === 'Gestor';
+  const ROLE_LEVELS_NAV = { CEO:1, Diretor:2, 'Ger. Executivo':3, 'Ger. Operacional':4, Coordenador:5, Supervisor:6, Gestor:7, Colaborador:8 };
+  const isGestor = (ROLE_LEVELS_NAV[user?.nivel_acesso] || 99) <= 7;
   const isRelatorio = location.pathname === '/relatorio';
   const isGestorPage = location.pathname === '/gestor';
 
