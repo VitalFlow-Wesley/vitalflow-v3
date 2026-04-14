@@ -4,6 +4,17 @@ import { ShowIfRole } from "../components/RoleGuard";
 const canManage = (user) => ROLE_LEVELS[user?.role] <= 7 || ROLE_LEVELS[user?.nivel_acesso] <= 7;
 const canDelete = (user) => ROLE_LEVELS[user?.role] <= 2 || ROLE_LEVELS[user?.nivel_acesso] <= 2;
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+const authFetch = (url, options = {}) => {
+  const token = localStorage.getItem("vf_token");
+  return fetch(url, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+};
 
 // Cor e label do V-Score
 function vscoreStyle(score) {
@@ -71,7 +82,7 @@ export default function GestaoColaboradores() {
       try {
         const scope = getScopeFilter();
         const params = new URLSearchParams(scope);
-        const res = await fetch(`${BACKEND_URL}/api/colaboradores?${params}`, { credentials: "include" });
+        const res = await authFetch(`${BACKEND_URL}/api/colaboradores?${params}`);
         if (res.ok) {
           const data = await res.json();
           setColaboradores(data);
@@ -86,8 +97,8 @@ export default function GestaoColaboradores() {
     const fetchAuxiliares = async () => {
       try {
         const [gRes, sRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/api/colaboradores?minRole=Gestor`, { credentials: "include" }),
-          fetch(`${BACKEND_URL}/api/setores`, { credentials: "include" }),
+          authFetch(`${BACKEND_URL}/api/colaboradores?minRole=Gestor`),
+          authFetch(`${BACKEND_URL}/api/setores`),
         ]);
         if (gRes.ok) setGestoresDisponiveis(await gRes.json());
         if (sRes.ok) setSetoresDisponiveis(await sRes.json());
