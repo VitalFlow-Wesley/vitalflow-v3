@@ -14,7 +14,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- APP ---
-app = FastAPI()
+app = FastAPI(
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
+
 api_router = APIRouter(prefix="/api")
 
 # --- IMPORTAÇÃO DAS ROTAS ---
@@ -43,16 +48,14 @@ app.include_router(api_router)
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
     "https://vitalflow-api-1hjc.onrender.com",
     "https://vitalflow.up.railway.app",
     "https://vitalflow.ia.br",
     "https://vitalflow-v3-git-main-vitalflow-wesleys-projects.vercel.app",
     "https://vitalflow-v3.vercel.app",
 ]
-
-# Se quiser testar em outro dispositivo na mesma rede depois,
-# adicione aqui também algo como:
-# "http://192.168.1.9:3000",
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,10 +76,16 @@ if (static_path / "static").exists():
         name="static"
     )
 
+# --- ROTA RAIZ OPCIONAL ---
+@app.get("/api")
+async def api_root():
+    return {"status": "ok", "message": "VitalFlow API online"}
+
 # --- CATCH-ALL PARA O FRONTEND REACT ---
-@app.get("/{catchall:path}")
-async def serve_react_app(request: Request, catchall: str):
-    if catchall.startswith("api"):
+@app.get("/{full_path:path}")
+async def serve_react_app(full_path: str):
+    # NÃO intercepta rotas da API nem docs
+    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json"]:
         return {"detail": "Not Found"}
 
     index_file = static_path / "index.html"
