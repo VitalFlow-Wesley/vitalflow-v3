@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     nome: user?.nome || '',
@@ -29,7 +29,7 @@ const Profile = () => {
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
         const base64 = reader.result.split(',')[1];
-        setFormData({ ...formData, foto_base64: base64 });
+        setFormData((prev) => ({ ...prev, foto_base64: base64 }));
       };
       reader.readAsDataURL(file);
     }
@@ -39,26 +39,56 @@ const Profile = () => {
     e.preventDefault();
     setLoading(true);
 
-    const updateData = {};
-    if (formData.nome !== user.nome) {
-      updateData.nome = formData.nome;
-    }
-    if (formData.data_nascimento !== user.data_nascimento) {
-      updateData.data_nascimento = formData.data_nascimento;
-    }
-    if (formData.foto_base64) {
-      updateData.foto_base64 = formData.foto_base64;
-    }
+    try {
+      const updateData = {};
 
-    const result = await updateProfile(updateData);
+      if (formData.nome !== user?.nome) {
+        updateData.nome = formData.nome;
+      }
 
-    if (result.success) {
+      if (formData.data_nascimento !== user?.data_nascimento) {
+        updateData.data_nascimento = formData.data_nascimento;
+      }
+
+      if (formData.foto_base64) {
+        updateData.foto_base64 = formData.foto_base64;
+      }
+
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(updateData),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.detail || 'Erro ao atualizar perfil');
+      }
+
       toast.success('Perfil atualizado com sucesso!');
-    } else {
-      toast.error(result.error || 'Erro ao atualizar perfil');
-    }
 
-    setLoading(false);
+      // Atualiza a tela localmente sem precisar recarregar
+      if (result.nome || result.data_nascimento || result.foto_url) {
+        setFormData((prev) => ({
+          ...prev,
+          nome: result.nome || prev.nome,
+          data_nascimento: result.data_nascimento || prev.data_nascimento,
+          foto_base64: null,
+        }));
+        setPreviewUrl(result.foto_url || previewUrl);
+      }
+    } catch (error) {
+      toast.error(error.message || 'Erro ao atualizar perfil');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,7 +96,6 @@ const Profile = () => {
       <Navbar onOpenForm={() => {}} />
 
       <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/')}
@@ -76,9 +105,11 @@ const Profile = () => {
             <ArrowLeft className="w-4 h-4" />
             Voltar
           </button>
+
           <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-white font-heading">
             Meu Perfil
           </h1>
+
           <p className="text-neutral-400 mt-2">
             Gerencie suas informacoes pessoais
           </p>
@@ -90,7 +121,6 @@ const Profile = () => {
           className="border border-white/10 bg-neutral-900/60 backdrop-blur-xl rounded-lg p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Photo Upload */}
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
                 <div className="w-32 h-32 rounded-full border-2 border-white/20 overflow-hidden bg-neutral-800">
@@ -106,6 +136,7 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
+
                 <label
                   htmlFor="foto"
                   className="absolute bottom-0 right-0 w-10 h-10 bg-cyan-500 hover:bg-cyan-400 rounded-full flex items-center justify-center cursor-pointer transition-colors"
@@ -121,14 +152,18 @@ const Profile = () => {
                   />
                 </label>
               </div>
-              <p className="text-xs text-neutral-500">Clique no icone para alterar a foto</p>
+
+              <p className="text-xs text-neutral-500">
+                Clique no icone para alterar a foto
+              </p>
             </div>
 
-            {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Editable: Nome */}
               <div className="space-y-2">
-                <Label htmlFor="nome" className="text-neutral-300">Nome Completo</Label>
+                <Label htmlFor="nome" className="text-neutral-300">
+                  Nome Completo
+                </Label>
+
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
                   <Input
@@ -136,7 +171,9 @@ const Profile = () => {
                     type="text"
                     placeholder="Seu nome"
                     value={formData.nome}
-                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, nome: e.target.value }))
+                    }
                     className="pl-10 bg-neutral-950 border-white/20 text-white focus:border-cyan-400"
                     required
                     data-testid="input-nome"
@@ -144,16 +181,23 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* Editable: Data de Nascimento */}
               <div className="space-y-2">
-                <Label htmlFor="data_nascimento" className="text-neutral-300">Data de Nascimento</Label>
+                <Label htmlFor="data_nascimento" className="text-neutral-300">
+                  Data de Nascimento
+                </Label>
+
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
                   <Input
                     id="data_nascimento"
                     type="date"
                     value={formData.data_nascimento}
-                    onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        data_nascimento: e.target.value,
+                      }))
+                    }
                     className="pl-10 bg-neutral-950 border-white/20 text-white focus:border-cyan-400"
                     required
                     data-testid="input-data-nascimento"
@@ -161,7 +205,6 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* Read-only: Email */}
               <div className="space-y-2">
                 <Label className="text-neutral-300">Email</Label>
                 <Input
@@ -173,12 +216,14 @@ const Profile = () => {
                 />
               </div>
 
-              {/* Nivel de Acesso - Locked for corporate */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Label className="text-neutral-300">Nivel de Acesso</Label>
-                  {isCorporate && <Lock className="w-3.5 h-3.5 text-amber-400" data-testid="lock-nivel" />}
+                  {isCorporate && (
+                    <Lock className="w-3.5 h-3.5 text-amber-400" data-testid="lock-nivel" />
+                  )}
                 </div>
+
                 <div className="relative">
                   <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-600" />
                   <Input
@@ -189,8 +234,12 @@ const Profile = () => {
                     data-testid="input-nivel-readonly"
                   />
                 </div>
+
                 {isCorporate && (
-                  <p className="text-[11px] text-amber-400/70 flex items-center gap-1" data-testid="lock-msg-nivel">
+                  <p
+                    className="text-[11px] text-amber-400/70 flex items-center gap-1"
+                    data-testid="lock-msg-nivel"
+                  >
                     <Lock className="w-3 h-3" />
                     Alteracao permitida apenas pelo gestor da sua empresa
                   </p>
@@ -198,7 +247,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Save Button */}
             <div className="flex justify-end pt-4">
               <Button
                 type="submit"
@@ -222,15 +270,19 @@ const Profile = () => {
           </form>
         </motion.div>
 
-        {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           <div className="border border-white/5 bg-neutral-900/40 rounded-md p-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-2">
               Informacoes da Conta
             </h3>
+
             <p className="text-xs text-neutral-500">
-              Cadastrado em: {user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
+              Cadastrado em:{' '}
+              {user?.created_at
+                ? new Date(user.created_at).toLocaleDateString('pt-BR')
+                : '-'}
             </p>
+
             {isCorporate && user?.company_name && (
               <p className="text-xs text-cyan-400 mt-1">
                 Vinculado a: {user.company_name}
@@ -242,9 +294,11 @@ const Profile = () => {
             <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-2">
               Privacidade
             </h3>
+
             <p className="text-xs text-neutral-500">
               Seus dados sao protegidos e criptografados
             </p>
+
             {isCorporate && (
               <p className="text-xs text-amber-400/70 mt-1">
                 Campos corporativos gerenciados pelo administrador

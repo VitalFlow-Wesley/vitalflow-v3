@@ -1,232 +1,303 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useMemo } from "react";
 
-const STATUS_CONFIG = {
-  Verde: {
+const STATUS_PRESETS = {
+  normal: {
+    key: "normal",
     color: "#34d399",
     rgb: "52, 211, 153",
-    label: "Normal",
-    pulseSpeed: 4,
-    glowSize: 80,
-    glowOpacity: 0.3,
+    label: "NORMAL",
+    pulseSpeed: 3.8,
+    glowSize: 110,
+    glowOpacity: 0.34,
+    title: "Resiliência ótima",
+    subtitle: "Seu estado fisiológico está estável e positivo.",
   },
-  Amarelo: {
+  atencao: {
+    key: "atencao",
     color: "#fbbf24",
     rgb: "251, 191, 36",
-    label: "Atenção",
-    pulseSpeed: 2.4,
-    glowSize: 100,
-    glowOpacity: 0.4,
+    label: "ATENÇÃO",
+    pulseSpeed: 2.2,
+    glowSize: 125,
+    glowOpacity: 0.42,
+    title: "Atenção moderada",
+    subtitle: "Seu corpo indica necessidade de pequenas correções.",
   },
-  Vermelho: {
+  critico: {
+    key: "critico",
     color: "#f43f5e",
     rgb: "244, 63, 94",
-    label: "Crítico",
-    pulseSpeed: 1.2,
-    glowSize: 120,
-    glowOpacity: 0.55,
+    label: "CRÍTICO",
+    pulseSpeed: 1.25,
+    glowSize: 145,
+    glowOpacity: 0.56,
+    title: "Recuperação crítica",
+    subtitle: "Seu estado atual exige atenção imediata.",
   },
 };
 
-const StatusOrb = ({ status, vScore, areas, tag }) => {
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.Verde;
-  const [prevStatus, setPrevStatus] = useState(status);
-  const orbRef = useRef(null);
+function normalizeStatus(statusValue, scoreValue, tagValue) {
+  const status = String(statusValue || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
-  useEffect(() => {
-    if (status !== prevStatus) {
-      setPrevStatus(status);
-    }
-  }, [status, prevStatus]);
+  const tag = String(tagValue || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
-  const isRed = status === "Vermelho";
+  const score = Number(scoreValue ?? 0);
+
+  if (
+    status.includes("vermelho") ||
+    status.includes("critico") ||
+    status.includes("crítico") ||
+    status.includes("urgente") ||
+    tag.includes("urgente") ||
+    tag.includes("critico") ||
+    tag.includes("crítico") ||
+    score < 50
+  ) {
+    return STATUS_PRESETS.critico;
+  }
+
+  if (
+    status.includes("amarelo") ||
+    status.includes("atencao") ||
+    status.includes("atenção") ||
+    status.includes("stress") ||
+    status.includes("alerta") ||
+    tag.includes("stress") ||
+    tag.includes("alerta") ||
+    (score >= 50 && score < 80)
+  ) {
+    return STATUS_PRESETS.atencao;
+  }
+
+  return STATUS_PRESETS.normal;
+}
+
+const StatusOrb = ({
+  status,
+  vScore,
+  score,
+  areas,
+  tag,
+}) => {
+  const finalScore =
+    score !== undefined && score !== null
+      ? score
+      : vScore !== undefined && vScore !== null
+      ? vScore
+      : 0;
+
+  const config = useMemo(
+    () => normalizeStatus(status, finalScore, tag),
+    [status, finalScore, tag]
+  );
+
+  const isCritical = config.key === "critico";
+  const isAttention = config.key === "atencao";
 
   return (
     <div
-      className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-8 flex flex-col items-center relative overflow-hidden"
+      className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-[28px] p-6 md:p-7 flex flex-col relative overflow-hidden h-full"
       data-testid="status-orb-container"
     >
-      {/* Subtle background glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: `radial-gradient(circle at 50% 40%, rgba(${config.rgb}, 0.06) 0%, transparent 70%)`,
-          transition: "background 1.5s ease-in-out",
+          background: `radial-gradient(circle at 50% 35%, rgba(${config.rgb}, 0.09) 0%, transparent 68%)`,
+          transition: "background 0.9s ease-in-out",
         }}
       />
 
-      {/* Label */}
-      <div className="mb-8 relative z-10">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 text-center">
-          STATUS VITAL
+      <div className="relative z-10">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300 mb-3">
+          Status Vital
         </h3>
+
+        <h2 className="text-3xl md:text-[2rem] leading-tight font-black text-white mb-2">
+          {config.title}
+        </h2>
+
+        <p className="text-sm text-neutral-400 leading-6 mb-6">
+          {config.subtitle}
+        </p>
       </div>
 
-      {/* Orb */}
-      <div className="relative flex items-center justify-center mb-8" style={{ width: 200, height: 200 }}>
-        {/* Outer ring - slow pulse */}
-        <motion.div
-          className="absolute rounded-full"
-          style={{
-            width: 200,
-            height: 200,
-            border: `1px solid rgba(${config.rgb}, 0.15)`,
-            transition: "border-color 1.5s ease-in-out",
-          }}
-          animate={{
-            scale: [1, 1.08, 1],
-            opacity: [0.4, 0.15, 0.4],
-          }}
-          transition={{
-            duration: config.pulseSpeed * 1.5,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-
-        {/* Middle ring - medium pulse */}
-        <motion.div
-          className="absolute rounded-full"
-          style={{
-            width: 160,
-            height: 160,
-            border: `1px solid rgba(${config.rgb}, 0.2)`,
-            transition: "border-color 1.5s ease-in-out",
-          }}
-          animate={{
-            scale: [1, 1.06, 1],
-            opacity: [0.5, 0.2, 0.5],
-          }}
-          transition={{
-            duration: config.pulseSpeed * 1.2,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0.3,
-          }}
-        />
-
-        {/* Glow layer behind the orb */}
-        <motion.div
-          className="absolute rounded-full"
-          style={{
-            width: config.glowSize,
-            height: config.glowSize,
-            background: `radial-gradient(circle, rgba(${config.rgb}, ${config.glowOpacity}) 0%, transparent 70%)`,
-            filter: "blur(20px)",
-            transition: "all 1.5s ease-in-out",
-          }}
-          animate={
-            isRed
-              ? {
-                  scale: [1, 1.3, 1.05, 1.25, 1],
-                  opacity: [0.6, 1, 0.7, 0.95, 0.6],
-                }
-              : {
-                  scale: [1, 1.15, 1],
-                  opacity: [0.5, 0.8, 0.5],
-                }
-          }
-          transition={{
-            duration: config.pulseSpeed,
-            repeat: Infinity,
-            ease: isRed ? "easeOut" : "easeInOut",
-          }}
-        />
-
-        {/* Main orb */}
-        <motion.div
-          ref={orbRef}
-          className="relative rounded-full flex items-center justify-center"
-          style={{
-            width: 120,
-            height: 120,
-            background: `radial-gradient(circle at 35% 35%, rgba(${config.rgb}, 0.9) 0%, rgba(${config.rgb}, 0.5) 50%, rgba(${config.rgb}, 0.2) 100%)`,
-            boxShadow: `0 0 40px rgba(${config.rgb}, 0.3), inset 0 0 30px rgba(255, 255, 255, 0.1)`,
-            transition: "background 1.5s ease-in-out, box-shadow 1.5s ease-in-out",
-          }}
-          data-testid="status-orb"
-          animate={
-            isRed
-              ? {
-                  scale: [1, 1.04, 0.98, 1.03, 1],
-                  x: [0, -1.5, 1.5, -1, 0],
-                }
-              : {
-                  scale: [1, 1.04, 1],
-                }
-          }
-          transition={{
-            duration: config.pulseSpeed,
-            repeat: Infinity,
-            ease: isRed ? "easeOut" : "easeInOut",
-          }}
+      <div className="relative z-10 flex items-center justify-center mb-6">
+        <div
+          className="relative flex items-center justify-center"
+          style={{ width: 280, height: 280 }}
         >
-          {/* Inner highlight */}
-          <div
+          <motion.div
             className="absolute rounded-full"
             style={{
-              width: 40,
-              height: 40,
-              top: "20%",
-              left: "25%",
-              background: `radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 70%)`,
+              width: 280,
+              height: 280,
+              border: `1px solid rgba(${config.rgb}, 0.12)`,
+            }}
+            animate={{
+              scale: [1, 1.08, 1],
+              opacity: [0.3, 0.08, 0.3],
+            }}
+            transition={{
+              duration: config.pulseSpeed * 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
             }}
           />
 
-          {/* V-Score inside orb */}
-          <div className="text-center relative z-10">
-            <span
-              className="text-3xl font-mono font-bold"
-              style={{ color: "rgba(255, 255, 255, 0.95)", textShadow: `0 0 20px rgba(${config.rgb}, 0.5)` }}
-              data-testid="orb-vscore"
-            >
-              {vScore}
-            </span>
-          </div>
-        </motion.div>
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: 220,
+              height: 220,
+              border: `1px solid rgba(${config.rgb}, 0.18)`,
+            }}
+            animate={{
+              scale: [1, 1.06, 1],
+              opacity: [0.36, 0.12, 0.36],
+            }}
+            transition={{
+              duration: config.pulseSpeed * 1.15,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.2,
+            }}
+          />
+
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: config.glowSize,
+              height: config.glowSize,
+              background: `radial-gradient(circle, rgba(${config.rgb}, ${config.glowOpacity}) 0%, transparent 70%)`,
+              filter: "blur(26px)",
+            }}
+            animate={
+              isCritical
+                ? {
+                    scale: [1, 1.38, 1.1, 1.32, 1],
+                    opacity: [0.6, 1, 0.72, 0.96, 0.6],
+                  }
+                : isAttention
+                ? {
+                    scale: [1, 1.22, 1],
+                    opacity: [0.52, 0.88, 0.52],
+                  }
+                : {
+                    scale: [1, 1.16, 1],
+                    opacity: [0.45, 0.78, 0.45],
+                  }
+            }
+            transition={{
+              duration: config.pulseSpeed,
+              repeat: Infinity,
+              ease: isCritical ? "easeOut" : "easeInOut",
+            }}
+          />
+
+          <motion.div
+            className="relative rounded-full flex items-center justify-center"
+            style={{
+              width: 150,
+              height: 150,
+              background: `radial-gradient(circle at 35% 35%, rgba(${config.rgb}, 0.96) 0%, rgba(${config.rgb}, 0.55) 48%, rgba(${config.rgb}, 0.18) 100%)`,
+              boxShadow: isCritical
+                ? `0 0 55px rgba(${config.rgb}, 0.55), inset 0 0 35px rgba(255,255,255,0.08)`
+                : `0 0 45px rgba(${config.rgb}, 0.42), inset 0 0 30px rgba(255,255,255,0.08)`,
+            }}
+            data-testid="status-orb"
+            animate={
+              isCritical
+                ? {
+                    scale: [1, 1.045, 0.985, 1.03, 1],
+                    x: [0, -1.2, 1.2, -0.8, 0],
+                  }
+                : isAttention
+                ? {
+                    scale: [1, 1.04, 1],
+                  }
+                : {
+                    scale: [1, 1.05, 1],
+                  }
+            }
+            transition={{
+              duration: config.pulseSpeed,
+              repeat: Infinity,
+              ease: isCritical ? "easeOut" : "easeInOut",
+            }}
+          >
+            <div
+              className="absolute rounded-full"
+              style={{
+                width: 52,
+                height: 52,
+                top: "20%",
+                left: "24%",
+                background:
+                  "radial-gradient(circle, rgba(255,255,255,0.26) 0%, transparent 72%)",
+              }}
+            />
+
+            <div className="text-center relative z-10">
+              <span
+                className="text-4xl md:text-5xl font-mono font-bold text-white"
+                style={{
+                  textShadow: `0 0 18px rgba(${config.rgb}, 0.45)`,
+                }}
+                data-testid="orb-vscore"
+              >
+                {finalScore}
+              </span>
+            </div>
+          </motion.div>
+        </div>
       </div>
 
-      {/* Status label with smooth transition */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={status}
+          key={config.key}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.6 }}
-          className="flex items-center gap-2 mb-6 relative z-10"
+          transition={{ duration: 0.45 }}
+          className="flex items-center justify-center gap-2 mb-5 relative z-10"
         >
           <div
-            className="w-2 h-2 rounded-full"
+            className="w-2.5 h-2.5 rounded-full"
             style={{
               backgroundColor: config.color,
-              boxShadow: `0 0 8px ${config.color}`,
-              transition: "all 1.5s ease-in-out",
+              boxShadow: `0 0 10px ${config.color}`,
             }}
           />
           <span
-            className="text-sm font-semibold uppercase tracking-wider"
-            style={{ color: config.color, transition: "color 1.5s ease-in-out" }}
+            className="text-sm font-bold uppercase tracking-[0.18em]"
+            style={{ color: config.color }}
           >
             {config.label}
           </span>
         </motion.div>
       </AnimatePresence>
 
-      {/* Affected areas as minimal tags */}
       {areas && areas.length > 0 && (
-        <div className="flex flex-wrap gap-2 justify-center relative z-10">
+        <div className="flex flex-wrap gap-2 justify-center mb-4 relative z-10">
           {areas.map((area) => (
             <span
               key={area}
-              className="px-3 py-1 rounded-full text-xs font-medium border"
+              className="px-3 py-1 rounded-full text-xs font-semibold border"
               style={{
                 color: config.color,
-                borderColor: `rgba(${config.rgb}, 0.3)`,
+                borderColor: `rgba(${config.rgb}, 0.32)`,
                 backgroundColor: `rgba(${config.rgb}, 0.08)`,
-                transition: "all 1.5s ease-in-out",
               }}
-              data-testid={`orb-area-${area.toLowerCase().replace(/\s+/g, "-")}`}
+              data-testid={`orb-area-${String(area)
+                .toLowerCase()
+                .replace(/\s+/g, "-")}`}
             >
               {area}
             </span>
@@ -234,15 +305,56 @@ const StatusOrb = ({ status, vScore, areas, tag }) => {
         </div>
       )}
 
-      {/* Tag */}
       {tag && (
         <p
-          className="text-xs text-neutral-500 mt-4 text-center relative z-10"
+          className="text-sm text-neutral-500 text-center mt-auto relative z-10"
           data-testid="orb-tag"
         >
           {tag}
         </p>
       )}
+
+      <div className="grid grid-cols-2 gap-3 mt-6 relative z-10">
+        <div
+          className="rounded-2xl border p-4"
+          style={{
+            borderColor: `rgba(${config.rgb}, 0.22)`,
+            background: `rgba(${config.rgb}, 0.08)`,
+          }}
+        >
+          <p className="text-[10px] uppercase tracking-[0.16em] text-neutral-400 mb-2">
+            Status
+          </p>
+          <p
+            className="text-base font-bold"
+            style={{ color: config.color }}
+          >
+            {config.key === "normal"
+              ? "ótimo"
+              : config.key === "atencao"
+              ? "atenção"
+              : "crítico"}
+          </p>
+        </div>
+
+        <div
+          className="rounded-2xl border p-4"
+          style={{
+            borderColor: `rgba(${config.rgb}, 0.22)`,
+            background: `rgba(${config.rgb}, 0.08)`,
+          }}
+        >
+          <p className="text-[10px] uppercase tracking-[0.16em] text-neutral-400 mb-2">
+            Leitura
+          </p>
+          <p
+            className="text-sm font-bold leading-5"
+            style={{ color: config.color }}
+          >
+            {tag || config.title}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

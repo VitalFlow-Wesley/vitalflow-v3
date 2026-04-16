@@ -57,8 +57,7 @@ async def get_energy_status(request: Request):
 async def get_team_stress_metrics(request: Request):
     try:
         colaborador = await get_current_colaborador(request)
-        if colaborador["nivel_acesso"] != "Gestor":
-            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        exigir_nivel_minimo(colaborador, 2)
 
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         analyses = await db.smartwatch_analyses.find(

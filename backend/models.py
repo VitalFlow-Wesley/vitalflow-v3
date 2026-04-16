@@ -93,6 +93,7 @@ class ColaboradorResponse(BaseModel):
     cargo: Optional[str] = None
     account_type: str = "personal"
     domain: Optional[str] = None
+    gestor_imediato_matricula: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
 

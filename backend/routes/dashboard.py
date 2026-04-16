@@ -3,25 +3,45 @@ import io
 import logging
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
+from utils.hierarquia import montar_cadeia_gestao, filtrar_visiveis
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
+
 from database import db
 from auth_utils import hash_password, get_current_colaborador
 from models import (
-    DashboardMetrics, ColaboradorResponse, Colaborador,
-    TeamOverviewResponse
+    DashboardMetrics,
+    ColaboradorResponse,
+    Colaborador,
+    TeamOverviewResponse,
 )
+from utils.audit import create_audit_log, build_changes
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+HIERARQUIA = {
+    "Colaborador": 1,
+    "User": 1,
+    "Supervisor": 2,
+    "Coordenador": 3,
+    "Gerente": 4,
+    "Diretor": 5,
+    "CEO": 6,
+    "Gestor": 4,
+}
+
+
+def exigir_nivel_minimo(colaborador: dict, nivel_minimo: int):
+    nivel = HIERARQUIA.get(colaborador.get("nivel_acesso"), 0)
+    if nivel < nivel_minimo:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
 
 @router.get("/dashboard/metrics", response_model=DashboardMetrics)
 async def get_dashboard_metrics(request: Request):
     try:
         colaborador = await get_current_colaborador(request)
-        if colaborador["nivel_acesso"] != "Gestor":
-            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        exigir_nivel_minimo(colaborador, 2)
 
         total_colaboradores = await db.colaboradores.count_documents({})
         total_analises = await db.analyses.count_documents({})
@@ -49,20 +69,35 @@ async def get_dashboard_metrics(request: Request):
 async def get_colaboradores(request: Request, setor: Optional[str] = None):
     try:
         colaborador = await get_current_colaborador(request)
-        if colaborador["nivel_acesso"] != "Gestor":
-            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        exigir_nivel_minimo(colaborador, 2)
 
         query = {}
         if setor:
             query["setor"] = setor
 
-        colaboradores = await db.colaboradores.find(query, {"_id": 0, "password_hash": 0}).to_list(1000)
+        colaboradores = await db.colaboradores.find(
+            query,
+            {"password_hash": 0}
+        ).to_list(1000)
+
+        colaboradores = filtrar_visiveis(colaborador, colaboradores)
+
         return [
             ColaboradorResponse(
-                id=c["id"], nome=c["nome"], data_nascimento=c["data_nascimento"],
-                email=c["email"], foto_url=c.get("foto_url"), setor=c["setor"],
-                nivel_acesso=c["nivel_acesso"], created_at=c.get("created_at", ""),
-                updated_at=c.get("updated_at", "")
+                id=str(c["_id"]),
+                nome=c["nome"],
+                data_nascimento=c["data_nascimento"],
+                email=c["email"],
+                foto_url=c.get("foto_url"),
+                setor=c["setor"],
+                nivel_acesso=c["nivel_acesso"],
+                matricula=c.get("matricula"),
+                cargo=c.get("cargo"),
+                account_type=c.get("account_type", "personal"),
+                domain=c.get("domain"),
+                gestor_imediato_matricula=c.get("gestor_imediato_matricula"),
+                created_at=c.get("created_at", ""),
+                updated_at=c.get("updated_at", ""),
             )
             for c in colaboradores
         ]
@@ -78,8 +113,7 @@ async def get_setores(request: Request):
     """Lista os setores disponíveis para filtro."""
     try:
         colaborador = await get_current_colaborador(request)
-        if colaborador["nivel_acesso"] != "Gestor":
-            raise HTTPException(status_code=403, detail="Acesso negado.")
+        exigir_nivel_minimo(colaborador, 2)
         setores = await db.colaboradores.distinct("setor")
         return {"setores": sorted(setores)}
     except HTTPException:
@@ -94,85 +128,149 @@ async def get_setores(request: Request):
 async def add_employee(request: Request):
     try:
         gestor = await get_current_colaborador(request)
-        if gestor["nivel_acesso"] != "Gestor":
-            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        exigir_nivel_minimo(gestor, 2)
 
         body = await request.json()
-        nome = body.get("nome", "").strip()
-        email = body.get("email", "").strip().lower()
+
+        nome = (body.get("nome") or "").strip()
+        email = (body.get("email") or "").strip().lower()
         setor = body.get("setor", "Operacional")
         cargo = body.get("cargo", "")
+        matricula = (body.get("matricula") or "").strip()
+        gestor_imediato_matricula = (body.get("gestor_imediato_matricula") or "").strip() or None
+
+        if not matricula:
+            raise HTTPException(status_code=400, detail="Matricula obrigatoria.")
 
         if not nome or not email:
             raise HTTPException(status_code=400, detail="Nome e email sao obrigatorios.")
 
-        # Preparar contexto B2B do gestor
         gestor_domain = gestor.get("domain")
         domain = email.split("@")[1] if "@" in email else None
         linked_domain = gestor_domain if gestor_domain else domain
+
         nivel_acesso = body.get("nivel_acesso", "User")
-        if nivel_acesso not in ("User", "Gestor"):
+        niveis_validos = {
+            "User",
+            "Colaborador",
+            "Supervisor",
+            "Coordenador",
+            "Gerente",
+            "Diretor",
+            "CEO",
+            "Gestor",
+        }
+        if nivel_acesso not in niveis_validos:
             nivel_acesso = "User"
 
         existing = await db.colaboradores.find_one({"email": email}, {"_id": 0})
         if existing:
-            # B2B Hibrido: se o usuario ja existe como personal e RH quer vincular
-            if existing.get("account_type") == "personal" and not existing.get("registered_by_rh"):
-                await db.colaboradores.update_one(
-                    {"id": existing["id"]},
-                    {"$set": {
-                        "account_type": "corporate",
-                        "domain": linked_domain,
-                        "setor": setor,
-                        "cargo": cargo,
-                        "nivel_acesso": nivel_acesso,
-                        "registered_by_rh": True,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
-                )
-                return {
-                    "id": existing["id"], "nome": existing["nome"], "email": email,
-                    "setor": setor, "cargo": cargo, "account_type": "corporate",
-                    "message": f"Funcionario {existing['nome']} vinculado ao modo corporativo com sucesso.",
-                    "already_registered": True
-                }
             raise HTTPException(status_code=400, detail="Email ja cadastrado.")
 
-        # Se o gestor pertence a uma empresa, vincular o funcionario a mesma empresa
-        account_type = "corporate" if gestor_domain else ("corporate" if domain and await db.corporate_domains.find_one({"domain": domain}, {"_id": 0}) else "personal")
+        existing_matricula = await db.colaboradores.find_one(
+            {"matricula": matricula, "domain": linked_domain},
+            {"_id": 0},
+        )
+        if existing_matricula:
+            raise HTTPException(status_code=400, detail="Matricula ja cadastrada.")
+
+        account_type = (
+            "corporate"
+            if gestor_domain
+            else (
+                "corporate"
+                if domain and await db.corporate_domains.find_one({"domain": domain}, {"_id": 0})
+                else "personal"
+            )
+        )
 
         temp_password = f"Temp{uuid.uuid4().hex[:6]}!"
 
-        new_colab = Colaborador(
-            nome=nome, email=email, password_hash=hash_password(temp_password),
-            data_nascimento="2000-01-01", setor=setor, nivel_acesso=nivel_acesso,
-            cargo=cargo, account_type=account_type, domain=linked_domain,
-            must_change_password=True, must_accept_lgpd=True, registered_by_rh=True
+        cadeia_gestao_matriculas = await montar_cadeia_gestao(
+            db=db,
+            gestor_imediato_matricula=gestor_imediato_matricula,
+            organizacao_id=gestor.get("organizacao_id") or gestor.get("domain"),
         )
+
+        new_colab = Colaborador(
+            nome=nome,
+            email=email,
+            password_hash=hash_password(temp_password),
+            data_nascimento="2000-01-01",
+            setor=setor,
+            nivel_acesso=nivel_acesso,
+            cargo=cargo,
+            account_type=account_type,
+            domain=linked_domain,
+            must_change_password=True,
+            must_accept_lgpd=True,
+            registered_by_rh=True,
+        )
+
         doc = new_colab.model_dump()
+        doc["matricula"] = matricula
+        doc["gestor_imediato_matricula"] = gestor_imediato_matricula
+        doc["cadeia_gestao_matriculas"] = cadeia_gestao_matriculas
         doc["created_at"] = doc["created_at"].isoformat()
         doc["updated_at"] = doc["updated_at"].isoformat()
+
         await db.colaboradores.insert_one(doc)
 
+        await create_audit_log(
+            db=db,
+            organizacao_id=gestor.get("organizacao_id") or gestor.get("domain"),
+            acao="COLABORADOR_CRIADO",
+            entidade="colaborador",
+            entidade_id=new_colab.id,
+            entidade_nome=nome,
+            feito_por={
+                "id": gestor.get("id"),
+                "name": gestor.get("nome"),
+                "email": gestor.get("email"),
+                "role": gestor.get("nivel_acesso"),
+            },
+            antes=None,
+            depois=doc,
+            alteracoes=[
+                {
+                    "campo": "criacao",
+                    "label": "Criação",
+                    "anterior": None,
+                    "atual": f"Colaborador {nome} criado",
+                }
+            ],
+            detalhes={
+                "setor": setor,
+                "cargo": cargo,
+                "email": email,
+                "matricula": matricula,
+                "account_type": account_type,
+            },
+        )
+
         return {
-            "id": new_colab.id, "nome": nome, "email": email,
-            "setor": setor, "cargo": cargo, "account_type": account_type,
+            "id": new_colab.id,
+            "nome": nome,
+            "email": email,
+            "setor": setor,
+            "cargo": cargo,
+            "matricula": matricula,
+            "account_type": account_type,
             "temp_password": temp_password,
-            "message": f"Funcionario {nome} cadastrado com sucesso."
+            "message": f"Funcionario {nome} cadastrado com sucesso.",
         }
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error adding employee: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/dashboard/team-overview")
 async def get_team_overview(request: Request, period: str = "7d", setor: str = ""):
     try:
         colaborador = await get_current_colaborador(request)
-        if colaborador["nivel_acesso"] != "Gestor":
-            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        exigir_nivel_minimo(colaborador, 2)
 
         colab_filter = {}
         if setor:
@@ -247,8 +345,7 @@ async def get_team_overview(request: Request, period: str = "7d", setor: str = "
 async def export_dashboard_pdf(request: Request, period: str = "7d"):
     try:
         colaborador = await get_current_colaborador(request)
-        if colaborador["nivel_acesso"] != "Gestor":
-            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        exigir_nivel_minimo(colaborador, 2)
 
         now = datetime.now(timezone.utc)
         period_map = {"7d": 7, "30d": 30, "6m": 180}
@@ -376,8 +473,7 @@ async def get_stress_heatmap(request: Request, period: str = "7d"):
     """Heatmap de estresse por setor e hora/dia para o painel do Gestor."""
     try:
         colaborador = await get_current_colaborador(request)
-        if colaborador["nivel_acesso"] != "Gestor":
-            raise HTTPException(status_code=403, detail="Acesso negado. Apenas gestores.")
+        exigir_nivel_minimo(colaborador, 2)
 
         days = 7 if period == "7d" else 30 if period == "30d" else 180
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()

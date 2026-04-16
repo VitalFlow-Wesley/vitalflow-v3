@@ -1,16 +1,71 @@
-import { Brain, Settings, User, LogOut, BarChart3, Radio, FileText, LayoutDashboard } from "lucide-react";
+import {
+  Brain,
+  Settings,
+  User,
+  LogOut,
+  BarChart3,
+  Radio,
+  FileText,
+  LayoutDashboard,
+} from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
-import EnergyStatus from "./EnergyStatus";
+import axios from "axios";
 import GamificationBar from "./GamificationBar";
 import ConnectionStatus from "./ConnectionStatus";
+
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+const API = `${BACKEND_URL}/api`;
+
+function normalizeNavbarStatus(latestAnalysis) {
+  const rawStatus = String(latestAnalysis?.status_visual || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const rawTag = String(latestAnalysis?.tag_rapida || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const score = Number(latestAnalysis?.v_score ?? 0);
+
+  if (
+    rawStatus.includes("vermelho") ||
+    rawStatus.includes("critico") ||
+    rawStatus.includes("urgente") ||
+    rawTag.includes("urgente") ||
+    rawTag.includes("critico") ||
+    score < 50
+  ) {
+    return "Crítico";
+  }
+
+  if (
+    rawStatus.includes("amarelo") ||
+    rawStatus.includes("atencao") ||
+    rawStatus.includes("stress") ||
+    rawStatus.includes("alerta") ||
+    rawTag.includes("stress") ||
+    rawTag.includes("alerta") ||
+    (score >= 50 && score < 80)
+  ) {
+    return "Atenção";
+  }
+
+  return "Normal";
+}
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState("Normal");
+
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -19,102 +74,221 @@ const Navbar = () => {
         setDropdownOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchLatestStatus = async () => {
+      try {
+        const { data } = await axios.get(`${API}/history?limit=1`, {
+          withCredentials: true,
+        });
+
+        if (Array.isArray(data) && data.length > 0) {
+          setCurrentStatus(normalizeNavbarStatus(data[0]));
+          return;
+        }
+
+        setCurrentStatus("Normal");
+      } catch (error) {
+        console.error("Erro ao buscar status do navbar:", error);
+        setCurrentStatus("Normal");
+      }
+    };
+
+    fetchLatestStatus();
+
+    const interval = setInterval(fetchLatestStatus, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate("/login");
   };
 
-  const ROLE_LEVELS_NAV = { CEO:1, Diretor:2, 'Ger. Executivo':3, 'Ger. Operacional':4, Coordenador:5, Supervisor:6, Gestor:7, Colaborador:8 };
+  const ROLE_LEVELS_NAV = {
+    CEO: 1,
+    Diretor: 2,
+    "Ger. Executivo": 3,
+    "Ger. Operacional": 4,
+    Coordenador: 5,
+    Supervisor: 6,
+    Gestor: 7,
+    Colaborador: 8,
+  };
+
   const isGestor = (ROLE_LEVELS_NAV[user?.nivel_acesso] || 99) <= 7;
-  const isRelatorio = location.pathname === '/relatorio';
-  const isGestorPage = location.pathname === '/gestor';
+  const isRelatorio = location.pathname === "/relatorio";
+  const isGestorPage = location.pathname === "/gestor";
+  const isDevicesPage = location.pathname === "/devices";
+
+  const primaryButtonClass =
+    "flex px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-black text-sm font-bold transition-all duration-200 items-center gap-2 shadow-lg shadow-cyan-500/10 hover:scale-[1.03]";
+
+  const secondaryButtonClass = (active) =>
+    `px-3 py-2 border text-sm font-semibold rounded-xl transition-all duration-200 flex items-center gap-2 ${
+      active
+        ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-300"
+        : "border-white/20 text-white hover:bg-white/5"
+    }`;
+
+  const statusStyles = {
+    Normal: {
+      wrapper: "border-emerald-500/20 bg-emerald-500/10",
+      dot: "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.95)]",
+      text: "text-emerald-300",
+    },
+    Atenção: {
+      wrapper: "border-amber-500/20 bg-amber-500/10",
+      dot: "bg-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.95)]",
+      text: "text-amber-300",
+    },
+    Crítico: {
+      wrapper: "border-rose-500/20 bg-rose-500/10",
+      dot: "bg-rose-400 shadow-[0_0_14px_rgba(251,113,133,0.95)]",
+      text: "text-rose-300",
+    },
+  };
+
+  const currentStyle = statusStyles[currentStatus] || statusStyles.Normal;
 
   return (
-    <nav className="sticky top-0 z-50 glass-header border-b border-white/10" data-testid="navbar">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
+    <nav className="sticky top-0 z-50 bg-neutral-950/85 backdrop-blur-xl border-b border-white/10">
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="flex items-center gap-3 cursor-pointer shrink-0"
+              onClick={() => navigate("/")}
+            >
               <Brain className="w-8 h-8 text-cyan-400" />
-              <h1 className="text-xl sm:text-2xl font-black tracking-tighter text-white font-heading">VitalFlow</h1>
-            </div>
-            <ConnectionStatus />
-          </div>
-          <div className="hidden lg:flex items-center gap-4">
-            <EnergyStatus />
-            <GamificationBar energyPoints={user?.energy_points} currentStreak={user?.current_streak} />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-neutral-800/50" data-testid="sync-indicator">
-              <Radio className="w-3 h-3 text-emerald-400" />
-              <span className="text-[11px] text-neutral-400">Sincronizado com wearables</span>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tighter text-white">
+                VitalFlow
+              </h1>
             </div>
 
-            {isGestor && (
-              isGestorPage ? (
-                <button onClick={() => navigate("/")} data-testid="gestor-dashboard-button" className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20">
+            <div className="hidden md:block">
+              <ConnectionStatus />
+            </div>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-4">
+            <div
+              className={`flex items-center gap-2 px-4 py-2 rounded-full border ${currentStyle.wrapper}`}
+            >
+              <span className={`w-3 h-3 rounded-full ${currentStyle.dot}`} />
+              <span className={`font-semibold text-sm ${currentStyle.text}`}>
+                {currentStatus}
+              </span>
+            </div>
+
+            <GamificationBar
+              energyPoints={user?.energy_points}
+              currentStreak={user?.current_streak}
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800/50 border border-white/10">
+              <Radio className="w-3 h-3 text-emerald-400" />
+              <span className="text-[11px] text-neutral-300">
+                Sincronizado com wearables
+              </span>
+            </div>
+
+            {isGestor &&
+              (isGestorPage ? (
+                <button
+                  onClick={() => navigate("/")}
+                  className={primaryButtonClass}
+                >
                   <LayoutDashboard className="w-4 h-4" />
                   <span>Meus Dados</span>
                 </button>
               ) : (
-                <button onClick={() => navigate("/gestor")} data-testid="gestor-dashboard-button" className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20">
+                <button
+                  onClick={() => navigate("/gestor")}
+                  className={primaryButtonClass}
+                >
                   <BarChart3 className="w-4 h-4" />
                   <span>Gestor</span>
                 </button>
-              )
-            )}
+              ))}
 
             {isRelatorio ? (
-              <button onClick={() => navigate("/")} data-testid="relatorio-home-button" className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20">
+              <button
+                onClick={() => navigate("/")}
+                className={primaryButtonClass}
+              >
                 <LayoutDashboard className="w-4 h-4" />
                 <span>Meus Dados</span>
               </button>
             ) : (
-              <button onClick={() => navigate("/relatorio")} data-testid="relatorio-home-button" className="flex px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-md transition-all duration-200 items-center gap-2 shadow-lg shadow-purple-500/20">
+              <button
+                onClick={() => navigate("/relatorio")}
+                className={primaryButtonClass}
+              >
                 <FileText className="w-4 h-4" />
                 <span>Relatório</span>
               </button>
             )}
 
-            <button onClick={() => navigate("/devices")} data-testid="devices-button" className="px-3 py-2 border border-white/20 text-white text-sm font-semibold rounded-md hover:bg-white/5 transition-all duration-200 flex items-center gap-2">
+            <button
+              onClick={() => navigate("/devices")}
+              className={secondaryButtonClass(isDevicesPage)}
+            >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Dispositivos</span>
             </button>
 
             <div className="relative" ref={dropdownRef}>
-              <button onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-2 px-3 py-2 border border-white/20 rounded-md hover:bg-white/5 transition-all duration-200" data-testid="user-menu-button">
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-2 px-3 py-2 border border-white/20 rounded-xl hover:bg-white/5 transition-all duration-200"
+              >
                 {user?.foto_url ? (
-                  <img src={user.foto_url} alt={user.nome} className="w-6 h-6 rounded-full object-cover" />
+                  <img
+                    src={user.foto_url}
+                    alt={user.nome}
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
                 ) : (
                   <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center">
                     <User className="w-4 h-4 text-black" />
                   </div>
                 )}
-                <span className="text-white text-sm font-medium hidden sm:inline">{user?.nome?.split(' ')[0]}</span>
+                <span className="text-white text-sm font-medium hidden sm:inline">
+                  {user?.nome?.split(" ")[0] || "Usuário"}
+                </span>
               </button>
+
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-neutral-900 border border-white/10 rounded-md shadow-xl z-50">
+                <div className="absolute right-0 mt-2 w-56 bg-neutral-900 border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
                   <div className="p-3 border-b border-white/10">
-                    <p className="text-sm font-semibold text-white">{user?.nome}</p>
+                    <p className="text-sm font-semibold text-white">
+                      {user?.nome}
+                    </p>
                     <p className="text-xs text-neutral-400">{user?.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-xs text-cyan-400">{user?.setor}</p>
-                      {user?.account_type === "personal" && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${user?.is_premium ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-neutral-800 text-neutral-500 border border-neutral-700"}`}>
-                          {user?.is_premium ? "PREMIUM" : "FREE"}
-                        </span>
-                      )}
-                    </div>
                   </div>
-                  <button onClick={() => { navigate('/profile'); setDropdownOpen(false); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-white/5 transition-colors" data-testid="profile-menu-item">
+
+                  <button
+                    onClick={() => {
+                      navigate("/profile");
+                      setDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-white hover:bg-white/5"
+                  >
                     <User className="w-4 h-4" />
                     Meu Perfil
                   </button>
-                  <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors border-t border-white/10" data-testid="logout-button">
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-rose-400 hover:bg-rose-500/10 border-t border-white/10"
+                  >
                     <LogOut className="w-4 h-4" />
                     Sair
                   </button>
