@@ -44,6 +44,10 @@ api_router.include_router(payments_router)
 
 app.include_router(api_router)
 
+@api_router.get("/")
+async def root():
+    return {"status": "ok", "message": "VitalFlow API online"}
+    
 # --- CORS ---
 origins = [
     "http://localhost:3000",
