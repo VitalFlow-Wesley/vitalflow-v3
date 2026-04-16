@@ -42,12 +42,12 @@ api_router.include_router(gamification_router)
 api_router.include_router(health_router)
 api_router.include_router(payments_router)
 
-app.include_router(api_router)
-
 @api_router.get("/")
 async def root():
     return {"status": "ok", "message": "VitalFlow API online"}
     
+app.include_router(api_router)
+
 # --- CORS ---
 origins = [
     "http://localhost:3000",
