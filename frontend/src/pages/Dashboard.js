@@ -1099,14 +1099,14 @@ export default function Dashboard() {
       </div>
 
       <RoutineExecutionModal
-        open={!!selectedRoutine}
-        routine={selectedRoutine}
-        onClose={() => setSelectedRoutine(null)}
-        onComplete={() => {
-          setSelectedRoutine(null);
-          fetchHistory();
-        }}
-      />
+  open={!!selectedRoutine}
+  routine={selectedRoutine}
+  onClose={() => setSelectedRoutine(null)}
+  onComplete={(routine) => {
+    setSelectedRoutine(null);
+    fetchHistory?.();
+  }}
+/>
     </div>
   );
 }
