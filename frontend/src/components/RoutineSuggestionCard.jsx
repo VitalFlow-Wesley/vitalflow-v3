@@ -66,6 +66,15 @@ export default function RoutineSuggestionCard({
   const primary = smart.primary;
   const alternatives = smart.alternatives || [];
 
+  const startPrimaryRoutine = () => {
+    onStartRoutine?.({
+      ...primary,
+      status: smart.status,
+      currentData,
+      previousData,
+    });
+  };
+
   return (
     <>
       <div
@@ -77,6 +86,7 @@ export default function RoutineSuggestionCard({
             <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 font-bold">
               Sugestão inteligente
             </p>
+
             <div
               className={`mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${theme.badge}`}
             >
@@ -169,14 +179,7 @@ export default function RoutineSuggestionCard({
 
         <div className="space-y-3">
           <button
-            onClick={() =>
-              onStartRoutine?.({
-                ...primary,
-                status: smart.status,
-                currentData,
-                previousData,
-              })
-            }
+            onClick={startPrimaryRoutine}
             className={`w-full rounded-2xl px-4 py-3 font-bold transition-all duration-200 ${theme.button}`}
             data-testid="routine-start-button"
           >
@@ -211,7 +214,9 @@ export default function RoutineSuggestionCard({
 
       {showHowItWorks && (
         <div className="fixed inset-0 z-[1200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className={`w-full max-w-md rounded-3xl border bg-neutral-950 p-6 ${theme.border}`}>
+          <div
+            className={`w-full max-w-md rounded-3xl border bg-neutral-950/95 p-6 ${theme.border}`}
+          >
             <p className="text-xs uppercase tracking-[0.18em] text-neutral-500 font-bold mb-3">
               Como funciona
             </p>
@@ -220,17 +225,20 @@ export default function RoutineSuggestionCard({
               {primary.title}
             </h3>
 
-            <p className="text-sm text-neutral-300 leading-6 mb-4">
+            <p className="text-base text-neutral-200 leading-7 mb-5">
               {primary.description}
             </p>
 
-            <div className="space-y-2 mb-5">
+            <div className="space-y-3 mb-5">
               {primary.howItWorks?.map((step, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-2xl border px-4 py-3 text-sm ${theme.alt}`}
+                  className={`rounded-2xl border px-4 py-3 text-sm leading-6 bg-neutral-950/50 ${theme.border} text-neutral-100`}
                 >
-                  {idx + 1}. {step}
+                  <span className={`font-bold mr-2 ${theme.title}`}>
+                    {idx + 1}.
+                  </span>
+                  <span>{step}</span>
                 </div>
               ))}
             </div>
@@ -247,7 +255,9 @@ export default function RoutineSuggestionCard({
 
       {showReevaluate && (
         <div className="fixed inset-0 z-[1200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className={`w-full max-w-md rounded-3xl border bg-neutral-950 p-6 ${theme.border}`}>
+          <div
+            className={`w-full max-w-md rounded-3xl border bg-neutral-950/95 p-6 ${theme.border}`}
+          >
             <p className="text-xs uppercase tracking-[0.18em] text-neutral-500 font-bold mb-3">
               {reevaluation.title}
             </p>
@@ -260,7 +270,7 @@ export default function RoutineSuggestionCard({
               {reevaluation.items.map((item) => (
                 <div
                   key={item.label}
-                  className={`rounded-2xl border p-4 text-center ${theme.alt}`}
+                  className={`rounded-2xl border p-4 text-center bg-neutral-950/50 ${theme.border}`}
                 >
                   <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 mb-2">
                     {item.label}
@@ -283,12 +293,7 @@ export default function RoutineSuggestionCard({
               <button
                 onClick={() => {
                   setShowReevaluate(false);
-                  onStartRoutine?.({
-                    ...primary,
-                    status: smart.status,
-                    currentData,
-                    previousData,
-                  });
+                  startPrimaryRoutine();
                 }}
                 className={`flex-1 rounded-2xl py-3 font-bold ${theme.button}`}
               >
