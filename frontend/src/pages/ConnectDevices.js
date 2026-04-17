@@ -614,7 +614,72 @@ const ConnectDevices = () => {
         })}
       </div>
 
-      
+      {syncResult?.auto_analysis && (
+        <div className="w-full max-w-5xl mx-auto mt-8 border border-cyan-400/20 bg-cyan-400/5 rounded-xl p-6">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300">
+                Cérebro VitalFlow — Última análise automática
+              </h3>
+            </div>
+
+            <div className="text-xs px-3 py-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 text-violet-300 font-semibold">
+              Cenário:{" "}
+              {TEST_SCENARIOS.find(
+                (scenario) => scenario.value === syncResult.scenario
+              )?.label || "Aleatório"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+            <MetricBox
+              label="V-Score"
+              value={syncResult.auto_analysis.v_score}
+              color="text-cyan-300"
+            />
+            <MetricBox
+              label="Stress Score"
+              value={syncResult.auto_analysis.stress_score}
+              color="text-rose-300"
+            />
+            <MetricBox
+              label="Recovery"
+              value={syncResult.auto_analysis.recovery_score}
+              color="text-emerald-300"
+            />
+            <MetricBox
+              label="Risk Score"
+              value={syncResult.auto_analysis.risk_score}
+              color="text-yellow-300"
+            />
+            <MetricBox
+              label="Contexto"
+              value={syncResult.auto_analysis.contexto || "--"}
+              color="text-white"
+            />
+            <MetricBox
+              label="Status"
+              value={syncResult.auto_analysis.status_visual || "--"}
+              color={getStatusColor(syncResult.auto_analysis.status_visual)}
+            />
+          </div>
+
+          {syncResult.auto_analysis.alert && (
+            <div className="border border-rose-500/20 bg-rose-500/10 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-300 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-rose-300">
+                  Alerta detectado
+                </p>
+                <p className="text-xs text-neutral-300 mt-1">
+                  {syncResult.auto_analysis.alert}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="w-full max-w-5xl mx-auto mt-8 border border-white/5 bg-neutral-900/40 rounded-xl p-6">
         <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-3">
