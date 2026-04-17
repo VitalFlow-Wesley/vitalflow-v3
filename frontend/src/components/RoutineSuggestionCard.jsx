@@ -27,44 +27,35 @@ function getThemeByStatus(status) {
   if (status === "critico") {
     return {
       border: "border-rose-500/30",
-      glow: "shadow-[0_0_40px_rgba(244,63,94,0.14)]",
-      soft: "bg-rose-500/10",
-      softStrong: "bg-rose-500/12",
-      badge: "border-rose-400/30 bg-rose-500/10 text-rose-300",
+      badge: "border-rose-500/20 bg-rose-500/10 text-rose-300",
       title: "text-rose-300",
       button: "bg-rose-500 hover:bg-rose-400 text-white",
       subtleButton:
-        "border border-rose-500/20 bg-rose-500/10 text-rose-200 hover:bg-rose-500/15",
-      chip: "border-rose-500/20 bg-rose-500/10 text-rose-200",
+        "border border-rose-500/20 bg-transparent text-rose-200 hover:bg-rose-500/10",
+      chip: "border-rose-500/20 bg-transparent text-rose-200",
     };
   }
 
   if (status === "atencao") {
     return {
       border: "border-amber-500/30",
-      glow: "shadow-[0_0_40px_rgba(245,158,11,0.12)]",
-      soft: "bg-amber-500/10",
-      softStrong: "bg-amber-500/12",
-      badge: "border-amber-400/30 bg-amber-500/10 text-amber-300",
+      badge: "border-amber-500/20 bg-amber-500/10 text-amber-300",
       title: "text-amber-300",
       button: "bg-amber-500 hover:bg-amber-400 text-black",
       subtleButton:
-        "border border-amber-500/20 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15",
-      chip: "border-amber-500/20 bg-amber-500/10 text-amber-200",
+        "border border-amber-500/20 bg-transparent text-amber-200 hover:bg-amber-500/10",
+      chip: "border-amber-500/20 bg-transparent text-amber-200",
     };
   }
 
   return {
     border: "border-emerald-500/30",
-    glow: "shadow-[0_0_40px_rgba(16,185,129,0.12)]",
-    soft: "bg-emerald-500/10",
-    softStrong: "bg-emerald-500/12",
-    badge: "border-emerald-400/30 bg-emerald-500/10 text-emerald-300",
+    badge: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
     title: "text-emerald-300",
     button: "bg-emerald-500 hover:bg-emerald-400 text-black",
     subtleButton:
-      "border border-emerald-500/20 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/15",
-    chip: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
+      "border border-emerald-500/20 bg-transparent text-emerald-200 hover:bg-emerald-500/10",
+    chip: "border-emerald-500/20 bg-transparent text-emerald-200",
   };
 }
 
@@ -186,7 +177,7 @@ export default function RoutineSuggestionCard({
 
   return (
     <div
-      className={`rounded-3xl border bg-gradient-to-b from-[#0f172a] to-[#020617] p-5 xl:p-6 ${theme.border} ${theme.glow}`}
+      className={`rounded-3xl border bg-neutral-950/40 backdrop-blur-sm p-5 xl:p-6 ${theme.border}`}
       data-testid="routine-suggestion-card"
     >
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -203,7 +194,7 @@ export default function RoutineSuggestionCard({
       </div>
 
       <div
-        className={`rounded-2xl border p-4 mb-4 ${theme.border} ${theme.softStrong}`}
+        className={`rounded-2xl border p-4 mb-4 bg-neutral-950/40 ${theme.border}`}
       >
         <h3 className={`text-2xl font-black tracking-tight mb-2 ${theme.title}`}>
           {suggestion.title}
