@@ -10,14 +10,23 @@ export default function RoutineExecutionModal({
 
   useEffect(() => {
     if (!open || !routine) return;
-    setSecondsLeft(routine.duracao * 60);
+
+    const duration =
+      Number(routine.duration_minutes) ||
+      Number(routine.duracao) ||
+      5;
+
+    setSecondsLeft(duration * 60);
   }, [open, routine]);
 
   useEffect(() => {
     if (!open || secondsLeft <= 0) return;
 
     const timer = setInterval(() => {
-      setSecondsLeft((prev) => prev - 1);
+      setSecondsLeft((prev) => {
+        const next = prev - 1;
+        return next >= 0 ? next : 0;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
@@ -25,15 +34,18 @@ export default function RoutineExecutionModal({
 
   if (!open || !routine) return null;
 
-  const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
-  const seconds = String(secondsLeft % 60).padStart(2, "0");
+  const safeSeconds = Number(secondsLeft) || 0;
+  const minutes = String(Math.floor(safeSeconds / 60)).padStart(2, "0");
+  const seconds = String(safeSeconds % 60).padStart(2, "0");
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#07111f] p-6 text-white shadow-2xl">
         <div className="mb-4 text-center">
           <p className="text-sm text-neutral-400">Rotina em andamento</p>
-          <h2 className="mt-1 text-2xl font-semibold">{routine.titulo}</h2>
+          <h2 className="mt-1 text-2xl font-semibold">
+            {routine.title || routine.titulo || "Rotina guiada"}
+          </h2>
         </div>
 
         <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
@@ -44,7 +56,7 @@ export default function RoutineExecutionModal({
         </div>
 
         <p className="mb-6 text-center text-sm text-neutral-300">
-          {routine.descricao}
+          {routine.description || routine.descricao || "Siga a rotina guiada."}
         </p>
 
         <div className="flex gap-3">
