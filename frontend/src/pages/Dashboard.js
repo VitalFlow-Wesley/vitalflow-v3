@@ -3,6 +3,8 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import StatusOrb from "../components/StatusOrb";
 import AIAnalysis from "../components/AIAnalysis";
+import RoutineSuggestionCard from "../components/RoutineSuggestionCard";
+import RoutineExecutionModal from "../components/RoutineExecutionModal";
 import NudgeCard from "../components/NudgeCard";
 import HistoryChart from "../components/HistoryChart";
 import OnboardingTour from "../components/OnboardingTour";
@@ -333,6 +335,7 @@ export default function Dashboard() {
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
   const [history, setHistory] = useState([]);
   const [connectedDevices, setConnectedDevices] = useState([]);
+  const [selectedRoutine, setSelectedRoutine] = useState(null);
   const [predictiveAlert, setPredictiveAlert] = useState(null);
   const [gamStats, setGamStats] = useState(null);
   const [healthTrend, setHealthTrend] = useState(null);
@@ -598,8 +601,7 @@ export default function Dashboard() {
     accountType.includes("common") ||
     accountType.includes("comum");
 
-  const isFreeLocked =
-    isPersonalUser && !user?.is_premium && !isB2BUser;
+  const isFreeLocked = isPersonalUser && !user?.is_premium && !isB2BUser;
 
   const hasData = currentAnalysis !== null;
 
@@ -995,10 +997,30 @@ export default function Dashboard() {
               </div>
 
               <div className="xl:col-span-4 space-y-6">
-                <NudgeCard
-                  analysis={currentAnalysis}
-                  onPointsEarned={handlePointsEarned}
+                <RoutineSuggestionCard
+                  currentData={{
+                    stress: currentAnalysis?.stress ?? 0,
+                    sleep: currentAnalysis?.input_data?.sleep_hours ?? 0,
+                    hrv: currentAnalysis?.input_data?.hrv ?? 0,
+                    recovery: currentAnalysis?.recovery ?? 100,
+                    bpm: currentAnalysis?.input_data?.bpm ?? 0,
+                    v_score: currentAnalysis?.v_score ?? 0,
+                  }}
+                  previousData={{
+                    stress: history?.[1]?.stress ?? 0,
+                    sleep: history?.[1]?.input_data?.sleep_hours ?? 0,
+                    hrv: history?.[1]?.input_data?.hrv ?? 0,
+                    recovery: history?.[1]?.recovery ?? 100,
+                    bpm: history?.[1]?.input_data?.bpm ?? 0,
+                    v_score: history?.[1]?.v_score ?? 0,
+                  }}
+                  onStartRoutine={(routineData) =>
+                    setSelectedRoutine(routineData)
+                  }
                 />
+
+              
+                }
               </div>
             </section>
           </motion.div>
@@ -1069,6 +1091,16 @@ export default function Dashboard() {
           </motion.div>
         )}
       </div>
+
+      <RoutineExecutionModal
+        open={!!selectedRoutine}
+        routine={selectedRoutine}
+        onClose={() => setSelectedRoutine(null)}
+        onComplete={() => {
+          setSelectedRoutine(null);
+          fetchHistory();
+        }}
+      />
     </div>
   );
 }

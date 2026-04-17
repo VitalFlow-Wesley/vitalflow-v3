@@ -222,58 +222,48 @@ const ConnectDevices = () => {
   };
 
   const handleSyncNow = async () => {
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const payload =
-        selectedScenario && selectedScenario !== "random"
-          ? { scenario: selectedScenario }
-          : { scenario: "random" };
+  try {
+    const payload =
+      selectedScenario && selectedScenario !== "random"
+        ? { scenario: selectedScenario }
+        : { scenario: "random" };
 
-      console.log("[VitalFlow] Iniciando sync manual...");
-      console.log("[VitalFlow] Cenário selecionado:", payload.scenario);
+    const { data } = await axios.post(`${API}/wearables/sync`, payload, {
+      withCredentials: true,
+    });
 
-      const { data } = await axios.post(`${API}/wearables/sync`, payload, {
-        withCredentials: true,
-      });
+    await fetchConnectedDevices();
 
-      console.log("[VitalFlow] Sync resultado:", data);
+    if (data?.status === "synced") {
+      const scenarioLabel =
+        TEST_SCENARIOS.find((s) => s.value === payload.scenario)?.label ||
+        "Aleatório";
 
-      setSyncResult({
-        provider: "google_health_connect",
-        sync_data: data?.data || null,
-        auto_analysis: data?.auto_analysis || null,
-        raw: data,
-        scenario: payload.scenario,
-      });
+      toast.success(`Sincronização concluída! Cenário: ${scenarioLabel}`);
 
-      await fetchConnectedDevices();
-
-      if (data?.status === "synced") {
-        const scenarioLabel =
-          TEST_SCENARIOS.find((s) => s.value === payload.scenario)?.label ||
-          "Aleatório";
-        toast.success(`Sincronização concluída! Cenário: ${scenarioLabel}`);
-      } else if (data?.status === "no_data") {
-        toast.info(data?.message || "Nenhum dado novo disponível.");
-      } else {
-        toast.success("Sincronização executada.");
-      }
-    } catch (err) {
-      console.error(
-        "[VitalFlow] Erro no sync:",
-        err?.response?.status,
-        err?.response?.data
-      );
-
-      const detail =
-        err?.response?.data?.detail || err.message || "Erro ao sincronizar";
-
-      toast.error(`Erro ao sincronizar: ${detail}`);
-    } finally {
-      setLoading(false);
+      // 🚀 REDIRECIONA PRO DASHBOARD
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
+    } else if (data?.status === "no_data") {
+      toast.info(data?.message || "Nenhum dado novo disponível.");
+    } else {
+      toast.success("Sincronização executada.");
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
     }
-  };
+  } catch (err) {
+    const detail =
+      err?.response?.data?.detail || err.message || "Erro ao sincronizar";
+
+    toast.error(`Erro ao sincronizar: ${detail}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const isConnected = (providerId) =>
     devices.some((d) => d.provider === providerId && d.is_connected);
@@ -614,108 +604,8 @@ const ConnectDevices = () => {
         })}
       </div>
 
-      {syncResult?.auto_analysis && (
-        <div className="w-full max-w-5xl mx-auto mt-8 border border-cyan-400/20 bg-cyan-400/5 rounded-xl p-6">
-          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-cyan-400" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300">
-                Cérebro VitalFlow — Última análise automática
-              </h3>
-            </div>
 
-            <div className="text-xs px-3 py-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 text-violet-300 font-semibold">
-              Cenário:{" "}
-              {TEST_SCENARIOS.find(
-                (scenario) => scenario.value === syncResult.scenario
-              )?.label || "Aleatório"}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-            <MetricBox
-              label="V-Score"
-              value={syncResult.auto_analysis.v_score}
-              color="text-cyan-300"
-            />
-            <MetricBox
-              label="Stress Score"
-              value={syncResult.auto_analysis.stress_score}
-              color="text-rose-300"
-            />
-            <MetricBox
-              label="Recovery"
-              value={syncResult.auto_analysis.recovery_score}
-              color="text-emerald-300"
-            />
-            <MetricBox
-              label="Risk Score"
-              value={syncResult.auto_analysis.risk_score}
-              color="text-yellow-300"
-            />
-            <MetricBox
-              label="Contexto"
-              value={syncResult.auto_analysis.contexto || "--"}
-              color="text-white"
-            />
-            <MetricBox
-              label="Status"
-              value={syncResult.auto_analysis.status_visual || "--"}
-              color={getStatusColor(syncResult.auto_analysis.status_visual)}
-            />
-          </div>
-
-          {syncResult.auto_analysis.alert && (
-            <div className="border border-rose-500/20 bg-rose-500/10 rounded-xl p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-rose-300 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-bold text-rose-300">
-                  Alerta detectado
-                </p>
-                <p className="text-xs text-neutral-300 mt-1">
-                  {syncResult.auto_analysis.alert}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="w-full max-w-5xl mx-auto mt-8 border border-white/5 bg-neutral-900/40 rounded-xl p-6">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-3">
-          Dados Coletados Automaticamente
-        </h3>
-
-        <ul className="space-y-2 text-sm text-neutral-300">
-          <li className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-            <span>
-              <strong>HRV:</strong> Variabilidade cardíaca (24h)
-            </span>
-          </li>
-          <li className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-            <span>
-              <strong>BPM Médio:</strong> Batimentos em repouso
-            </span>
-          </li>
-          <li className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-            <span>
-              <strong>Horas de Sono:</strong> Duração da última noite
-            </span>
-          </li>
-          <li className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-            <span>
-              <strong>Passos:</strong> Contagem diária do acelerômetro
-            </span>
-          </li>
-        </ul>
-      </div>
-    </div>
-  );
-};
+     
 
 function MetricBox({ label, value, color }) {
   return (
