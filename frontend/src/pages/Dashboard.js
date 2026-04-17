@@ -1017,12 +1017,6 @@ export default function Dashboard() {
     status: history?.[1]?.status_visual || history?.[1]?.status || "normal",
   }}
   onStartRoutine={(routineData) => setSelectedRoutine(routineData)}
-  onExplain={(routineData) => {
-    console.log("Explicar rotina:", routineData);
-  }}
-  onReevaluate={(routineData) => {
-    console.log("Reavaliar rotina:", routineData);
-  }}
 />
 
               

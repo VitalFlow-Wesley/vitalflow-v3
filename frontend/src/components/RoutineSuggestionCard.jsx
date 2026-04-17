@@ -1,27 +1,9 @@
-import React, { useMemo } from "react";
-import { Clock3, Info, RefreshCw } from "lucide-react";
-
-function normalizeStatus(rawStatus) {
-  const value = String(rawStatus || "").toLowerCase();
-
-  if (
-    value.includes("crit") ||
-    value.includes("vermelh") ||
-    value.includes("alerta")
-  ) {
-    return "critico";
-  }
-
-  if (
-    value.includes("aten") ||
-    value.includes("amarel") ||
-    value.includes("moderad")
-  ) {
-    return "atencao";
-  }
-
-  return "normal";
-}
+import React, { useMemo, useState } from "react";
+import { Clock3, Info, RefreshCw, Sparkles } from "lucide-react";
+import {
+  buildSmartSuggestions,
+  getReevaluationPreview,
+} from "../utils/smartRoutineEngine";
 
 function getThemeByStatus(status) {
   if (status === "critico") {
@@ -33,6 +15,7 @@ function getThemeByStatus(status) {
       subtleButton:
         "border border-rose-500/20 bg-transparent text-rose-200 hover:bg-rose-500/10",
       chip: "border-rose-500/20 bg-transparent text-rose-200",
+      alt: "border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10",
     };
   }
 
@@ -45,6 +28,7 @@ function getThemeByStatus(status) {
       subtleButton:
         "border border-amber-500/20 bg-transparent text-amber-200 hover:bg-amber-500/10",
       chip: "border-amber-500/20 bg-transparent text-amber-200",
+      alt: "border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10",
     };
   }
 
@@ -56,67 +40,7 @@ function getThemeByStatus(status) {
     subtleButton:
       "border border-emerald-500/20 bg-transparent text-emerald-200 hover:bg-emerald-500/10",
     chip: "border-emerald-500/20 bg-transparent text-emerald-200",
-  };
-}
-
-function getSuggestionByState({
-  stress = 0,
-  sleep = 0,
-  hrv = 0,
-  recovery = 100,
-  bpm = 0,
-  v_score = 100,
-  status = "normal",
-}) {
-  if (status === "critico") {
-    return {
-      stateLabel: "Estado atual: crítico",
-      title: "Recuperação prioritária",
-      description:
-        "Pratique uma respiração guiada curta para reduzir a sobrecarga imediata e estabilizar seu estado fisiológico.",
-      duration: "5 min",
-      focus: "recuperação",
-      context:
-        stress >= 70
-          ? "estresse"
-          : sleep < 6
-          ? "sono ruim"
-          : hrv < 50
-          ? "HRV baixa"
-          : "monitoramento",
-      cta: "Iniciar agora",
-    };
-  }
-
-  if (status === "atencao") {
-    return {
-      stateLabel: "Estado atual: atenção",
-      title: "Recuperação leve",
-      description:
-        "Há sinais de recuperação, mas ainda exige atenção. Faça uma pausa guiada para melhorar sua estabilidade.",
-      duration: "5 min",
-      focus: "equilíbrio",
-      context:
-        recovery < 70
-          ? "recuperação"
-          : stress >= 50
-          ? "estresse"
-          : bpm >= 90
-          ? "ritmo cardíaco"
-          : "monitoramento",
-      cta: "Iniciar agora",
-    };
-  }
-
-  return {
-    stateLabel: "Estado atual: estável",
-    title: "Manutenção positiva",
-    description:
-      "Seu estado está equilibrado. Mantenha a consistência com uma rotina curta para sustentar sua performance.",
-    duration: "5 min",
-    focus: "manutenção",
-    context: "estabilidade",
-    cta: "Iniciar agora",
+    alt: "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10",
   };
 }
 
@@ -124,141 +48,256 @@ export default function RoutineSuggestionCard({
   currentData,
   previousData,
   onStartRoutine,
-  onExplain,
-  onReevaluate,
 }) {
-  const currentStatus = useMemo(() => {
-    const explicitStatus =
-      currentData?.status ||
-      currentData?.status_visual ||
-      currentData?.estado ||
-      "";
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const [showReevaluate, setShowReevaluate] = useState(false);
 
-    if (explicitStatus) return normalizeStatus(explicitStatus);
-
-    const stress = Number(currentData?.stress ?? 0);
-    const vScore = Number(currentData?.v_score ?? 100);
-
-    if (stress >= 75 || vScore <= 55) return "critico";
-    if (stress >= 50 || vScore <= 75) return "atencao";
-    return "normal";
-  }, [currentData]);
-
-  const theme = useMemo(() => getThemeByStatus(currentStatus), [currentStatus]);
-
-  const suggestion = useMemo(
-    () =>
-      getSuggestionByState({
-        stress: Number(currentData?.stress ?? 0),
-        sleep: Number(currentData?.sleep ?? currentData?.sleep_hours ?? 0),
-        hrv: Number(currentData?.hrv ?? 0),
-        recovery: Number(currentData?.recovery ?? 100),
-        bpm: Number(currentData?.bpm ?? 0),
-        v_score: Number(currentData?.v_score ?? 100),
-        status: currentStatus,
-      }),
-    [currentData, currentStatus]
+  const smart = useMemo(
+    () => buildSmartSuggestions(currentData, previousData),
+    [currentData, previousData]
   );
 
-  const routinePayload = useMemo(
-    () => ({
-      title: suggestion.title,
-      description: suggestion.description,
-      duration_minutes: 5,
-      status: currentStatus,
-      cycle_seconds: [4, 4, 4, 4],
-      focus: suggestion.focus,
-      context: suggestion.context,
-      currentData,
-      previousData,
-    }),
-    [suggestion, currentStatus, currentData, previousData]
+  const theme = useMemo(() => getThemeByStatus(smart.status), [smart.status]);
+  const reevaluation = useMemo(
+    () => getReevaluationPreview(smart.status),
+    [smart.status]
   );
+
+  const primary = smart.primary;
+  const alternatives = smart.alternatives || [];
 
   return (
-    <div
-      className={`rounded-3xl border bg-neutral-950/40 backdrop-blur-sm p-5 xl:p-6 ${theme.border}`}
-      data-testid="routine-suggestion-card"
-    >
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 font-bold">
-            Sugestão de rotina (5 min)
+    <>
+      <div
+        className={`rounded-3xl border bg-neutral-950/40 backdrop-blur-sm p-5 xl:p-6 ${theme.border}`}
+        data-testid="routine-suggestion-card"
+      >
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 font-bold">
+              Sugestão inteligente
+            </p>
+            <div
+              className={`mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${theme.badge}`}
+            >
+              Estado atual: {smart.status}
+            </div>
+          </div>
+
+          <div className="inline-flex items-center gap-2 text-neutral-400 text-sm">
+            <Sparkles className="w-4 h-4" />
+            VitalFlow
+          </div>
+        </div>
+
+        <div
+          className={`rounded-2xl border p-4 mb-4 bg-neutral-950/40 ${theme.border}`}
+        >
+          <h3 className={`text-2xl font-black tracking-tight mb-2 ${theme.title}`}>
+            {primary.title}
+          </h3>
+
+          <p className="text-sm leading-6 text-neutral-200 mb-3">
+            {primary.description}
           </p>
+
+          <p className="text-xs leading-6 text-neutral-400">
+            {smart.explanation}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-5">
           <div
-            className={`mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${theme.badge}`}
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium border ${theme.chip}`}
           >
-            {suggestion.stateLabel}
+            <Clock3 className="w-3.5 h-3.5" />
+            {primary.duration_label}
+          </div>
+
+          <div
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium border ${theme.chip}`}
+          >
+            {primary.focus}
+          </div>
+
+          <div
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium border ${theme.chip}`}
+          >
+            {primary.context}
+          </div>
+        </div>
+
+        {alternatives.length > 0 && (
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-neutral-500 font-bold mb-3">
+              Outras opções sugeridas
+            </p>
+
+            <div className="grid gap-2">
+              {alternatives.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() =>
+                    onStartRoutine?.({
+                      ...item,
+                      status: smart.status,
+                      currentData,
+                      previousData,
+                    })
+                  }
+                  className={`w-full text-left rounded-2xl border px-4 py-3 transition ${theme.alt}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        {item.duration_label} • {item.focus}
+                      </p>
+                    </div>
+
+                    <span className="text-xs text-neutral-500">
+                      alternativa
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <button
+            onClick={() =>
+              onStartRoutine?.({
+                ...primary,
+                status: smart.status,
+                currentData,
+                previousData,
+              })
+            }
+            className={`w-full rounded-2xl px-4 py-3 font-bold transition-all duration-200 ${theme.button}`}
+            data-testid="routine-start-button"
+          >
+            Iniciar agora
+          </button>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setShowHowItWorks(true)}
+              className={`rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ${theme.subtleButton}`}
+              data-testid="routine-explain-button"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                Como funciona
+              </span>
+            </button>
+
+            <button
+              onClick={() => setShowReevaluate(true)}
+              className={`rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ${theme.subtleButton}`}
+              data-testid="routine-reevaluate-button"
+            >
+              <span className="inline-flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Reavaliar
+              </span>
+            </button>
           </div>
         </div>
       </div>
 
-      <div
-        className={`rounded-2xl border p-4 mb-4 bg-neutral-950/40 ${theme.border}`}
-      >
-        <h3 className={`text-2xl font-black tracking-tight mb-2 ${theme.title}`}>
-          {suggestion.title}
-        </h3>
-
-        <p className="text-sm leading-6 text-neutral-200">
-          {suggestion.description}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-5">
-        <div
-          className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium border ${theme.chip}`}
-        >
-          <Clock3 className="w-3.5 h-3.5" />
-          {suggestion.duration}
-        </div>
-
-        <div
-          className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium border ${theme.chip}`}
-        >
-          {suggestion.focus}
-        </div>
-
-        <div
-          className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium border ${theme.chip}`}
-        >
-          {suggestion.context}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <button
-          onClick={() => onStartRoutine?.(routinePayload)}
-          className={`w-full rounded-2xl px-4 py-3 font-bold transition-all duration-200 ${theme.button}`}
-          data-testid="routine-start-button"
-        >
-          {suggestion.cta}
-        </button>
-
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => onExplain?.(routinePayload)}
-            className={`rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ${theme.subtleButton}`}
-            data-testid="routine-explain-button"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Info className="w-4 h-4" />
+      {showHowItWorks && (
+        <div className="fixed inset-0 z-[1200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`w-full max-w-md rounded-3xl border bg-neutral-950 p-6 ${theme.border}`}>
+            <p className="text-xs uppercase tracking-[0.18em] text-neutral-500 font-bold mb-3">
               Como funciona
-            </span>
-          </button>
+            </p>
 
-          <button
-            onClick={() => onReevaluate?.(routinePayload)}
-            className={`rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ${theme.subtleButton}`}
-            data-testid="routine-reevaluate-button"
-          >
-            <span className="inline-flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Reavaliar
-            </span>
-          </button>
+            <h3 className={`text-2xl font-black mb-3 ${theme.title}`}>
+              {primary.title}
+            </h3>
+
+            <p className="text-sm text-neutral-300 leading-6 mb-4">
+              {primary.description}
+            </p>
+
+            <div className="space-y-2 mb-5">
+              {primary.howItWorks?.map((step, idx) => (
+                <div
+                  key={idx}
+                  className={`rounded-2xl border px-4 py-3 text-sm ${theme.alt}`}
+                >
+                  {idx + 1}. {step}
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowHowItWorks(false)}
+              className={`w-full rounded-2xl px-4 py-3 font-bold ${theme.button}`}
+            >
+              Entendi
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {showReevaluate && (
+        <div className="fixed inset-0 z-[1200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`w-full max-w-md rounded-3xl border bg-neutral-950 p-6 ${theme.border}`}>
+            <p className="text-xs uppercase tracking-[0.18em] text-neutral-500 font-bold mb-3">
+              {reevaluation.title}
+            </p>
+
+            <h3 className={`text-2xl font-black mb-4 ${theme.title}`}>
+              Se você concluir esta rotina
+            </h3>
+
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {reevaluation.items.map((item) => (
+                <div
+                  key={item.label}
+                  className={`rounded-2xl border p-4 text-center ${theme.alt}`}
+                >
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 mb-2">
+                    {item.label}
+                  </p>
+                  <p className={`text-lg font-black ${theme.title}`}>
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowReevaluate(false)}
+                className="flex-1 rounded-2xl border border-white/10 py-3 text-neutral-300 hover:bg-white/5"
+              >
+                Fechar
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowReevaluate(false);
+                  onStartRoutine?.({
+                    ...primary,
+                    status: smart.status,
+                    currentData,
+                    previousData,
+                  });
+                }}
+                className={`flex-1 rounded-2xl py-3 font-bold ${theme.button}`}
+              >
+                Fazer agora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
