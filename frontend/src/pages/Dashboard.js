@@ -998,26 +998,32 @@ export default function Dashboard() {
 
               <div className="xl:col-span-4 space-y-6">
                 <RoutineSuggestionCard
-                  currentData={{
-                    stress: currentAnalysis?.stress ?? 0,
-                    sleep: currentAnalysis?.input_data?.sleep_hours ?? 0,
-                    hrv: currentAnalysis?.input_data?.hrv ?? 0,
-                    recovery: currentAnalysis?.recovery ?? 100,
-                    bpm: currentAnalysis?.input_data?.bpm ?? 0,
-                    v_score: currentAnalysis?.v_score ?? 0,
-                  }}
-                  previousData={{
-                    stress: history?.[1]?.stress ?? 0,
-                    sleep: history?.[1]?.input_data?.sleep_hours ?? 0,
-                    hrv: history?.[1]?.input_data?.hrv ?? 0,
-                    recovery: history?.[1]?.recovery ?? 100,
-                    bpm: history?.[1]?.input_data?.bpm ?? 0,
-                    v_score: history?.[1]?.v_score ?? 0,
-                  }}
-                  onStartRoutine={(routineData) =>
-                    setSelectedRoutine(routineData)
-                  }
-                />
+  currentData={{
+    stress: currentAnalysis?.stress ?? currentAnalysis?.stress_score ?? 0,
+    sleep: currentAnalysis?.input_data?.sleep_hours ?? 0,
+    hrv: currentAnalysis?.input_data?.hrv ?? 0,
+    recovery: currentAnalysis?.recovery ?? currentAnalysis?.recovery_score ?? 100,
+    bpm: currentAnalysis?.input_data?.bpm ?? 0,
+    v_score: currentAnalysis?.v_score ?? 100,
+    status: currentAnalysis?.status_visual || currentAnalysis?.status || "normal",
+  }}
+  previousData={{
+    stress: history?.[1]?.stress ?? history?.[1]?.stress_score ?? 0,
+    sleep: history?.[1]?.input_data?.sleep_hours ?? 0,
+    hrv: history?.[1]?.input_data?.hrv ?? 0,
+    recovery: history?.[1]?.recovery ?? history?.[1]?.recovery_score ?? 100,
+    bpm: history?.[1]?.input_data?.bpm ?? 0,
+    v_score: history?.[1]?.v_score ?? 100,
+    status: history?.[1]?.status_visual || history?.[1]?.status || "normal",
+  }}
+  onStartRoutine={(routineData) => setSelectedRoutine(routineData)}
+  onExplain={(routineData) => {
+    console.log("Explicar rotina:", routineData);
+  }}
+  onReevaluate={(routineData) => {
+    console.log("Reavaliar rotina:", routineData);
+  }}
+/>
 
               
                 }
