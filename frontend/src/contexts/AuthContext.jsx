@@ -1,14 +1,23 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL ||
+  process.env.REACT_APP_BACKEND_URL ||
+  "https://vitalflow.up.railway.app";
 
-// Definição da URL do Backend (Vercel usa a variável ou o fallback do Railway)
-const API_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+const API_URL =
+  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 
 export const ROLE_LEVELS = {
-  CEO: 1, Diretor: 2, "Ger. Executivo": 3, "Ger. Operacional": 4,
-  Coordenador: 5, Supervisor: 6, Gestor: 7, Colaborador: 8,
+  CEO: 1,
+  Diretor: 2,
+  "Ger. Executivo": 3,
+  "Ger. Operacional": 4,
+  Coordenador: 5,
+  Supervisor: 6,
+  Gestor: 7,
+  Colaborador: 8,
 };
 
 export const IS_ADMIN = (role) => ROLE_LEVELS[role] <= 1;
@@ -21,14 +30,43 @@ export function AuthProvider({ children }) {
 
   const fetchUser = async () => {
     try {
-      // Usando API_URL dinâmica
       const token = localStorage.getItem("vf_token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include", headers });
+      const res = await fetch(`${API_URL}/api/auth/me`, {
+        credentials: "include",
+        headers,
+      });
+
       if (res.ok) {
         const data = await res.json();
-        // Backend retorna nivel_acesso, mapeamos para role
-        setUser({ ...data, role: data.nivel_acesso || data.role, nivel_acesso: data.nivel_acesso || data.role });
+
+        const normalizedUser = {
+          ...data,
+          id: data.id || data._id,
+          role: data.nivel_acesso || data.role,
+          nivel_acesso: data.nivel_acesso || data.role,
+
+          is_premium:
+            Boolean(data?.is_premium) ||
+            String(data?.plan || "").toLowerCase() === "premium" ||
+            String(data?.subscription_plan || "").toLowerCase() === "premium",
+
+          plan: String(
+            data?.plan ||
+              data?.subscription_plan ||
+              (data?.is_premium ? "premium" : "free")
+          ).toLowerCase(),
+
+          is_b2b:
+            Boolean(data?.is_b2b) ||
+            String(data?.account_type || "")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase()
+              .includes("b2b"),
+        };
+
+        setUser(normalizedUser);
       } else {
         setUser(null);
       }
@@ -39,12 +77,13 @@ export function AuthProvider({ children }) {
     }
   };
 
-  useEffect(() => { fetchUser(); }, []);
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
   const login = async (email, password) => {
     try {
-      // Usando API_URL dinâmica
-      localStorage.removeItem('vf_user');
+      localStorage.removeItem("vf_user");
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,7 +104,6 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     try {
-      // Usando API_URL dinâmica
       const res = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,9 +123,11 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      // Usando API_URL dinâmica
-      await fetch(`${API_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
-      localStorage.removeItem('vf_user');
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      localStorage.removeItem("vf_user");
     } catch (e) {}
     setUser(null);
   };
@@ -104,7 +144,18 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register, refreshUser, getScopeFilter, ROLE_LEVELS }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        register,
+        refreshUser,
+        getScopeFilter,
+        ROLE_LEVELS,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
