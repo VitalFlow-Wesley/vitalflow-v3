@@ -14,40 +14,31 @@ RUN yarn build
 # ── Stage 2: Runtime ──
 FROM python:3.11-slim
 
-# Install nginx for serving frontend
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    nginx supervisor curl && \
+    nginx supervisor curl gettext-base && \
     rm -rf /var/lib/apt/lists/*
 
 # --- Backend setup ---
 WORKDIR /app/backend
-
-# AJUSTE CRUCIAL: Copiamos o requirements E o arquivo .whl antes de instalar
 COPY backend/requirements.txt backend/emergentintegrations-0.1.0-py3-none-any.whl ./
-
-# Agora o pip instala sem erro porque o arquivo .whl já está na pasta
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copiamos o restante do código do backend
 COPY backend/ ./
 
-# --- Frontend static files (served by nginx) ---
+# --- Frontend static files ---
 COPY --from=frontend-build /build/build /app/frontend/build
 
-# Nginx config: serve frontend + proxy /api to backend
-RUN cat > /etc/nginx/sites-available/default << 'NGINX'
+# Template do nginx usando ${PORT}
+RUN cat > /etc/nginx/templates/default.conf.template << 'NGINX'
 server {
-    listen 80;
+    listen ${PORT};
     server_name _;
 
-    # Frontend (React static)
     location / {
         root /app/frontend/build;
         try_files $uri $uri/ /index.html;
         add_header Cache-Control "public, max-age=3600";
     }
 
-    # Backend API proxy
     location /api/ {
         proxy_pass http://127.0.0.1:8001;
         proxy_set_header Host $host;
@@ -60,7 +51,7 @@ server {
 }
 NGINX
 
-# Supervisor config: run nginx + uvicorn
+# Supervisor
 RUN cat > /etc/supervisor/conf.d/vitalflow.conf << 'SUPERVISOR'
 [program:backend]
 command=uvicorn server:app --host 0.0.0.0 --port 8001 --workers 2
@@ -78,10 +69,19 @@ stderr_logfile=/var/log/supervisor/nginx.err.log
 stdout_logfile=/var/log/supervisor/nginx.out.log
 SUPERVISOR
 
-EXPOSE 80
+# Startup script
+RUN cat > /app/start.sh << 'START'
+#!/bin/sh
+set -e
+envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/sites-available/default
+exec supervisord -n
+START
 
-# Health check
+RUN chmod +x /app/start.sh
+
+EXPOSE 8080
+
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost/api/ || exit 1
+    CMD curl -f http://localhost:${PORT}/api/ || exit 1
 
-CMD ["supervisord", "-n"]
+CMD ["/app/start.sh"]
