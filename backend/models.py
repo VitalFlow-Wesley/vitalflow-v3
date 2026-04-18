@@ -42,6 +42,9 @@ class AuthResponse(BaseModel):
     current_streak: int = 0
     must_change_password: bool = False
     must_accept_lgpd: bool = False
+    plan: str = "free"
+    subscription_status: str = "inactive"
+    is_b2b: bool = False
 
 
 # ─── Colaborador ───

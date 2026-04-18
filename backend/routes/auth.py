@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+from services.subscription_service import get_user_access_state
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, Response, HTTPException
 from database import db
@@ -40,35 +41,37 @@ async def _get_company_name(account_type: str, domain: str | None) -> str | None
     return None
 
 
-def _check_premium_expired(colab: dict) -> tuple:
-    """Verifica se o trial Premium expirou. Retorna (is_premium, premium_expires_at)."""
-    is_premium = colab.get("is_premium", False)
-    expires_at = colab.get("premium_expires_at")
-    if is_premium and expires_at:
-        try:
-            exp_date = datetime.fromisoformat(expires_at)
-            if datetime.now(timezone.utc) > exp_date:
-                return False, expires_at
-        except (ValueError, TypeError):
-            pass
-    return is_premium, expires_at
-
 
 def _build_auth_response(colab: dict, company_name: str | None = None) -> AuthResponse:
-    is_premium, premium_expires_at = _check_premium_expired(colab)
+    access = get_user_access_state(colab)
+
+    premium_expires_at = (
+        colab.get("trial_end_date")
+        or colab.get("premium_expires_at")
+    )
+
     return AuthResponse(
-        id=colab["id"], nome=colab["nome"], email=colab["email"],
-        data_nascimento=colab["data_nascimento"], foto_url=colab.get("foto_url"),
-        setor=colab["setor"], nivel_acesso=colab["nivel_acesso"],
-        matricula=colab.get("matricula"), cargo=colab.get("cargo"),
+        id=colab["id"],
+        nome=colab["nome"],
+        email=colab["email"],
+        data_nascimento=colab["data_nascimento"],
+        foto_url=colab.get("foto_url"),
+        setor=colab["setor"],
+        nivel_acesso=colab["nivel_acesso"],
+        matricula=colab.get("matricula"),
+        cargo=colab.get("cargo"),
         account_type=colab.get("account_type", "personal"),
-        domain=colab.get("domain"), company_name=company_name,
-        is_premium=is_premium,
+        domain=colab.get("domain"),
+        company_name=company_name,
+        is_premium=access["has_premium_access"],
         premium_expires_at=premium_expires_at,
         energy_points=colab.get("energy_points", 0),
         current_streak=colab.get("current_streak", 0),
         must_change_password=colab.get("must_change_password", False),
-        must_accept_lgpd=colab.get("must_accept_lgpd", False)
+        must_accept_lgpd=colab.get("must_accept_lgpd", False),
+        plan=access["plan"],
+        subscription_status=access["subscription_status"],
+        is_b2b=bool(colab.get("is_b2b", False) or colab.get("account_type") == "corporate"),
     )
 
 
@@ -133,9 +136,14 @@ async def register(data: RegisterRequest, response: Response):
         )
 
         doc = colaborador.model_dump()
-        doc['created_at'] = doc['created_at'].isoformat()
-        doc['updated_at'] = doc['updated_at'].isoformat()
-        await db.colaboradores.insert_one(doc)
+doc["plan"] = "free"
+doc["subscription_status"] = "inactive"
+doc["trial_start_date"] = None
+doc["trial_end_date"] = None
+doc["is_b2b"] = account_type == "corporate"
+doc['created_at'] = doc['created_at'].isoformat()
+doc['updated_at'] = doc['updated_at'].isoformat()
+await db.colaboradores.insert_one(doc)
 
         _set_auth_cookies(
             response,

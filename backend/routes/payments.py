@@ -36,7 +36,9 @@ async def create_checkout_session(request: Request):
         if not plan:
             raise HTTPException(status_code=400, detail=f"Plano invalido: {plan_id}")
 
-        if colaborador.get("is_premium"):
+        access = get_user_access_state(colaborador)
+
+        if access["has_premium_access"]:
             raise HTTPException(status_code=400, detail="Voce ja e Premium.")
 
         host_url = str(request.base_url).rstrip("/")
