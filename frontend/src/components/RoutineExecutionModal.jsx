@@ -89,7 +89,7 @@ function getRoutineMeta(type, subtype) {
 
   if (type === "recovery") {
     if (subtype === "hydration") {
-      return { icon: Droplets, label: "Hidratação" };
+      return { icon: Droplets, label: "Hidratação rápida" };
     }
     return { icon: Droplets, label: "Recuperação rápida" };
   }
@@ -136,7 +136,6 @@ export default function RoutineExecutionModal({
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
   const [finished, setFinished] = useState(false);
-
   const [phaseIndex, setPhaseIndex] = useState(0);
   const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(0);
 
@@ -241,66 +240,79 @@ export default function RoutineExecutionModal({
   const getPrimaryInstruction = () => {
     if (routineType === "visual") {
       if (routine?.subtype === "distance_focus") {
-        return "Olhe para um ponto distante e relaxe sua visão";
+        return "Relaxe a visão focando em um ponto distante.";
       }
-      return "Afaste o olhar da tela e reduza a fadiga visual";
+      return "Reduza a fadiga visual afastando o olhar da tela.";
     }
 
     if (routineType === "movement") {
       if (routine?.subtype === "stretch") {
-        return "Alongue o corpo de forma leve e sem forçar";
+        return "Movimente o corpo de forma leve e sem forçar.";
       }
       if (routine?.subtype === "walk") {
-        return "Levante-se e caminhe por alguns minutos";
+        return "Levante-se e caminhe por alguns minutos.";
       }
-      return "Movimente o corpo de forma leve";
+      return "Movimente o corpo de forma leve.";
     }
 
     if (routineType === "recovery") {
       if (routine?.subtype === "hydration") {
-        return "Beba água e hidrate seu corpo";
+        return "Hidrate o corpo e recupere sua disposição.";
       }
-      return "Faça uma pausa curta para recuperação";
+      return "Faça uma pausa curta para acelerar sua recuperação.";
     }
 
     if (routineType === "mental") {
       if (routine?.subtype === "focus_reset") {
-        return "Desacelere e reorganize sua atenção";
+        return "Desacelere e reorganize sua atenção.";
       }
-      return "Faça uma pausa mental breve";
+      return "Faça uma pausa mental breve.";
     }
 
     if (routineType === "breathing") {
-      return currentPhase?.instruction || "Siga a respiração guiada";
+      return currentPhase?.instruction || "Siga a respiração guiada.";
     }
 
-    return "Siga as instruções da rotina";
+    return "Siga as instruções da rotina.";
   };
 
   const getSupportText = () => {
     if (routineType === "visual") {
-      return "Evite olhar para a tela durante esta rotina.";
+      if (routine?.subtype === "distance_focus") {
+        return "Tire os olhos da tela e mantenha o foco longe por alguns segundos.";
+      }
+      return "Evite estímulos visuais intensos e permita que os olhos descansem.";
     }
 
     if (routineType === "movement") {
       if (routine?.subtype === "stretch") {
         return "Solte pescoço, ombros e postura com leveza.";
       }
-      return "Solte os ombros e deixe o corpo retomar movimento.";
+      if (routine?.subtype === "walk") {
+        return "Ative a circulação e quebre o tempo prolongado parado.";
+      }
+      return "Deixe o corpo retomar o ritmo aos poucos.";
     }
 
     if (routineType === "recovery") {
       if (routine?.subtype === "hydration") {
-        return "Beba água com calma antes de voltar.";
+        return "Beba água devagar e dê ao organismo um momento de recomposição.";
       }
-      return "Faça uma pausa breve antes de continuar.";
+      return "Use este instante para reduzir a sobrecarga antes de continuar.";
     }
 
     if (routineType === "mental") {
-      return "Escolha apenas a próxima ação antes de continuar.";
+      if (routine?.subtype === "focus_reset") {
+        return "Retome clareza mental escolhendo apenas a próxima ação.";
+      }
+      return "Diminua o ruído mental por alguns instantes.";
     }
 
-    return `${phaseSecondsLeft}s nesta etapa`;
+    if (routineType === "breathing") {
+      return `${phaseSecondsLeft}s nesta etapa`;
+    }
+
+    return "Siga o ritmo da rotina.";
   };
 
   const renderPremiumCenter = () => {
@@ -327,9 +339,7 @@ export default function RoutineExecutionModal({
           </div>
 
           <p className={`mt-6 text-3xl font-black ${theme.title}`}>{label}</p>
-
           <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
-
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
           </p>
@@ -352,9 +362,7 @@ export default function RoutineExecutionModal({
           <p className={`mt-6 text-2xl font-black ${theme.title}`}>
             {routine.title}
           </p>
-
           <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
-
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
           </p>
@@ -375,9 +383,7 @@ export default function RoutineExecutionModal({
           <p className={`mt-6 text-2xl font-black ${theme.title}`}>
             {routine.title}
           </p>
-
           <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
-
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
           </p>
@@ -397,9 +403,7 @@ export default function RoutineExecutionModal({
           <p className={`mt-6 text-2xl font-black ${theme.title}`}>
             {routine.title}
           </p>
-
           <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
-
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
           </p>
@@ -419,9 +423,7 @@ export default function RoutineExecutionModal({
           <p className={`mt-6 text-2xl font-black ${theme.title}`}>
             {routine.title}
           </p>
-
           <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
-
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
           </p>
@@ -440,9 +442,7 @@ export default function RoutineExecutionModal({
         <p className={`mt-6 text-2xl font-black ${theme.title}`}>
           {routine.title || "Rotina guiada"}
         </p>
-
         <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
-
         <p className="mt-3 text-sm text-neutral-300 text-center">
           {getPrimaryInstruction()}
         </p>
@@ -613,7 +613,7 @@ export default function RoutineExecutionModal({
                 onClick={closeAndComplete}
                 className={`flex-1 rounded-2xl py-3.5 font-bold transition ${theme.button}`}
               >
-                Voltar ao painel
+                Finalizar
               </button>
             </div>
           </>
