@@ -81,6 +81,10 @@ if (static_path / "static").exists():
     )
 
 # --- ROTA RAIZ OPCIONAL ---
+@api_router.get("/")
+async def root():
+    return {"status": "ok", "message": "VitalFlow API online"}
+
 @app.get("/api")
 async def api_root():
     return {"status": "ok", "message": "VitalFlow API online"}
