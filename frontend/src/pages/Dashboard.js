@@ -583,25 +583,35 @@ export default function Dashboard() {
   };
 
   const accountType = String(user?.account_type || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase();
 
-  const isB2BUser =
-    accountType.includes("b2b") ||
-    accountType.includes("business") ||
-    accountType.includes("empresa") ||
-    accountType.includes("empresarial") ||
-    accountType.includes("corporate") ||
-    accountType.includes("rh");
+const isB2BUser =
+  Boolean(user?.is_b2b) ||
+  accountType.includes("b2b") ||
+  accountType.includes("business") ||
+  accountType.includes("empresa") ||
+  accountType.includes("empresarial") ||
+  accountType.includes("corporate") ||
+  accountType.includes("rh");
 
-  const isPersonalUser =
-    accountType.includes("personal") ||
-    accountType.includes("pessoal") ||
-    accountType.includes("common") ||
-    accountType.includes("comum");
+const isPremiumUser = Boolean(user?.is_premium);
+const userPlan = String(
+  user?.plan || (isPremiumUser ? "premium" : "free")
+).toLowerCase();
 
-  const isFreeLocked = isPersonalUser && !user?.is_premium && !isB2BUser;
+const isFreeLocked =
+  userPlan === "free" && !isPremiumUser && !isB2BUser;
+
+console.log("USER PLAN DEBUG", {
+  accountType,
+  isB2BUser,
+  isPremiumUser,
+  userPlan,
+  isFreeLocked,
+  user,
+});
 
   const hasData = currentAnalysis !== null;
 
