@@ -1,4 +1,108 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  Brain,
+  Clock3,
+  Droplets,
+  Eye,
+  Footprints,
+  Wind,
+} from "lucide-react";
+
+function getTheme(status) {
+  switch (status) {
+    case "critico":
+      return {
+        border: "border-rose-500/30",
+        glow: "shadow-[0_0_45px_rgba(244,63,94,0.20)]",
+        title: "text-rose-300",
+        accentText: "text-rose-200",
+        progress: "bg-rose-500",
+        button: "bg-rose-500 hover:bg-rose-400 text-white",
+        subtle: "border-rose-500/20 bg-rose-500/5 text-rose-200",
+        chip: "border-rose-500/20 bg-rose-500/10 text-rose-200",
+      };
+    case "atencao":
+      return {
+        border: "border-amber-500/30",
+        glow: "shadow-[0_0_45px_rgba(245,158,11,0.18)]",
+        title: "text-amber-300",
+        accentText: "text-amber-200",
+        progress: "bg-amber-400",
+        button: "bg-amber-400 hover:bg-amber-300 text-black",
+        subtle: "border-amber-500/20 bg-amber-500/5 text-amber-200",
+        chip: "border-amber-500/20 bg-amber-500/10 text-amber-200",
+      };
+    default:
+      return {
+        border: "border-emerald-500/30",
+        glow: "shadow-[0_0_45px_rgba(16,185,129,0.18)]",
+        title: "text-emerald-300",
+        accentText: "text-emerald-200",
+        progress: "bg-emerald-400",
+        button: "bg-emerald-400 hover:bg-emerald-300 text-black",
+        subtle: "border-emerald-500/20 bg-emerald-500/5 text-emerald-200",
+        chip: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
+      };
+  }
+}
+
+function getRoutineMeta(type) {
+  switch (type) {
+    case "breathing":
+      return {
+        icon: Wind,
+        label: "Respiração guiada",
+      };
+    case "movement":
+      return {
+        icon: Footprints,
+        label: "Movimento leve",
+      };
+    case "visual":
+      return {
+        icon: Eye,
+        label: "Descanso visual",
+      };
+    case "recovery":
+      return {
+        icon: Droplets,
+        label: "Recuperação rápida",
+      };
+    case "mental":
+      return {
+        icon: Brain,
+        label: "Pausa cognitiva",
+      };
+    default:
+      return {
+        icon: Activity,
+        label: "Rotina guiada",
+      };
+  }
+}
+
+function formatSeconds(total) {
+  const safe = Number(total) || 0;
+  const minutes = String(Math.floor(safe / 60)).padStart(2, "0");
+  const seconds = String(safe % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function buildDefaultSteps(routine) {
+  if (routine?.type !== "breathing") return [];
+
+  if (Array.isArray(routine?.steps) && routine.steps.length > 0) {
+    return routine.steps;
+  }
+
+  return [
+    { label: "Inspire", seconds: 4, instruction: "Inspire lentamente pelo nariz" },
+    { label: "Segure", seconds: 4, instruction: "Segure sem tensionar o corpo" },
+    { label: "Expire", seconds: 4, instruction: "Solte o ar devagar pela boca" },
+    { label: "Segure", seconds: 4, instruction: "Mantenha o ritmo" },
+  ];
+}
 
 export default function RoutineExecutionModal({
   open,
@@ -8,110 +112,43 @@ export default function RoutineExecutionModal({
 }) {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
-  const [phaseIndex, setPhaseIndex] = useState(0);
-  const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(4);
   const [finished, setFinished] = useState(false);
 
-  const breathingPhases = useMemo(
-    () => [
-      {
-        label: "Inspire",
-        instruction: "Inspire lentamente pelo nariz",
-        seconds: 4,
-        scale: 1.22,
-      },
-      {
-        label: "Segure",
-        instruction: "Segure sem tensionar o corpo",
-        seconds: 4,
-        scale: 1.22,
-      },
-      {
-        label: "Expire",
-        instruction: "Expire devagar pela boca",
-        seconds: 4,
-        scale: 0.88,
-      },
-      {
-        label: "Segure",
-        instruction: "Mantenha o ritmo e prepare a próxima respiração",
-        seconds: 4,
-        scale: 0.88,
-      },
-    ],
-    []
-  );
-
-  const currentPhase = breathingPhases[phaseIndex];
-
-  const getTheme = (status) => {
-    switch (status) {
-      case "critico":
-        return {
-          border: "border-red-500/30",
-          glow: "shadow-[0_0_40px_rgba(239,68,68,0.22)]",
-          progress: "bg-red-500",
-          button: "bg-red-500 hover:bg-red-400 text-black",
-          title: "text-red-300",
-          time: "text-red-200",
-          orb: "bg-red-500/12 border-red-400/30",
-          orbCore: "bg-red-400",
-          instruction: "text-red-200",
-          activeStep: "border-red-500/30 bg-red-500/10 text-red-300",
-          badge: "border-red-500/20 bg-red-500/10 text-red-300",
-        };
-      case "atencao":
-        return {
-          border: "border-yellow-500/30",
-          glow: "shadow-[0_0_40px_rgba(234,179,8,0.22)]",
-          progress: "bg-yellow-400",
-          button: "bg-yellow-400 hover:bg-yellow-300 text-black",
-          title: "text-yellow-300",
-          time: "text-yellow-200",
-          orb: "bg-yellow-500/12 border-yellow-400/30",
-          orbCore: "bg-yellow-400",
-          instruction: "text-yellow-200",
-          activeStep: "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
-          badge: "border-yellow-500/20 bg-yellow-500/10 text-yellow-300",
-        };
-      default:
-        return {
-          border: "border-emerald-500/30",
-          glow: "shadow-[0_0_40px_rgba(16,185,129,0.22)]",
-          progress: "bg-emerald-400",
-          button: "bg-emerald-400 hover:bg-emerald-300 text-black",
-          title: "text-emerald-300",
-          time: "text-emerald-200",
-          orb: "bg-emerald-500/12 border-emerald-400/30",
-          orbCore: "bg-emerald-400",
-          instruction: "text-emerald-200",
-          activeStep: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-          badge: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
-        };
-    }
-  };
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(0);
 
   const theme = getTheme(routine?.status);
+  const routineType = routine?.type || "breathing";
+  const routineMeta = getRoutineMeta(routineType);
+  const RoutineIcon = routineMeta.icon;
+
+  const breathingSteps = useMemo(() => buildDefaultSteps(routine), [routine]);
+  const currentPhase = breathingSteps[phaseIndex] || null;
 
   useEffect(() => {
     if (!open || !routine) return;
 
     const duration =
-      Number(routine.duration_minutes) ||
-      Number(routine.duracao) ||
-      5;
+      Number(routine?.duration_seconds) ||
+      Number(routine?.duration_minutes) * 60 ||
+      Number(routine?.duracao) * 60 ||
+      300;
 
-    const total = duration * 60;
-
-    setSecondsLeft(total);
-    setTotalTime(total);
-    setPhaseIndex(0);
-    setPhaseSecondsLeft(breathingPhases[0].seconds);
+    setSecondsLeft(duration);
+    setTotalTime(duration);
     setFinished(false);
-  }, [open, routine, breathingPhases]);
+
+    if (routineType === "breathing" && breathingSteps.length > 0) {
+      setPhaseIndex(0);
+      setPhaseSecondsLeft(Number(breathingSteps[0]?.seconds) || 4);
+    } else {
+      setPhaseIndex(0);
+      setPhaseSecondsLeft(0);
+    }
+  }, [open, routine, routineType, breathingSteps]);
 
   useEffect(() => {
-    if (!open || secondsLeft <= 0 || finished) return;
+    if (!open || finished || secondsLeft <= 0) return;
 
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
@@ -122,31 +159,22 @@ export default function RoutineExecutionModal({
         return next;
       });
 
-      setPhaseSecondsLeft((prev) => {
-        if (prev > 1) return prev - 1;
+      if (routineType === "breathing" && breathingSteps.length > 0) {
+        setPhaseSecondsLeft((prev) => {
+          if (prev > 1) return prev - 1;
 
-        const nextIndex = (phaseIndex + 1) % breathingPhases.length;
-        setPhaseIndex(nextIndex);
-        return breathingPhases[nextIndex].seconds;
-      });
+          const nextIndex = (phaseIndex + 1) % breathingSteps.length;
+          setPhaseIndex(nextIndex);
+          return Number(breathingSteps[nextIndex]?.seconds) || 4;
+        });
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [open, secondsLeft, phaseIndex, breathingPhases, finished]);
-
-  if (!open || !routine) return null;
-
-  const safe = Number(secondsLeft) || 0;
-  const minutes = String(Math.floor(safe / 60)).padStart(2, "0");
-  const seconds = String(safe % 60).padStart(2, "0");
+  }, [open, finished, secondsLeft, routineType, breathingSteps, phaseIndex]);
 
   const progress =
     totalTime > 0 ? ((totalTime - secondsLeft) / totalTime) * 100 : 0;
-
-  const circleStyle = {
-    transform: `scale(${currentPhase?.scale || 1})`,
-    transition: "transform 1s ease-in-out",
-  };
 
   const finishRoutine = () => {
     setFinished(true);
@@ -157,124 +185,272 @@ export default function RoutineExecutionModal({
     onClose?.();
   };
 
-  const estimatedImpact = (() => {
-    switch (routine?.status) {
-      case "critico":
-        return {
+  if (!open || !routine) return null;
+
+  const estimatedImpact =
+    routine?.status === "critico"
+      ? {
           recovery: "+12%",
           stress: "-8%",
           points: "+20 energia",
-          message: "Seu estado começou a responder à rotina de recuperação.",
-        };
-      case "atencao":
-        return {
+          message: "Seu corpo começou a responder à intervenção e saiu do pico de sobrecarga.",
+        }
+      : routine?.status === "atencao"
+      ? {
           recovery: "+8%",
           stress: "-5%",
           points: "+15 energia",
-          message: "Há sinais iniciais de estabilização no seu estado atual.",
-        };
-      default:
-        return {
+          message: "Há sinais iniciais de estabilização e retomada de equilíbrio.",
+        }
+      : {
           recovery: "+5%",
           stress: "-3%",
           points: "+10 energia",
-          message: "Você reforçou sua consistência e manteve um bom equilíbrio.",
+          message: "Você reforçou sua consistência e manteve um bom estado geral.",
         };
+
+  const getPrimaryInstruction = () => {
+    switch (routineType) {
+      case "visual":
+        return "Olhe para um ponto distante e relaxe sua visão";
+      case "movement":
+        return "Levante-se e caminhe em ritmo leve";
+      case "recovery":
+        return "Faça uma pausa curta e recupere energia";
+      case "mental":
+        return "Desacelere por um momento e reorganize sua atenção";
+      default:
+        return currentPhase?.instruction || "Siga a respiração guiada";
     }
-  })();
+  };
+
+  const getSupportText = () => {
+    switch (routineType) {
+      case "visual":
+        return "Evite olhar para a tela durante esta rotina.";
+      case "movement":
+        return "Solte os ombros e deixe o corpo retomar movimento.";
+      case "recovery":
+        return "Beba água ou faça uma pausa breve antes de voltar.";
+      case "mental":
+        return "Escolha apenas a próxima ação antes de continuar.";
+      default:
+        return `${phaseSecondsLeft}s nesta etapa`;
+    }
+  };
+
+  const renderPremiumCenter = () => {
+    if (routineType === "breathing") {
+      const phase = currentPhase || {};
+      const label = phase?.label || "Respire";
+      const phaseScale =
+        label === "Inspire"
+          ? 1.18
+          : label === "Expire"
+          ? 0.88
+          : 1.02;
+
+      return (
+        <div className="flex flex-col items-center mb-6">
+          <div
+            className={`relative w-36 h-36 rounded-full border ${theme.border} bg-white/[0.02] flex items-center justify-center`}
+            style={{
+              transform: `scale(${phaseScale})`,
+              transition: "transform 1s ease-in-out",
+            }}
+          >
+            <div className="absolute inset-3 rounded-full border border-white/5" />
+            <div className="absolute inset-8 rounded-full border border-white/10" />
+            <div className={`w-16 h-16 rounded-full ${theme.progress} opacity-90 blur-[1px]`} />
+          </div>
+
+          <p className={`mt-6 text-3xl font-black ${theme.title}`}>
+            {label}
+          </p>
+
+          <p className="mt-2 text-sm text-neutral-400">
+            {getSupportText()}
+          </p>
+
+          <p className="mt-3 text-sm text-neutral-300 text-center">
+            {getPrimaryInstruction()}
+          </p>
+        </div>
+      );
+    }
+
+    if (routineType === "visual") {
+      return (
+        <div className="flex flex-col items-center mb-6">
+          <div className={`relative w-36 h-36 rounded-full border ${theme.border} bg-white/[0.02] flex items-center justify-center`}>
+            <div className="absolute w-3 h-3 rounded-full bg-white/70" />
+            <div className="absolute inset-5 rounded-full border border-white/5" />
+            <div className="absolute inset-10 rounded-full border border-white/10" />
+            <RoutineIcon className={`w-10 h-10 ${theme.title}`} />
+          </div>
+
+          <p className={`mt-6 text-2xl font-black ${theme.title}`}>
+            Foco distante
+          </p>
+
+          <p className="mt-2 text-sm text-neutral-400">
+            {getSupportText()}
+          </p>
+
+          <p className="mt-3 text-sm text-neutral-300 text-center">
+            {getPrimaryInstruction()}
+          </p>
+        </div>
+      );
+    }
+
+    if (routineType === "movement") {
+      return (
+        <div className="flex flex-col items-center mb-6">
+          <div className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}>
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/[0.03] to-transparent" />
+            <RoutineIcon className={`w-16 h-16 ${theme.title}`} />
+          </div>
+
+          <p className={`mt-6 text-2xl font-black ${theme.title}`}>
+            Movimento leve
+          </p>
+
+          <p className="mt-2 text-sm text-neutral-400">
+            {getSupportText()}
+          </p>
+
+          <p className="mt-3 text-sm text-neutral-300 text-center">
+            {getPrimaryInstruction()}
+          </p>
+        </div>
+      );
+    }
+
+    if (routineType === "recovery") {
+      return (
+        <div className="flex flex-col items-center mb-6">
+          <div className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}>
+            <RoutineIcon className={`w-16 h-16 ${theme.title}`} />
+          </div>
+
+          <p className={`mt-6 text-2xl font-black ${theme.title}`}>
+            Recuperação rápida
+          </p>
+
+          <p className="mt-2 text-sm text-neutral-400">
+            {getSupportText()}
+          </p>
+
+          <p className="mt-3 text-sm text-neutral-300 text-center">
+            {getPrimaryInstruction()}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center mb-6">
+        <div className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}>
+          <RoutineIcon className={`w-16 h-16 ${theme.title}`} />
+        </div>
+
+        <p className={`mt-6 text-2xl font-black ${theme.title}`}>
+          Pausa mental
+        </p>
+
+        <p className="mt-2 text-sm text-neutral-400">
+          {getSupportText()}
+        </p>
+
+        <p className="mt-3 text-sm text-neutral-300 text-center">
+          {getPrimaryInstruction()}
+        </p>
+      </div>
+    );
+  };
 
   return (
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
       <div
-        className={`w-full max-w-lg rounded-3xl border bg-neutral-950/90 backdrop-blur-xl p-6 text-white ${theme.border} ${theme.glow}`}
+        className={`w-full max-w-xl rounded-[28px] border bg-neutral-950/95 backdrop-blur-xl p-6 md:p-7 text-white ${theme.border} ${theme.glow}`}
       >
         {!finished ? (
           <>
-            <div className="text-center mb-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-neutral-400 font-bold">
+            <div className="text-center mb-6">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 font-bold">
                 Rotina em andamento
               </p>
 
-              <h2 className={`text-2xl font-black mt-2 ${theme.title || "text-white"}`}>
-                {routine.title || routine.titulo || "Rotina guiada"}
+              <h2 className={`text-3xl md:text-4xl font-black mt-3 ${theme.title}`}>
+                {routine.title || "Rotina guiada"}
               </h2>
             </div>
 
-            <div className="flex flex-col items-center mb-5">
-              <div
-                className={`relative w-32 h-32 rounded-full border flex items-center justify-center ${theme.orb}`}
-                style={circleStyle}
-              >
-                <div className="absolute inset-3 rounded-full border border-white/5" />
-                <div className={`w-16 h-16 rounded-full ${theme.orbCore} blur-[1px]`} />
-              </div>
+            {renderPremiumCenter()}
 
-              <p className={`mt-5 text-2xl font-black ${theme.instruction}`}>
-                {currentPhase?.label}
-              </p>
-
-              <p className="text-sm text-neutral-400 mt-1">
-                {phaseSecondsLeft}s nesta etapa
-              </p>
-
-              <p className="text-sm text-neutral-300 mt-3">
-                {currentPhase?.instruction}
+            <div className="text-center mb-4">
+              <p className="text-sm text-neutral-400">Tempo restante</p>
+              <p className={`text-6xl md:text-7xl font-black tracking-wider mt-2 ${theme.title}`}>
+                {formatSeconds(secondsLeft)}
               </p>
             </div>
 
-            <div className="mb-4 text-center">
-              <p className="text-sm text-neutral-300">Tempo restante</p>
-
-              <p
-                className={`text-5xl font-black tracking-widest mt-2 ${theme.time}`}
-                style={{ transition: "all 0.3s ease" }}
-              >
-                {minutes}:{seconds}
-              </p>
-            </div>
-
-            <div className="w-full h-2 bg-white/10 rounded-full mb-6 overflow-hidden">
+            <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden mb-6">
               <div
                 className={`h-full ${theme.progress} transition-all duration-1000`}
                 style={{ width: `${progress}%` }}
               />
             </div>
 
-            <div className="grid grid-cols-4 gap-2 mb-6">
-              {breathingPhases.map((phase, index) => {
-                const active = index === phaseIndex;
-                return (
-                  <div
-                    key={phase.label + index}
-                    className={`rounded-xl border px-2 py-3 text-center text-xs font-semibold transition-all ${
-                      active
-                        ? theme.activeStep
-                        : "border-white/10 text-neutral-500"
-                    }`}
-                  >
-                    {phase.label}
-                  </div>
-                );
-              })}
-            </div>
+            {routineType === "breathing" && breathingSteps.length > 0 ? (
+              <div className="grid grid-cols-4 gap-2 mb-6">
+                {breathingSteps.map((step, index) => {
+                  const active = index === phaseIndex;
+                  return (
+                    <div
+                      key={`${step.label}-${index}`}
+                      className={`rounded-2xl border px-2 py-3 text-center text-xs font-semibold transition-all ${
+                        active
+                          ? `${theme.subtle} ${theme.title}`
+                          : "border-white/10 text-neutral-500"
+                      }`}
+                    >
+                      {step.label}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-2 mb-6">
+                <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${theme.chip}`}>
+                  <Clock3 className="w-3.5 h-3.5" />
+                  {routine.duration_label || formatSeconds(totalTime)}
+                </div>
 
-            <p className="text-center text-sm text-neutral-300 mb-6 leading-6">
+                <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${theme.chip}`}>
+                  <RoutineIcon className="w-3.5 h-3.5" />
+                  {routineMeta.label}
+                </div>
+              </div>
+            )}
+
+            <p className="text-center text-sm md:text-base text-neutral-300 leading-7 mb-6">
               {routine.description ||
-                routine.descricao ||
-                "Siga a orientação visual e acompanhe a respiração para recuperar seu estado."}
+                "Siga a rotina até o final para melhorar seu estado atual."}
             </p>
 
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 rounded-2xl border border-white/10 py-3 text-neutral-300 hover:bg-white/5 transition"
+                className="flex-1 rounded-2xl border border-white/10 py-3.5 text-neutral-300 hover:bg-white/5 transition"
               >
                 Fechar
               </button>
 
               <button
                 onClick={finishRoutine}
-                className={`flex-1 rounded-2xl py-3 font-semibold transition ${theme.button}`}
+                className={`flex-1 rounded-2xl py-3.5 font-bold transition ${theme.button}`}
               >
                 Concluir
               </button>
@@ -283,23 +459,21 @@ export default function RoutineExecutionModal({
         ) : (
           <>
             <div className="text-center mb-6">
-              <p className="text-xs uppercase tracking-[0.18em] text-neutral-400 font-bold">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 font-bold">
                 Rotina concluída
               </p>
 
-              <h2 className={`text-2xl font-black mt-2 ${theme.title}`}>
-                {routine.title || routine.titulo || "Rotina finalizada"}
+              <h2 className={`text-3xl md:text-4xl font-black mt-3 ${theme.title}`}>
+                {routine.title || "Rotina finalizada"}
               </h2>
 
-              <div
-                className={`mt-4 inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold border ${theme.badge}`}
-              >
+              <div className={`mt-4 inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${theme.chip}`}>
                 Impacto estimado registrado
               </div>
             </div>
 
             <div className={`rounded-2xl border p-4 mb-5 bg-neutral-950/40 ${theme.border}`}>
-              <p className="text-neutral-200 text-sm leading-6 text-center">
+              <p className="text-neutral-200 text-sm md:text-base leading-7 text-center">
                 {estimatedImpact.message}
               </p>
             </div>
@@ -336,14 +510,14 @@ export default function RoutineExecutionModal({
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 rounded-2xl border border-white/10 py-3 text-neutral-300 hover:bg-white/5 transition"
+                className="flex-1 rounded-2xl border border-white/10 py-3.5 text-neutral-300 hover:bg-white/5 transition"
               >
                 Fechar
               </button>
 
               <button
                 onClick={closeAndComplete}
-                className={`flex-1 rounded-2xl py-3 font-semibold transition ${theme.button}`}
+                className={`flex-1 rounded-2xl py-3.5 font-bold transition ${theme.button}`}
               >
                 Voltar ao painel
               </button>
