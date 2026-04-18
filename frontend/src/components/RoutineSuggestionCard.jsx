@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Clock3, Info, RefreshCw, Sparkles } from "lucide-react";
+import { Brain, Clock3, Info, RefreshCw } from "lucide-react";
 import {
   buildSmartSuggestions,
   getReevaluationPreview,
@@ -94,9 +94,9 @@ export default function RoutineSuggestionCard({
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 text-neutral-400 text-sm">
-            <Sparkles className="w-4 h-4" />
-            VitalFlow
+          <div className="inline-flex items-center gap-2 text-white text-sm font-semibold tracking-tight">
+            <Brain className="w-5 h-5 text-cyan-400" />
+            <span>VitalFlow</span>
           </div>
         </div>
 
