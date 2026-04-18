@@ -4,11 +4,15 @@
 # ── Stage 1: Build Frontend ──
 FROM node:20-alpine AS frontend-build
 WORKDIR /build
+
 COPY frontend/package.json frontend/yarn.lock* ./
 RUN yarn install --frozen-lockfile --production=false
+
 COPY frontend/ ./
+
 ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+
 RUN yarn build
 
 # ── Stage 2: Runtime ──
@@ -20,14 +24,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # --- Backend setup ---
 WORKDIR /app/backend
+
 COPY backend/requirements.txt backend/emergentintegrations-0.1.0-py3-none-any.whl ./
 RUN pip install --no-cache-dir -r requirements.txt
+
 COPY backend/ ./
 
 # --- Frontend static files ---
 COPY --from=frontend-build /build/build /app/frontend/build
 
-# Template do nginx usando ${PORT}
+# --- Nginx template ---
+RUN mkdir -p /etc/nginx/templates
+
 RUN cat > /etc/nginx/templates/default.conf.template << 'NGINX'
 server {
     listen ${PORT};
@@ -51,7 +59,7 @@ server {
 }
 NGINX
 
-# Supervisor
+# --- Supervisor config ---
 RUN cat > /etc/supervisor/conf.d/vitalflow.conf << 'SUPERVISOR'
 [program:backend]
 command=uvicorn server:app --host 0.0.0.0 --port 8001 --workers 2
@@ -69,11 +77,15 @@ stderr_logfile=/var/log/supervisor/nginx.err.log
 stdout_logfile=/var/log/supervisor/nginx.out.log
 SUPERVISOR
 
-# Startup script
+# --- Startup script ---
 RUN cat > /app/start.sh << 'START'
 #!/bin/sh
 set -e
+
+export PORT=${PORT:-8080}
+
 envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/sites-available/default
+
 exec supervisord -n
 START
 
@@ -82,6 +94,6 @@ RUN chmod +x /app/start.sh
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/api/ || exit 1
+    CMD curl -f http://localhost:${PORT:-8080}/api/ || exit 1
 
 CMD ["/app/start.sh"]
