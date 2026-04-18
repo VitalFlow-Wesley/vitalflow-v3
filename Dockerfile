@@ -48,7 +48,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:8001;
+        proxy_pass http://localhost:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -86,6 +86,8 @@ export PORT=${PORT:-8080}
 
 envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/sites-available/default
 
+sleep 5
+
 exec supervisord -n
 START
 
@@ -93,7 +95,7 @@ RUN chmod +x /app/start.sh
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8080}/api/ || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --retries=5 \
+    CMD curl -f http://localhost:${PORT}/api/health || exit 1
 
 CMD ["/app/start.sh"]

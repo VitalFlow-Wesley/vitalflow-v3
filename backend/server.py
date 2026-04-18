@@ -85,6 +85,14 @@ if (static_path / "static").exists():
 async def api_root():
     return {"status": "ok", "message": "VitalFlow API online"}
 
+@app.get("/api/")
+async def api_root_slash():
+    return {"status": "ok", "message": "VitalFlow API online"}
+
+@app.get("/api/health")
+async def api_health():
+    return {"status": "ok"}
+
 # --- CATCH-ALL PARA O FRONTEND REACT ---
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
