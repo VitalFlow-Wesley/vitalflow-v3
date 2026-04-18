@@ -47,39 +47,58 @@ function getTheme(status) {
   }
 }
 
-function getRoutineMeta(type) {
-  switch (type) {
-    case "breathing":
-      return {
-        icon: Wind,
-        label: "Respiração guiada",
-      };
-    case "movement":
-      return {
-        icon: Footprints,
-        label: "Movimento leve",
-      };
-    case "visual":
-      return {
-        icon: Eye,
-        label: "Descanso visual",
-      };
-    case "recovery":
-      return {
-        icon: Droplets,
-        label: "Recuperação rápida",
-      };
-    case "mental":
-      return {
-        icon: Brain,
-        label: "Pausa cognitiva",
-      };
-    default:
-      return {
-        icon: Activity,
-        label: "Rotina guiada",
-      };
+function normalizeRoutineType(type, subtype) {
+  const rawType = String(type || "").toLowerCase().trim();
+  const rawSubtype = String(subtype || "").toLowerCase().trim();
+
+  if (rawType === "breathing") return "breathing";
+  if (rawType === "movement") return "movement";
+  if (rawType === "visual") return "visual";
+  if (rawType === "recovery") return "recovery";
+  if (rawType === "mental") return "mental";
+
+  if (rawType === "hydration") return "recovery";
+  if (rawType === "stretch") return "movement";
+  if (rawType === "walk") return "movement";
+  if (rawType === "focus") return "mental";
+
+  if (rawSubtype === "hydration") return "recovery";
+  if (rawSubtype === "stretch") return "movement";
+  if (rawSubtype === "walk") return "movement";
+  if (rawSubtype === "focus_reset") return "mental";
+  if (rawSubtype === "distance_focus") return "visual";
+
+  return "breathing";
+}
+
+function getRoutineMeta(type, subtype) {
+  if (type === "breathing") {
+    return { icon: Wind, label: "Respiração guiada" };
   }
+
+  if (type === "movement") {
+    if (subtype === "stretch") {
+      return { icon: Footprints, label: "Alongamento leve" };
+    }
+    return { icon: Footprints, label: "Movimento leve" };
+  }
+
+  if (type === "visual") {
+    return { icon: Eye, label: "Descanso visual" };
+  }
+
+  if (type === "recovery") {
+    if (subtype === "hydration") {
+      return { icon: Droplets, label: "Hidratação" };
+    }
+    return { icon: Droplets, label: "Recuperação rápida" };
+  }
+
+  if (type === "mental") {
+    return { icon: Brain, label: "Pausa cognitiva" };
+  }
+
+  return { icon: Activity, label: "Rotina guiada" };
 }
 
 function formatSeconds(total) {
@@ -98,7 +117,11 @@ function buildDefaultSteps(routine) {
 
   return [
     { label: "Inspire", seconds: 4, instruction: "Inspire lentamente pelo nariz" },
-    { label: "Segure", seconds: 4, instruction: "Segure sem tensionar o corpo" },
+    {
+      label: "Segure",
+      seconds: 4,
+      instruction: "Segure o ar por 4 segundos sem tensionar o corpo",
+    },
     { label: "Expire", seconds: 4, instruction: "Solte o ar devagar pela boca" },
     { label: "Segure", seconds: 4, instruction: "Mantenha o ritmo" },
   ];
@@ -118,11 +141,15 @@ export default function RoutineExecutionModal({
   const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(0);
 
   const theme = getTheme(routine?.status);
-  const routineType = routine?.type || "breathing";
-  const routineMeta = getRoutineMeta(routineType);
+  const routineType = normalizeRoutineType(routine?.type, routine?.subtype);
+  const routineMeta = getRoutineMeta(routineType, routine?.subtype);
   const RoutineIcon = routineMeta.icon;
 
-  const breathingSteps = useMemo(() => buildDefaultSteps(routine), [routine]);
+  const breathingSteps = useMemo(
+    () => buildDefaultSteps({ ...routine, type: routineType }),
+    [routine, routineType]
+  );
+
   const currentPhase = breathingSteps[phaseIndex] || null;
 
   useEffect(() => {
@@ -193,14 +220,16 @@ export default function RoutineExecutionModal({
           recovery: "+12%",
           stress: "-8%",
           points: "+20 energia",
-          message: "Seu corpo começou a responder à intervenção e saiu do pico de sobrecarga.",
+          message:
+            "Seu corpo começou a responder à intervenção e saiu do pico de sobrecarga.",
         }
       : routine?.status === "atencao"
       ? {
           recovery: "+8%",
           stress: "-5%",
           points: "+15 energia",
-          message: "Há sinais iniciais de estabilização e retomada de equilíbrio.",
+          message:
+            "Há sinais iniciais de estabilização e retomada de equilíbrio.",
         }
       : {
           recovery: "+5%",
@@ -210,33 +239,68 @@ export default function RoutineExecutionModal({
         };
 
   const getPrimaryInstruction = () => {
-    switch (routineType) {
-      case "visual":
+    if (routineType === "visual") {
+      if (routine?.subtype === "distance_focus") {
         return "Olhe para um ponto distante e relaxe sua visão";
-      case "movement":
-        return "Levante-se e caminhe em ritmo leve";
-      case "recovery":
-        return "Faça uma pausa curta e recupere energia";
-      case "mental":
-        return "Desacelere por um momento e reorganize sua atenção";
-      default:
-        return currentPhase?.instruction || "Siga a respiração guiada";
+      }
+      return "Afaste o olhar da tela e reduza a fadiga visual";
     }
+
+    if (routineType === "movement") {
+      if (routine?.subtype === "stretch") {
+        return "Alongue o corpo de forma leve e sem forçar";
+      }
+      if (routine?.subtype === "walk") {
+        return "Levante-se e caminhe por alguns minutos";
+      }
+      return "Movimente o corpo de forma leve";
+    }
+
+    if (routineType === "recovery") {
+      if (routine?.subtype === "hydration") {
+        return "Beba água e hidrate seu corpo";
+      }
+      return "Faça uma pausa curta para recuperação";
+    }
+
+    if (routineType === "mental") {
+      if (routine?.subtype === "focus_reset") {
+        return "Desacelere e reorganize sua atenção";
+      }
+      return "Faça uma pausa mental breve";
+    }
+
+    if (routineType === "breathing") {
+      return currentPhase?.instruction || "Siga a respiração guiada";
+    }
+
+    return "Siga as instruções da rotina";
   };
 
   const getSupportText = () => {
-    switch (routineType) {
-      case "visual":
-        return "Evite olhar para a tela durante esta rotina.";
-      case "movement":
-        return "Solte os ombros e deixe o corpo retomar movimento.";
-      case "recovery":
-        return "Beba água ou faça uma pausa breve antes de voltar.";
-      case "mental":
-        return "Escolha apenas a próxima ação antes de continuar.";
-      default:
-        return `${phaseSecondsLeft}s nesta etapa`;
+    if (routineType === "visual") {
+      return "Evite olhar para a tela durante esta rotina.";
     }
+
+    if (routineType === "movement") {
+      if (routine?.subtype === "stretch") {
+        return "Solte pescoço, ombros e postura com leveza.";
+      }
+      return "Solte os ombros e deixe o corpo retomar movimento.";
+    }
+
+    if (routineType === "recovery") {
+      if (routine?.subtype === "hydration") {
+        return "Beba água com calma antes de voltar.";
+      }
+      return "Faça uma pausa breve antes de continuar.";
+    }
+
+    if (routineType === "mental") {
+      return "Escolha apenas a próxima ação antes de continuar.";
+    }
+
+    return `${phaseSecondsLeft}s nesta etapa`;
   };
 
   const renderPremiumCenter = () => {
@@ -244,11 +308,7 @@ export default function RoutineExecutionModal({
       const phase = currentPhase || {};
       const label = phase?.label || "Respire";
       const phaseScale =
-        label === "Inspire"
-          ? 1.18
-          : label === "Expire"
-          ? 0.88
-          : 1.02;
+        label === "Inspire" ? 1.18 : label === "Expire" ? 0.88 : 1.02;
 
       return (
         <div className="flex flex-col items-center mb-6">
@@ -261,16 +321,14 @@ export default function RoutineExecutionModal({
           >
             <div className="absolute inset-3 rounded-full border border-white/5" />
             <div className="absolute inset-8 rounded-full border border-white/10" />
-            <div className={`w-16 h-16 rounded-full ${theme.progress} opacity-90 blur-[1px]`} />
+            <div
+              className={`w-16 h-16 rounded-full ${theme.progress} opacity-90 blur-[1px]`}
+            />
           </div>
 
-          <p className={`mt-6 text-3xl font-black ${theme.title}`}>
-            {label}
-          </p>
+          <p className={`mt-6 text-3xl font-black ${theme.title}`}>{label}</p>
 
-          <p className="mt-2 text-sm text-neutral-400">
-            {getSupportText()}
-          </p>
+          <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
 
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
@@ -282,7 +340,9 @@ export default function RoutineExecutionModal({
     if (routineType === "visual") {
       return (
         <div className="flex flex-col items-center mb-6">
-          <div className={`relative w-36 h-36 rounded-full border ${theme.border} bg-white/[0.02] flex items-center justify-center`}>
+          <div
+            className={`relative w-36 h-36 rounded-full border ${theme.border} bg-white/[0.02] flex items-center justify-center`}
+          >
             <div className="absolute w-3 h-3 rounded-full bg-white/70" />
             <div className="absolute inset-5 rounded-full border border-white/5" />
             <div className="absolute inset-10 rounded-full border border-white/10" />
@@ -290,12 +350,10 @@ export default function RoutineExecutionModal({
           </div>
 
           <p className={`mt-6 text-2xl font-black ${theme.title}`}>
-            Foco distante
+            {routine.title}
           </p>
 
-          <p className="mt-2 text-sm text-neutral-400">
-            {getSupportText()}
-          </p>
+          <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
 
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
@@ -307,18 +365,18 @@ export default function RoutineExecutionModal({
     if (routineType === "movement") {
       return (
         <div className="flex flex-col items-center mb-6">
-          <div className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}>
+          <div
+            className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}
+          >
             <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/[0.03] to-transparent" />
             <RoutineIcon className={`w-16 h-16 ${theme.title}`} />
           </div>
 
           <p className={`mt-6 text-2xl font-black ${theme.title}`}>
-            Movimento leve
+            {routine.title}
           </p>
 
-          <p className="mt-2 text-sm text-neutral-400">
-            {getSupportText()}
-          </p>
+          <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
 
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
@@ -330,17 +388,39 @@ export default function RoutineExecutionModal({
     if (routineType === "recovery") {
       return (
         <div className="flex flex-col items-center mb-6">
-          <div className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}>
+          <div
+            className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}
+          >
             <RoutineIcon className={`w-16 h-16 ${theme.title}`} />
           </div>
 
           <p className={`mt-6 text-2xl font-black ${theme.title}`}>
-            Recuperação rápida
+            {routine.title}
           </p>
 
-          <p className="mt-2 text-sm text-neutral-400">
-            {getSupportText()}
+          <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
+
+          <p className="mt-3 text-sm text-neutral-300 text-center">
+            {getPrimaryInstruction()}
           </p>
+        </div>
+      );
+    }
+
+    if (routineType === "mental") {
+      return (
+        <div className="flex flex-col items-center mb-6">
+          <div
+            className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}
+          >
+            <RoutineIcon className={`w-16 h-16 ${theme.title}`} />
+          </div>
+
+          <p className={`mt-6 text-2xl font-black ${theme.title}`}>
+            {routine.title}
+          </p>
+
+          <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
 
           <p className="mt-3 text-sm text-neutral-300 text-center">
             {getPrimaryInstruction()}
@@ -351,17 +431,17 @@ export default function RoutineExecutionModal({
 
     return (
       <div className="flex flex-col items-center mb-6">
-        <div className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}>
+        <div
+          className={`relative w-36 h-36 rounded-3xl border ${theme.border} bg-white/[0.02] flex items-center justify-center`}
+        >
           <RoutineIcon className={`w-16 h-16 ${theme.title}`} />
         </div>
 
         <p className={`mt-6 text-2xl font-black ${theme.title}`}>
-          Pausa mental
+          {routine.title || "Rotina guiada"}
         </p>
 
-        <p className="mt-2 text-sm text-neutral-400">
-          {getSupportText()}
-        </p>
+        <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
 
         <p className="mt-3 text-sm text-neutral-300 text-center">
           {getPrimaryInstruction()}
@@ -423,12 +503,16 @@ export default function RoutineExecutionModal({
               </div>
             ) : (
               <div className="flex flex-wrap justify-center gap-2 mb-6">
-                <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${theme.chip}`}>
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${theme.chip}`}
+                >
                   <Clock3 className="w-3.5 h-3.5" />
                   {routine.duration_label || formatSeconds(totalTime)}
                 </div>
 
-                <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${theme.chip}`}>
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${theme.chip}`}
+                >
                   <RoutineIcon className="w-3.5 h-3.5" />
                   {routineMeta.label}
                 </div>
@@ -467,19 +551,25 @@ export default function RoutineExecutionModal({
                 {routine.title || "Rotina finalizada"}
               </h2>
 
-              <div className={`mt-4 inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${theme.chip}`}>
+              <div
+                className={`mt-4 inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${theme.chip}`}
+              >
                 Impacto estimado registrado
               </div>
             </div>
 
-            <div className={`rounded-2xl border p-4 mb-5 bg-neutral-950/40 ${theme.border}`}>
+            <div
+              className={`rounded-2xl border p-4 mb-5 bg-neutral-950/40 ${theme.border}`}
+            >
               <p className="text-neutral-200 text-sm md:text-base leading-7 text-center">
                 {estimatedImpact.message}
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className={`rounded-2xl border p-4 text-center bg-neutral-950/40 ${theme.border}`}>
+              <div
+                className={`rounded-2xl border p-4 text-center bg-neutral-950/40 ${theme.border}`}
+              >
                 <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 mb-2">
                   Recovery
                 </p>
@@ -488,7 +578,9 @@ export default function RoutineExecutionModal({
                 </p>
               </div>
 
-              <div className={`rounded-2xl border p-4 text-center bg-neutral-950/40 ${theme.border}`}>
+              <div
+                className={`rounded-2xl border p-4 text-center bg-neutral-950/40 ${theme.border}`}
+              >
                 <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 mb-2">
                   Stress
                 </p>
@@ -497,7 +589,9 @@ export default function RoutineExecutionModal({
                 </p>
               </div>
 
-              <div className={`rounded-2xl border p-4 text-center bg-neutral-950/40 ${theme.border}`}>
+              <div
+                className={`rounded-2xl border p-4 text-center bg-neutral-950/40 ${theme.border}`}
+              >
                 <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 mb-2">
                   Energia
                 </p>
@@ -527,4 +621,4 @@ export default function RoutineExecutionModal({
       </div>
     </div>
   );
-}
+}്
