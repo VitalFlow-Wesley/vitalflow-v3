@@ -1,10 +1,11 @@
 from pathlib import Path
 import logging
+import os
 
 from fastapi import FastAPI, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.cors import CORSMiddleware
 
 from database import db, client
 
@@ -26,9 +27,33 @@ api_router = APIRouter(prefix="/api")
 async def api_root():
     return {"status": "ok", "message": "VitalFlow API online"}
 
+
 @api_router.get("/health")
 async def api_health():
     return {"status": "ok"}
+
+
+# --- CORS ---
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "https://vitalflow-api-1hjc.onrender.com",
+    "https://vitalflow.up.railway.app",
+    "https://vitalflow.ia.br",
+    "https://vitalflow-v3-git-main-vitalflow-wesleys-projects.vercel.app",
+    "https://vitalflow-v3.vercel.app",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*-3000\.app\.github\.dev",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- IMPORTAÇÃO DAS ROTAS ---
 from routes.auth import router as auth_router
@@ -57,26 +82,6 @@ app.include_router(api_router)
 async def root():
     return {"status": "ok", "message": "VitalFlow online"}
 
-# --- CORS ---
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "https://vitalflow-api-1hjc.onrender.com",
-    "https://vitalflow.up.railway.app",
-    "https://vitalflow.ia.br",
-    "https://vitalflow-v3-git-main-vitalflow-wesleys-projects.vercel.app",
-    "https://vitalflow-v3.vercel.app",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # --- CAMINHO DOS ARQUIVOS ESTÁTICOS ---
 static_path = Path(__file__).parent / "static"

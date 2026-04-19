@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Mail, Lock, AlertCircle, KeyRound, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -10,7 +11,9 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 // MUDANÇA: Usando a URL dinâmica para falar com o Railway
-const API_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+const API_URL = (
+  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app"
+).replace(/\/+$/, "");
 
 const validarEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -25,6 +28,7 @@ const traduzirErro = (msg) => {
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -112,20 +116,37 @@ const Login = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-neutral-300">Senha</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="********"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="pl-10 bg-neutral-950 border-white/20 text-white focus:border-cyan-400"
-                        required
-                      />
-                    </div>
-                  </div>
+  <Label htmlFor="password" className="text-neutral-300">Senha</Label>
+
+  <div className="relative">
+    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
+
+    <Input
+      id="password"
+      type={showPassword ? "text" : "password"}
+      placeholder="********"
+      value={formData.password}
+      onChange={(e) =>
+        setFormData({ ...formData, password: e.target.value })
+      }
+      className="pl-10 pr-10 bg-neutral-950 border-white/20 text-white focus:border-cyan-400"
+      required
+    />
+
+    {/* 👁 BOTÃO */}
+    <button
+  type="button"
+  onClick={() => setShowPassword(!showPassword)}
+  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-cyan-400 transition-colors"
+>
+  {showPassword ? (
+    <EyeOff className="w-5 h-5" />
+  ) : (
+    <Eye className="w-5 h-5" />
+  )}
+</button>
+  </div>
+</div>
 
                   <Button
                     type="submit"

@@ -1,13 +1,10 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
-const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL ||
-  process.env.REACT_APP_BACKEND_URL ||
-  "https://vitalflow.up.railway.app";
 
-const API_URL =
-  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+const API_URL = (
+  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app"
+).replace(/\/+$/, "");
 
 export const ROLE_LEVELS = {
   CEO: 1,
@@ -18,6 +15,7 @@ export const ROLE_LEVELS = {
   Supervisor: 6,
   Gestor: 7,
   Colaborador: 8,
+  USER: 8,
 };
 
 export const IS_ADMIN = (role) => ROLE_LEVELS[role] <= 1;
@@ -28,45 +26,47 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const normalizeUser = (data) => {
+    return {
+      ...data,
+      id: data.id || data._id,
+      role: data.nivel_acesso || data.role,
+      nivel_acesso: data.nivel_acesso || data.role || "USER",
+
+      is_premium:
+        Boolean(data?.is_premium) ||
+        String(data?.plan || "").toLowerCase() === "premium" ||
+        String(data?.subscription_plan || "").toLowerCase() === "premium",
+
+      plan: String(
+        data?.plan ||
+          data?.subscription_plan ||
+          (data?.is_premium ? "premium" : "free")
+      ).toLowerCase(),
+
+      is_b2b:
+        Boolean(data?.is_b2b) ||
+        String(data?.account_type || "").toLowerCase() === "corporate",
+    };
+  };
+
   const fetchUser = async () => {
     try {
       const token = localStorage.getItem("vf_token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
       const res = await fetch(`${API_URL}/api/auth/me`, {
+        method: "GET",
         credentials: "include",
         headers,
       });
 
       if (res.ok) {
         const data = await res.json();
-
-        const normalizedUser = {
-          ...data,
-          id: data.id || data._id,
-          role: data.nivel_acesso || data.role,
-          nivel_acesso: data.nivel_acesso || data.role,
-
-          is_premium:
-            Boolean(data?.is_premium) ||
-            String(data?.plan || "").toLowerCase() === "premium" ||
-            String(data?.subscription_plan || "").toLowerCase() === "premium",
-
-          plan: String(
-            data?.plan ||
-              data?.subscription_plan ||
-              (data?.is_premium ? "premium" : "free")
-          ).toLowerCase(),
-
-          is_b2b:
-            Boolean(data?.is_b2b) ||
-            String(data?.account_type || "")
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .toLowerCase()
-              .includes("b2b"),
-        };
-
-        setUser(normalizedUser);
+        setUser(normalizeUser(data));
       } else {
         setUser(null);
       }
@@ -83,20 +83,30 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      localStorage.removeItem("vf_user");
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
+
       const data = await res.json();
+
       if (res.ok) {
-        if (data.access_token) localStorage.setItem("vf_token", data.access_token);
-        await fetchUser();
-        return { success: true, data };
+        if (data.access_token) {
+          localStorage.setItem("vf_token", data.access_token);
+        }
+
+        const normalized = normalizeUser(data);
+        setUser(normalized);
+
+        return { success: true, data: normalized };
       }
-      return { success: false, error: data.detail || "Credenciais inválidas" };
+
+      return {
+        success: false,
+        error: data.detail || "Credenciais inválidas",
+      };
     } catch (e) {
       return { success: false, error: "Erro de conexão" };
     }
@@ -110,12 +120,19 @@ export function AuthProvider({ children }) {
         credentials: "include",
         body: JSON.stringify(userData),
       });
+
       const data = await res.json();
+
       if (res.ok) {
-        await fetchUser();
-        return { success: true, data };
+        const normalized = normalizeUser(data);
+        setUser(normalized);
+        return { success: true, data: normalized };
       }
-      return { success: false, error: data.detail || "Erro ao cadastrar" };
+
+      return {
+        success: false,
+        error: data.detail || "Erro ao cadastrar",
+      };
     } catch (e) {
       return { success: false, error: "Erro de conexão" };
     }
@@ -127,19 +144,26 @@ export function AuthProvider({ children }) {
         method: "POST",
         credentials: "include",
       });
-      localStorage.removeItem("vf_user");
     } catch (e) {}
+
+    localStorage.removeItem("vf_token");
+    localStorage.removeItem("vf_user");
     setUser(null);
   };
 
-  const refreshUser = () => fetchUser();
+  const refreshUser = async () => {
+    await fetchUser();
+  };
 
   const getScopeFilter = () => {
     if (!user) return {};
+
     const nivel = user.nivel_acesso || user.role;
+
     if (IS_ADMIN(nivel)) return {};
     if (IS_DIRETOR_OR_ABOVE(nivel)) return { diretoria: user.diretoria };
     if (IS_GERENTE_OR_ABOVE(nivel)) return { gestorId: user.id };
+
     return { gestorImediatoId: user.id };
   };
 
