@@ -1,6 +1,3 @@
-# ─── VitalFlow v3.1 ───
-# Multi-stage build: Backend (FastAPI) + Frontend (React static via nginx)
-
 # ── Stage 1: Build Frontend ──
 FROM node:20-alpine AS frontend-build
 WORKDIR /build
@@ -80,18 +77,15 @@ RUN cat > /app/start.sh << 'START'
 #!/bin/sh
 set -e
 
-export PORT=${PORT:-8080}
+# Substitui o PORT no template do Nginx e move para o local correto
+envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
-envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/sites-available/default
-
-sleep 5
-
+# Inicia o supervisord
 exec supervisord -n
 START
 
 RUN chmod +x /app/start.sh
 
 EXPOSE 8080
-
 
 CMD ["/app/start.sh"]
