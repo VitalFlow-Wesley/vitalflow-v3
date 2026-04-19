@@ -7,7 +7,7 @@ RUN yarn install --frozen-lockfile --production=false
 
 COPY frontend/ ./
 
-ARG REACT_APP_BACKEND_URL
+ARG REACT_APP_BACKEND_URL=https://api.vitalflow.ia.br
 ENV REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
 
 RUN yarn build

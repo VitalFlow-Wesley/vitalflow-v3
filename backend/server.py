@@ -42,9 +42,11 @@ origins = [
     "https://vitalflow-api-1hjc.onrender.com",
     "https://vitalflow.up.railway.app",
     "https://vitalflow.ia.br",
+    "https://api.vitalflow.ia.br",
     "https://vitalflow-v3-git-main-vitalflow-wesleys-projects.vercel.app",
     "https://vitalflow-v3.vercel.app",
 ]
+
 
 app.add_middleware(
     CORSMiddleware,
