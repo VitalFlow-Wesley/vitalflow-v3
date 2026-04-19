@@ -3,7 +3,7 @@ import logging
 import os
 
 from fastapi import FastAPI, APIRouter
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
@@ -42,7 +42,7 @@ api_router.include_router(gamification_router)
 api_router.include_router(health_router)
 api_router.include_router(payments_router)
 
-# --- ROTAS DE HEALTHCHECK / STATUS ---
+# --- HEALTHCHECK / STATUS ---
 @api_router.get("/")
 async def api_root_router():
     return {"status": "ok", "message": "VitalFlow API online"}
@@ -52,22 +52,6 @@ async def api_health_router():
     return {"status": "ok"}
 
 app.include_router(api_router)
-
-@app.get("/")
-async def root():
-    return {"status": "ok", "message": "VitalFlow online"}
-
-@app.get("/api")
-async def api_root():
-    return {"status": "ok", "message": "VitalFlow API online"}
-
-@app.get("/api/")
-async def api_root_slash():
-    return {"status": "ok", "message": "VitalFlow API online"}
-
-@app.get("/api/health")
-async def api_health():
-    return {"status": "ok"}
 
 # --- CORS ---
 origins = [
@@ -104,13 +88,17 @@ if (static_path / "static").exists():
 # --- CATCH-ALL PARA O FRONTEND REACT ---
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
-    # NÃO intercepta rotas da API nem docs
-    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json"]:
-        return {"detail": "Not Found"}
+    # Não intercepta rotas da API nem docs
+    if (
+        full_path.startswith("api")
+        or full_path.startswith("_")
+        or full_path in ["docs", "redoc", "openapi.json"]
+    ):
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
     index_file = static_path / "index.html"
 
     if index_file.exists():
         return FileResponse(index_file)
 
-    return {"detail": "Frontend missing"}
+    return JSONResponse(status_code=404, content={"detail": "Frontend missing"})
