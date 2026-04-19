@@ -1,9 +1,8 @@
 from pathlib import Path
 import logging
-import os
 
 from fastapi import FastAPI, APIRouter
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
@@ -21,6 +20,15 @@ app = FastAPI(
 )
 
 api_router = APIRouter(prefix="/api")
+
+# --- HEALTHCHECK / STATUS ---
+@api_router.get("/")
+async def api_root():
+    return {"status": "ok", "message": "VitalFlow API online"}
+
+@api_router.get("/health")
+async def api_health():
+    return {"status": "ok"}
 
 # --- IMPORTAÇÃO DAS ROTAS ---
 from routes.auth import router as auth_router
@@ -42,16 +50,12 @@ api_router.include_router(gamification_router)
 api_router.include_router(health_router)
 api_router.include_router(payments_router)
 
-# --- HEALTHCHECK / STATUS ---
-@api_router.get("/")
-async def api_root_router():
-    return {"status": "ok", "message": "VitalFlow API online"}
-
-@api_router.get("/health")
-async def api_health_router():
-    return {"status": "ok"}
-
 app.include_router(api_router)
+
+# --- ROTA RAIZ ---
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "VitalFlow online"}
 
 # --- CORS ---
 origins = [
@@ -77,7 +81,6 @@ app.add_middleware(
 # --- CAMINHO DOS ARQUIVOS ESTÁTICOS ---
 static_path = Path(__file__).parent / "static"
 
-# Servir a subpasta static (JS, CSS, assets)
 if (static_path / "static").exists():
     app.mount(
         "/static",
@@ -88,17 +91,12 @@ if (static_path / "static").exists():
 # --- CATCH-ALL PARA O FRONTEND REACT ---
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
-    # Não intercepta rotas da API nem docs
-    if (
-        full_path.startswith("api")
-        or full_path.startswith("_")
-        or full_path in ["docs", "redoc", "openapi.json"]
-    ):
-        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json"]:
+        return {"detail": "Not Found"}
 
     index_file = static_path / "index.html"
 
     if index_file.exists():
         return FileResponse(index_file)
 
-    return JSONResponse(status_code=404, content={"detail": "Frontend missing"})
+    return {"detail": "Frontend missing"}
