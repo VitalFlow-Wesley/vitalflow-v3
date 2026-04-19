@@ -93,7 +93,5 @@ RUN chmod +x /app/start.sh
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=5 \
-    CMD curl -f http://localhost:${PORT}/api/health || exit 1
 
 CMD ["/app/start.sh"]
