@@ -1,91 +1,116 @@
-# ── Stage 1: Build Frontend ──
-FROM node:20-alpine AS frontend-build
-WORKDIR /build
+from pathlib import Path
+import logging
+import os
 
-COPY frontend/package.json frontend/yarn.lock* ./
-RUN yarn install --frozen-lockfile --production=false
+from fastapi import FastAPI, APIRouter
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.cors import CORSMiddleware
 
-COPY frontend/ ./
+from database import db, client
 
-ARG REACT_APP_BACKEND_URL
-ENV REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+# --- LOGGING ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-RUN yarn build
+# --- APP ---
+app = FastAPI(
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+)
 
-# ── Stage 2: Runtime ──
-FROM python:3.11-slim
+api_router = APIRouter(prefix="/api")
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nginx supervisor curl gettext-base && \
-    rm -rf /var/lib/apt/lists/*
+# --- IMPORTAÇÃO DAS ROTAS ---
+from routes.auth import router as auth_router
+from routes.analysis import router as analysis_router
+from routes.wearables import router as wearables_router
+from routes.dashboard import router as dashboard_router
+from routes.smartwatch import router as smartwatch_router
+from routes.gamification import router as gamification_router
+from routes.health import router as health_router
+from routes.payments import router as payments_router
 
-# --- Backend setup ---
-WORKDIR /app/backend
+# --- REGISTRO DAS ROTAS ---
+api_router.include_router(auth_router)
+api_router.include_router(analysis_router)
+api_router.include_router(wearables_router)
+api_router.include_router(dashboard_router)
+api_router.include_router(smartwatch_router)
+api_router.include_router(gamification_router)
+api_router.include_router(health_router)
+api_router.include_router(payments_router)
 
-COPY backend/requirements.txt backend/emergentintegrations-0.1.0-py3-none-any.whl ./
-RUN pip install --no-cache-dir -r requirements.txt
+# --- ROTAS DE HEALTHCHECK / STATUS ---
+@api_router.get("/")
+async def api_root_router():
+    return {"status": "ok", "message": "VitalFlow API online"}
 
-COPY backend/ ./
+@api_router.get("/health")
+async def api_health_router():
+    return {"status": "ok"}
 
-# --- Frontend static files ---
-COPY --from=frontend-build /build/build /app/frontend/build
+app.include_router(api_router)
 
-# --- Nginx template ---
-RUN mkdir -p /etc/nginx/templates
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "VitalFlow online"}
 
-RUN cat > /etc/nginx/templates/default.conf.template << 'NGINX'
-server {
-    listen ${PORT};
-    server_name _;
+@app.get("/api")
+async def api_root():
+    return {"status": "ok", "message": "VitalFlow API online"}
 
-    location / {
-        root /app/frontend/build;
-        try_files $uri $uri/ /index.html;
-        add_header Cache-Control "public, max-age=3600";
-    }
+@app.get("/api/")
+async def api_root_slash():
+    return {"status": "ok", "message": "VitalFlow API online"}
 
-    location /api/ {
-        proxy_pass http://127.0.0.1:8001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-NGINX
+@app.get("/api/health")
+async def api_health():
+    return {"status": "ok"}
 
-# --- Supervisor config ---
-RUN cat > /etc/supervisor/conf.d/vitalflow.conf << 'SUPERVISOR'
-[program:backend]
-command=uvicorn server:app --host 0.0.0.0 --port 8001 --workers 2
-directory=/app/backend
-autostart=true
-autorestart=true
-stderr_logfile=/var/log/supervisor/backend.err.log
-stdout_logfile=/var/log/supervisor/backend.out.log
+# --- CORS ---
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "https://vitalflow-api-1hjc.onrender.com",
+    "https://vitalflow.up.railway.app",
+    "https://vitalflow.ia.br",
+    "https://vitalflow-v3-git-main-vitalflow-wesleys-projects.vercel.app",
+    "https://vitalflow-v3.vercel.app",
+]
 
-[program:nginx]
-command=nginx -g "daemon off;"
-autostart=true
-autorestart=true
-stderr_logfile=/var/log/supervisor/nginx.err.log
-stdout_logfile=/var/log/supervisor/nginx.out.log
-SUPERVISOR
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# --- Startup script ---
-RUN cat > /app/start.sh << 'START'
-#!/bin/sh
-set -e
+# --- CAMINHO DOS ARQUIVOS ESTÁTICOS ---
+static_path = Path(__file__).parent / "static"
 
-# Substitui o PORT no template do Nginx e move para o local correto
-envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+# Servir a subpasta static (JS, CSS, assets)
+if (static_path / "static").exists():
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(static_path / "static")),
+        name="static",
+    )
 
-# Inicia o supervisord
-exec supervisord -n
-START
+# --- CATCH-ALL PARA O FRONTEND REACT ---
+@app.get("/{full_path:path}")
+async def serve_react_app(full_path: str):
+    # NÃO intercepta rotas da API nem docs
+    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json"]:
+        return {"detail": "Not Found"}
 
-RUN chmod +x /app/start.sh
+    index_file = static_path / "index.html"
 
-EXPOSE 8080
+    if index_file.exists():
+        return FileResponse(index_file)
 
-CMD ["/app/start.sh"]
+    return {"detail": "Frontend missing"}
