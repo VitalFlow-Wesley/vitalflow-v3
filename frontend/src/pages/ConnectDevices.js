@@ -24,6 +24,10 @@ const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 const API = `${BACKEND_URL}/api`;
 
+const ENABLE_SCENARIO_SIMULATOR =
+  process.env.REACT_APP_ENABLE_SCENARIO_SIMULATOR === "true";
+
+
 const OAUTH_STEPS = [
   "Abrindo autorizacao...",
   "Verificando permissoes...",
@@ -89,6 +93,7 @@ const ConnectDevices = () => {
       description: "Sincronize dados do Google Fit e apps de saude Android",
       oauthUrl:
         "https://accounts.google.com/o/oauth2/v2/auth?scope=fitness.activity.read+fitness.heart_rate.read+fitness.sleep.read",
+      supportsRealOAuth: true,
     },
     {
       id: "apple_healthkit",
@@ -100,6 +105,7 @@ const ConnectDevices = () => {
       bgColor: "bg-blue-400/10",
       description: "Conecte seu Apple Watch e iPhone Health",
       oauthUrl: "healthkit://authorize",
+      supportsRealOAuth: false,
     },
     {
       id: "garmin",
@@ -111,6 +117,7 @@ const ConnectDevices = () => {
       bgColor: "bg-cyan-400/10",
       description: "Integre dados de dispositivos Garmin",
       oauthUrl: "https://connect.garmin.com/oauthConfirm",
+      supportsRealOAuth: false,
     },
     {
       id: "fitbit",
@@ -122,6 +129,7 @@ const ConnectDevices = () => {
       bgColor: "bg-purple-400/10",
       description: "Conecte seu Fitbit e sincronize automatico",
       oauthUrl: "https://www.fitbit.com/oauth2/authorize",
+      supportsRealOAuth: false,
     },
   ];
 
@@ -149,6 +157,8 @@ const ConnectDevices = () => {
   };
 
   const handleConnect = async (providerId) => {
+    const provider = wearableProviders.find((item) => item.id === providerId);
+
     if (providerId === "google_health_connect") {
       try {
         const { data: statusData } = await axios.get(
@@ -169,8 +179,19 @@ const ConnectDevices = () => {
           }
         }
       } catch (error) {
-        console.log("Google Fit real nao disponivel, usando fluxo simulado");
+        console.log("Google Fit real nao disponivel:", error);
       }
+    }
+
+    if (!ENABLE_SCENARIO_SIMULATOR) {
+      if (provider?.supportsRealOAuth) {
+        toast.error(
+          "A integração real não está disponível no momento. Verifique a configuração do OAuth."
+        );
+      } else {
+        toast.info("Integração real ainda não disponível para este dispositivo.");
+      }
+      return;
     }
 
     setOauthFlow({ provider: providerId, step: 0 });
@@ -193,6 +214,7 @@ const ConnectDevices = () => {
         sync_data: data.sync_data || null,
         auto_analysis: null,
         raw: data,
+        scenario: "random",
       });
 
       await fetchConnectedDevices();
@@ -226,12 +248,12 @@ const ConnectDevices = () => {
 
     try {
       const payload =
-        selectedScenario && selectedScenario !== "random"
+        ENABLE_SCENARIO_SIMULATOR && selectedScenario
           ? { scenario: selectedScenario }
-          : { scenario: "random" };
+          : {};
 
       console.log("[VitalFlow] Iniciando sync manual...");
-      console.log("[VitalFlow] Cenário selecionado:", payload.scenario);
+      console.log("[VitalFlow] Payload:", payload);
 
       const { data } = await axios.post(`${API}/wearables/sync`, payload, {
         withCredentials: true,
@@ -244,18 +266,25 @@ const ConnectDevices = () => {
         sync_data: data?.data || null,
         auto_analysis: data?.auto_analysis || null,
         raw: data,
-        scenario: payload.scenario,
+        scenario: payload.scenario || null,
       });
 
       await fetchConnectedDevices();
 
       if (data?.status === "synced") {
-        const scenarioLabel =
-          TEST_SCENARIOS.find((s) => s.value === payload.scenario)?.label ||
-          "Aleatório";
-        toast.success(`Sincronização concluída! Cenário: ${scenarioLabel}`);
-      } else if (data?.status === "no_data") {
-        toast.info(data?.message || "Nenhum dado novo disponível.");
+        if (ENABLE_SCENARIO_SIMULATOR && payload.scenario) {
+          const scenarioLabel =
+            TEST_SCENARIOS.find((s) => s.value === payload.scenario)?.label ||
+            "Aleatório";
+          toast.success(`Sincronização concluída! Cenário: ${scenarioLabel}`);
+        } else {
+          toast.success("Sincronização concluída com dados reais!");
+        }
+      } else if (
+        data?.status === "no_data" ||
+        data?.status === "no_real_data"
+      ) {
+        toast.info(data?.message || "Nenhum dado real disponível ainda.");
       } else {
         toast.success("Sincronização executada.");
       }
@@ -355,53 +384,55 @@ const ConnectDevices = () => {
           </div>
         </div>
 
-        <div className="border border-violet-400/20 bg-violet-400/5 rounded-xl p-5">
-          <div className="flex items-start gap-3 mb-4">
-            <FlaskConical className="w-5 h-5 text-violet-300 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-sm font-semibold text-violet-300 mb-1">
-                Simulação de Cenários
-              </h3>
-              <p className="text-xs text-neutral-300">
-                Escolha um cenário para testar o comportamento do dashboard,
-                gráfico, status e inteligência do VitalFlow.
-              </p>
+        {ENABLE_SCENARIO_SIMULATOR && (
+          <div className="border border-violet-400/20 bg-violet-400/5 rounded-xl p-5">
+            <div className="flex items-start gap-3 mb-4">
+              <FlaskConical className="w-5 h-5 text-violet-300 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-violet-300 mb-1">
+                  Simulação de Cenários
+                </h3>
+                <p className="text-xs text-neutral-300">
+                  Escolha um cenário para testar o comportamento do dashboard,
+                  gráfico, status e inteligência do VitalFlow.
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-end">
-            <div>
-              <label className="block text-[11px] uppercase tracking-[0.18em] text-neutral-500 font-bold mb-2">
-                Cenário de teste
-              </label>
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-end">
+              <div>
+                <label className="block text-[11px] uppercase tracking-[0.18em] text-neutral-500 font-bold mb-2">
+                  Cenário de teste
+                </label>
 
-              <select
-                value={selectedScenario}
-                onChange={(e) => setSelectedScenario(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-white/10 text-sm text-white outline-none"
+                <select
+                  value={selectedScenario}
+                  onChange={(e) => setSelectedScenario(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-white/10 text-sm text-white outline-none"
+                >
+                  {TEST_SCENARIOS.map((scenario) => (
+                    <option key={scenario.value} value={scenario.value}>
+                      {scenario.label}
+                    </option>
+                  ))}
+                </select>
+
+                <p className="text-xs text-neutral-500 mt-2 leading-5">
+                  {selectedScenarioMeta.description}
+                </p>
+              </div>
+
+              <Button
+                onClick={() => setSelectedScenario("random")}
+                type="button"
+                className="bg-neutral-800 hover:bg-neutral-700 text-white border border-white/10"
               >
-                {TEST_SCENARIOS.map((scenario) => (
-                  <option key={scenario.value} value={scenario.value}>
-                    {scenario.label}
-                  </option>
-                ))}
-              </select>
-
-              <p className="text-xs text-neutral-500 mt-2 leading-5">
-                {selectedScenarioMeta.description}
-              </p>
+                <Shuffle className="w-4 h-4 mr-2" />
+                Aleatório
+              </Button>
             </div>
-
-            <Button
-              onClick={() => setSelectedScenario("random")}
-              type="button"
-              className="bg-neutral-800 hover:bg-neutral-700 text-white border border-white/10"
-            >
-              <Shuffle className="w-4 h-4 mr-2" />
-              Aleatório
-            </Button>
           </div>
-        </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -509,6 +540,7 @@ const ConnectDevices = () => {
           const device = getConnectedDevice(provider.id);
           const inFlow = isInOauthFlow(provider.id);
           const Icon = provider.icon;
+          const canConnect = ENABLE_SCENARIO_SIMULATOR || provider.supportsRealOAuth;
 
           return (
             <motion.div
@@ -591,11 +623,13 @@ const ConnectDevices = () => {
                 ) : (
                   <Button
                     onClick={() => handleConnect(provider.id)}
-                    disabled={inFlow || !!oauthFlow}
-                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold border-0 text-sm"
+                    disabled={!canConnect || inFlow || !!oauthFlow}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold border-0 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid={`connect-${provider.id}`}
                   >
-                    {inFlow ? (
+                    {!canConnect ? (
+                      "Em breve"
+                    ) : inFlow ? (
                       <>
                         <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                         Autorizando...
@@ -624,12 +658,14 @@ const ConnectDevices = () => {
               </h3>
             </div>
 
-            <div className="text-xs px-3 py-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 text-violet-300 font-semibold">
-              Cenário:{" "}
-              {TEST_SCENARIOS.find(
-                (scenario) => scenario.value === syncResult.scenario
-              )?.label || "Aleatório"}
-            </div>
+            {ENABLE_SCENARIO_SIMULATOR && syncResult.scenario && (
+              <div className="text-xs px-3 py-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 text-violet-300 font-semibold">
+                Cenário:{" "}
+                {TEST_SCENARIOS.find(
+                  (scenario) => scenario.value === syncResult.scenario
+                )?.label || "Aleatório"}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">

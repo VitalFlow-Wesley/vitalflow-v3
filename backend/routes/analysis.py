@@ -1,10 +1,9 @@
 import logging
-from typing import List
 from fastapi import APIRouter, Request, HTTPException
 
 from database import db
 from auth_utils import get_current_colaborador
-from models import BiometricInput, Analysis, AnalysisResponse
+from models import BiometricInput, Analysis
 from services.ai_service import analyze_biometrics
 
 logger = logging.getLogger(__name__)
@@ -33,6 +32,9 @@ async def create_analysis(input_data: BiometricInput, request: Request):
         doc = analysis.model_dump()
         doc["timestamp"] = doc["timestamp"].isoformat()
         doc["input_data"] = input_data.model_dump()
+        doc["source"] = "manual"
+        doc["data_mode"] = "real"
+        doc["has_real_data"] = True
 
         await db.analyses.insert_one(doc)
 
@@ -52,6 +54,8 @@ async def create_analysis(input_data: BiometricInput, request: Request):
             "activity_context": doc.get("activity_context"),
             "recovery": doc.get("recovery"),
             "source": doc.get("source", "manual"),
+            "data_mode": doc.get("data_mode", "real"),
+            "has_real_data": doc.get("has_real_data", True),
         }
 
     except Exception as e:
@@ -64,10 +68,15 @@ async def get_history(request: Request, limit: int = 30):
     try:
         colaborador = await get_current_colaborador(request)
 
-        analyses = await db.analyses.find(
-            {"colaborador_id": colaborador["id"]},
-            {"_id": 0},
-        ).sort("timestamp", -1).limit(limit).to_list(limit)
+                analyses = await db.analyses.find(
+            {
+                "colaborador_id": colaborador["id"],
+                "data_mode": "real",
+                "timestamp": {"$gte": seven_days_ago.isoformat()},
+            },
+            {"_id": 0, "v_score": 1, "timestamp": 1, "status_visual": 1}
+        ).sort("timestamp", 1).to_list(500)
+
 
         response = []
         for a in analyses:
@@ -88,6 +97,8 @@ async def get_history(request: Request, limit: int = 30):
                     "activity_context": a.get("activity_context"),
                     "recovery": a.get("recovery", {}),
                     "source": a.get("source", "unknown"),
+                    "data_mode": a.get("data_mode", "real"),
+                    "has_real_data": a.get("has_real_data", False),
                 }
             )
 

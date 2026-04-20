@@ -2,7 +2,7 @@ import os
 import uuid
 import random
 import logging
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Request, HTTPException
@@ -17,8 +17,20 @@ from core_engine import process_analysis, calculate_baseline
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+ALLOW_MOCK_SCENARIOS = (
+    os.getenv("ALLOW_MOCK_SCENARIOS", "false").strip().lower() == "true"
+)
 
-def get_mock_scenario(name: str):
+
+def normalize_scenario(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+
+    value = str(value).strip().lower()
+    return value or None
+
+
+def get_mock_scenario(name: Optional[str]):
     scenarios = {
         "stable": {
             "hrv": 72,
@@ -27,7 +39,8 @@ def get_mock_scenario(name: str):
             "sleep_hours": 8.1,
             "steps": 9400,
             "sleep_quality": "boa",
-            "has_real_data": True,
+            "has_real_data": False,
+            "data_mode": "mock",
             "activity_analysis": {
                 "exercise_detected": False,
                 "total_exercise_hours": 0,
@@ -42,7 +55,8 @@ def get_mock_scenario(name: str):
             "sleep_hours": 5.2,
             "steps": 3100,
             "sleep_quality": "ruim",
-            "has_real_data": True,
+            "has_real_data": False,
+            "data_mode": "mock",
             "activity_analysis": {
                 "exercise_detected": False,
                 "total_exercise_hours": 0,
@@ -57,7 +71,8 @@ def get_mock_scenario(name: str):
             "sleep_hours": 4.3,
             "steps": 4200,
             "sleep_quality": "ruim",
-            "has_real_data": True,
+            "has_real_data": False,
+            "data_mode": "mock",
             "activity_analysis": {
                 "exercise_detected": False,
                 "total_exercise_hours": 0,
@@ -72,7 +87,8 @@ def get_mock_scenario(name: str):
             "sleep_hours": 8.7,
             "steps": 7600,
             "sleep_quality": "excelente",
-            "has_real_data": True,
+            "has_real_data": False,
+            "data_mode": "mock",
             "activity_analysis": {
                 "exercise_detected": False,
                 "total_exercise_hours": 0,
@@ -87,7 +103,8 @@ def get_mock_scenario(name: str):
             "sleep_hours": 5.0,
             "steps": 2600,
             "sleep_quality": "regular",
-            "has_real_data": True,
+            "has_real_data": False,
+            "data_mode": "mock",
             "activity_analysis": {
                 "exercise_detected": False,
                 "total_exercise_hours": 0,
@@ -102,7 +119,8 @@ def get_mock_scenario(name: str):
             "sleep_hours": 7.4,
             "steps": 14300,
             "sleep_quality": "boa",
-            "has_real_data": True,
+            "has_real_data": False,
+            "data_mode": "mock",
             "activity_analysis": {
                 "exercise_detected": True,
                 "total_exercise_hours": 2,
@@ -112,10 +130,11 @@ def get_mock_scenario(name: str):
         },
     }
 
-    if name == "random":
-        return random.choice(list(scenarios.values()))
+    if name in (None, "", "random"):
+        chosen = random.choice(list(scenarios.values()))
+        return dict(chosen)
 
-    return scenarios.get(name, scenarios["stable"])
+    return dict(scenarios.get(name, scenarios["stable"]))
 
 
 @router.post("/wearables/connect", response_model=WearableConnectionResponse)
@@ -298,6 +317,9 @@ async def google_fit_callback(code: str = "", state: str = ""):
     if biometrics:
         biometrics["colaborador_id"] = state
         biometrics["synced_at"] = datetime.now(timezone.utc).isoformat()
+        biometrics["scenario"] = "real"
+        biometrics["data_mode"] = "real"
+        biometrics["has_real_data"] = True
         await db.google_fit_data.insert_one(biometrics)
 
     frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
@@ -311,14 +333,16 @@ async def wearable_oauth_callback(request: Request):
         body = await request.json()
         provider = body.get("provider", "google_health_connect")
 
-        sync_data = {
-            "hrv": random.randint(35, 85),
-            "bpm": random.randint(58, 110),
-            "bpm_average": random.randint(60, 80),
-            "sleep_hours": round(random.uniform(4.5, 9.0), 1),
-            "steps": random.randint(2000, 15000),
-            "source": provider,
-        }
+        if not ALLOW_MOCK_SCENARIOS:
+            raise HTTPException(
+                status_code=400,
+                detail="Fluxo simulado desabilitado. Use a autorizacao real do Google Fit.",
+            )
+
+        sync_data = get_mock_scenario("random")
+        sync_data["source"] = provider
+        sync_data["scenario"] = "random"
+        sync_data["provider"] = provider
 
         existing = await db.wearable_devices.find_one(
             {"colaborador_id": colaborador["id"], "provider": provider},
@@ -357,7 +381,7 @@ async def wearable_oauth_callback(request: Request):
             "device_id": device_id,
             "provider": provider,
             "sync_data": sync_data,
-            "message": f"Dispositivo {provider} autorizado e sincronizado automaticamente.",
+            "message": f"Dispositivo {provider} autorizado em modo simulacao.",
         }
     except HTTPException:
         raise
@@ -399,18 +423,23 @@ async def sync_wearable_data(request: Request):
         except Exception:
             body = {}
 
-        scenario = body.get("scenario", "random")
+        requested_scenario = normalize_scenario(body.get("scenario"))
 
         token_doc = await db.wearable_tokens.find_one(
             {"colaborador_id": cid, "provider": "google_health_connect"},
             {"_id": 0},
         )
 
+        has_real_token = bool(token_doc and token_doc.get("access_token"))
         biometrics = None
-        access_token = None
-        refresh_token = None
 
-        if token_doc and token_doc.get("access_token") and scenario in (None, "", "real"):
+        if requested_scenario and requested_scenario not in ("real",) and not ALLOW_MOCK_SCENARIOS:
+            raise HTTPException(
+                status_code=400,
+                detail="Simulacao desabilitada neste ambiente.",
+            )
+
+        if has_real_token and requested_scenario in (None, "real"):
             access_token = token_doc["access_token"]
             refresh_token = token_doc.get("refresh_token")
 
@@ -433,12 +462,38 @@ async def sync_wearable_data(request: Request):
 
                     biometrics = await google_fit_service.fetch_biometrics(access_token)
 
+            if isinstance(biometrics, dict):
+                biometrics["data_mode"] = "real"
+                biometrics["has_real_data"] = True
+                biometrics["scenario"] = "real"
+
         if not isinstance(biometrics, dict):
-            biometrics = get_mock_scenario(scenario or "random")
+            if requested_scenario and requested_scenario not in (None, "real"):
+                if not ALLOW_MOCK_SCENARIOS:
+                    return {
+                        "status": "no_real_data",
+                        "message": "Simulacao desabilitada e nenhum dado real foi sincronizado.",
+                    }
+
+                biometrics = get_mock_scenario(requested_scenario)
+                biometrics["scenario"] = requested_scenario or "random"
+            else:
+                if has_real_token:
+                    return {
+                        "status": "no_data",
+                        "message": "Nao foi possivel obter dados reais do Google Fit agora. Tente novamente em instantes.",
+                    }
+
+                return {
+                    "status": "no_real_data",
+                    "message": "Nenhum wearable real conectado. Conecte o Google Health Connect primeiro.",
+                }
 
         biometrics["colaborador_id"] = cid
         biometrics["synced_at"] = datetime.now(timezone.utc).isoformat()
-        biometrics["scenario"] = scenario or "random"
+        biometrics["data_mode"] = biometrics.get("data_mode", "real")
+        biometrics["has_real_data"] = biometrics.get("data_mode") == "real"
+        biometrics["scenario"] = biometrics.get("scenario", "real")
 
         await db.google_fit_data.insert_one(biometrics)
 
@@ -449,7 +504,7 @@ async def sync_wearable_data(request: Request):
 
         analysis_result = None
 
-        if biometrics.get("has_real_data") and biometrics.get("bpm"):
+        if biometrics.get("bpm"):
             from services.ai_service import (
                 analyze_biometrics,
                 classify_activity,
@@ -541,7 +596,7 @@ async def sync_wearable_data(request: Request):
             if not isinstance(engine_result, dict):
                 engine_result = {
                     "v_score": 50,
-                    "status_visual": "Atenção",
+                    "status_visual": "Atencao",
                     "stress_score": 50,
                     "recovery_score": 50,
                     "risk_score": 50,
@@ -573,27 +628,31 @@ async def sync_wearable_data(request: Request):
                 ai_result = {
                     "v_score": engine_result.get("v_score", 50),
                     "area_afetada": [],
-                    "status_visual": engine_result.get("status_visual", "Atenção"),
+                    "status_visual": engine_result.get("status_visual", "Atencao"),
                     "tag_rapida": "Analise automatica",
                     "causa_provavel": "Processamento automatico do VitalFlow.",
                     "nudge_acao": "Continue monitorando seus dados.",
                 }
 
-            final_v_score = int(round(
-    (
-        ai_result.get("v_score", engine_result.get("v_score", 50))
-        + engine_result.get("v_score", 50)
-    ) / 2
-))
+            final_v_score = int(
+                round(
+                    (
+                        ai_result.get("v_score", engine_result.get("v_score", 50))
+                        + engine_result.get("v_score", 50)
+                    )
+                    / 2
+                )
+            )
 
             analysis = Analysis(
                 v_score=final_v_score,
                 area_afetada=ai_result.get("area_afetada", []),
-                status_visual=engine_result.get("status_visual", "Atenção"),
+                status_visual=engine_result.get("status_visual", "Atencao"),
                 tag_rapida=ai_result.get("tag_rapida", "Analise automatica"),
                 causa_provavel=ai_result.get("causa_provavel", "Sem causa definida"),
                 nudge_acao=ai_result.get(
-                    "nudge_acao", "Continue monitorando seus dados."
+                    "nudge_acao",
+                    "Continue monitorando seus dados.",
                 ),
                 input_data=input_data,
                 colaborador_id=cid,
@@ -603,7 +662,9 @@ async def sync_wearable_data(request: Request):
             doc["timestamp"] = doc["timestamp"].isoformat()
             doc["input_data"] = input_data.model_dump()
             doc["source"] = biometrics.get("source", "google_fit_auto")
-            doc["scenario"] = biometrics.get("scenario", "random")
+            doc["scenario"] = biometrics.get("scenario", "real")
+            doc["data_mode"] = biometrics.get("data_mode", "real")
+            doc["has_real_data"] = biometrics.get("has_real_data", False)
             doc["activity_context"] = activity_ctx
             doc["recovery"] = recovery
             doc["engine"] = engine_result
@@ -618,20 +679,21 @@ async def sync_wearable_data(request: Request):
             await db.analyses.insert_one(doc)
 
             analysis_result = {
-    "v_score": final_v_score,
-    "status_visual": engine_result.get("status_visual", "Atenção"),
-    "tag_rapida": ai_result.get("tag_rapida", "Analise automatica"),
-    "exercise_detected": exercise_detected,
-    "recovery_label": recovery.get("label", "Sem classificacao"),
-    "sleep_hours": sleep_h,
-    "steps": steps,
-    "stress_score": engine_result.get("stress_score", 50),
-    "recovery_score": engine_result.get("recovery_score", 50),
-    "risk_score": engine_result.get("risk_score", 50),
-    "contexto": engine_result.get("contexto", "unknown"),
-    "alert": engine_result.get("alert"),
-    "scenario": biometrics.get("scenario", "random"),
-}
+                "v_score": final_v_score,
+                "status_visual": engine_result.get("status_visual", "Atencao"),
+                "tag_rapida": ai_result.get("tag_rapida", "Analise automatica"),
+                "exercise_detected": exercise_detected,
+                "recovery_label": recovery.get("label", "Sem classificacao"),
+                "sleep_hours": sleep_h,
+                "steps": steps,
+                "stress_score": engine_result.get("stress_score", 50),
+                "recovery_score": engine_result.get("recovery_score", 50),
+                "risk_score": engine_result.get("risk_score", 50),
+                "contexto": engine_result.get("contexto", "unknown"),
+                "alert": engine_result.get("alert"),
+                "scenario": biometrics.get("scenario", "real"),
+                "data_mode": biometrics.get("data_mode", "real"),
+            }
 
         safe_biometrics = {
             k: v
@@ -641,8 +703,9 @@ async def sync_wearable_data(request: Request):
 
         return {
             "status": "synced",
-            "scenario": biometrics.get("scenario", "random"),
+            "scenario": biometrics.get("scenario", "real"),
             "has_real_data": biometrics.get("has_real_data", False),
+            "data_mode": biometrics.get("data_mode", "real"),
             "data": safe_biometrics,
             "auto_analysis": analysis_result,
         }

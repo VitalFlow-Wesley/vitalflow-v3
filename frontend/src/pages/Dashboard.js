@@ -364,13 +364,20 @@ export default function Dashboard() {
     });
   };
 
-  const fetchHistory = async () => {
+    const filterRealAnalyses = (items) => {
+    const list = Array.isArray(items) ? items : [];
+    return list.filter((item) => item?.data_mode === "real");
+  };
+
+
+    const fetchHistory = async () => {
     try {
       const response = await axios.get(`${API}/history?limit=30`, {
         withCredentials: true,
       });
 
-      const orderedHistory = sortHistoryDesc(response.data);
+      const realHistory = filterRealAnalyses(response.data);
+      const orderedHistory = sortHistoryDesc(realHistory);
       setHistory(orderedHistory);
 
       if (orderedHistory.length > 0) {
@@ -385,6 +392,7 @@ export default function Dashboard() {
       console.error("Erro ao buscar histórico:", error);
     }
   };
+
 
   const fetchConnectedDevices = async () => {
     try {
@@ -452,7 +460,7 @@ export default function Dashboard() {
     }
   };
 
-  const backgroundSync = useCallback(async () => {
+    const backgroundSync = useCallback(async () => {
     try {
       const { data } = await axios.post(
         `${API}/wearables/sync`,
@@ -479,72 +487,22 @@ export default function Dashboard() {
         await fetchHistory();
         await fetchConnectedDevices();
         await fetchMorningReport();
+      } else if (data.status === "no_real_data") {
+        toast.info(
+          data.message || "Conecte um wearable real para carregar dados verdadeiros.",
+          { duration: 4000 }
+        );
+      } else if (data.status === "no_data") {
+        toast.info(
+          data.message || "Nenhum dado novo real disponível no momento.",
+          { duration: 4000 }
+        );
       }
     } catch {
       queueOfflineData("wearables/sync", {});
     }
   }, []);
 
-  const checkForNewAnalysis = async () => {
-    try {
-      const response = await axios.get(`${API}/history?limit=5`, {
-        withCredentials: true,
-      });
-
-      const orderedHistory = sortHistoryDesc(response.data);
-      if (orderedHistory.length > 0) {
-        const latest = orderedHistory[0];
-        const latestKey = getAnalysisKey(latest);
-
-        if (lastAnalysisKeyRef.current !== latestKey) {
-          lastAnalysisKeyRef.current = latestKey;
-          setCurrentAnalysis(latest);
-          setHistory(orderedHistory);
-          toast.success("Nova análise disponível!", { duration: 4000 });
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao verificar novas análises:", error);
-    }
-  };
-
-  const startPolling = () => {
-    pollingIntervalRef.current = setInterval(
-      checkForNewAnalysis,
-      POLLING_INTERVAL
-    );
-  };
-
-  const stopPolling = () => {
-    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-  };
-
-  useEffect(() => {
-    const init = async () => {
-      await Promise.all([
-        fetchHistory(),
-        fetchConnectedDevices(),
-        fetchPredictiveAlert(),
-        fetchGamificationStats(),
-        fetchHealthTrend(),
-        fetchMorningReport(),
-      ]);
-      startPolling();
-    };
-
-    init();
-
-    if (user?.must_change_password || user?.must_accept_lgpd) {
-      setShowFirstAccess(true);
-    } else {
-      const onboardingDone = localStorage.getItem("vitalflow_onboarding_done");
-      if (!onboardingDone) {
-        setShowOnboarding(true);
-      }
-    }
-
-    return () => stopPolling();
-  }, []);
 
   useEffect(() => {
     bgSyncRef.current = setInterval(backgroundSync, BACKGROUND_SYNC_INTERVAL);
@@ -1026,20 +984,18 @@ console.log("USER PLAN DEBUG", {
     v_score: history?.[1]?.v_score ?? 100,
     status: history?.[1]?.status_visual || history?.[1]?.status || "normal",
   }}
-  onStartRoutine={(routineData) => setSelectedRoutine(routineData)}
-/>
+        onStartRoutine={(routineData) => setSelectedRoutine(routineData)}
+    />
+  </div>
+</section>
+</motion.div>
+) : (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    className="space-y-6"
+  >
 
-              
-                }
-              </div>
-            </section>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-6"
-          >
             {gamStats && (
               <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-2xl p-4 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-400" />

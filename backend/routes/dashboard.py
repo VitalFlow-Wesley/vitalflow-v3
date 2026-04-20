@@ -44,13 +44,33 @@ async def get_dashboard_metrics(request: Request):
         exigir_nivel_minimo(colaborador, 2)
 
         total_colaboradores = await db.colaboradores.count_documents({})
-        total_analises = await db.analyses.count_documents({})
-        pipeline_avg = [{"$group": {"_id": None, "avg_score": {"$avg": "$v_score"}}}]
-        avg_result = await db.analyses.aggregate(pipeline_avg).to_list(1)
-        media_v_score = avg_result[0]["avg_score"] if avg_result else 0
-        criticos = await db.analyses.count_documents({"v_score": {"$lt": 50}})
-        atencao = await db.analyses.count_documents({"v_score": {"$gte": 50, "$lt": 80}})
-        otimo = await db.analyses.count_documents({"v_score": {"$gte": 80}})
+
+base_analysis_filter = {"data_mode": "real"}
+
+total_analises = await db.analyses.count_documents(base_analysis_filter)
+
+pipeline_avg = [
+    {"$match": base_analysis_filter},
+    {"$group": {"_id": None, "avg_score": {"$avg": "$v_score"}}}
+]
+avg_result = await db.analyses.aggregate(pipeline_avg).to_list(1)
+media_v_score = avg_result[0]["avg_score"] if avg_result else 0
+
+criticos = await db.analyses.count_documents({
+    **base_analysis_filter,
+    "v_score": {"$lt": 50}
+})
+
+atencao = await db.analyses.count_documents({
+    **base_analysis_filter,
+    "v_score": {"$gte": 50, "$lt": 80}
+})
+
+otimo = await db.analyses.count_documents({
+    **base_analysis_filter,
+    "v_score": {"$gte": 80}
+})
+
 
         return DashboardMetrics(
             total_colaboradores=total_colaboradores, total_analises=total_analises,
@@ -287,7 +307,11 @@ async def get_team_overview(request: Request, period: str = "7d", setor: str = "
         days = period_map.get(period, 7)
         period_start = datetime.now(timezone.utc) - timedelta(days=days)
 
-        analysis_query = {"timestamp": {"$gte": period_start.isoformat()}}
+        analysis_query = {
+    "timestamp": {"$gte": period_start.isoformat()},
+    "data_mode": "real",
+}
+
         if colab_ids is not None:
             analysis_query["colaborador_id"] = {"$in": colab_ids}
 

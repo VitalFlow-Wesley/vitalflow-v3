@@ -153,11 +153,24 @@ async def get_personal_report(request: Request, period: str = "7d"):
         days = period_map.get(period, 7)
         period_start = datetime.now(timezone.utc) - timedelta(days=days)
 
-        analyses = await db.analyses.find(
-            {"colaborador_id": colaborador["id"], "timestamp": {"$gte": period_start.isoformat()}},
-            {"_id": 0, "v_score": 1, "timestamp": 1, "status_visual": 1, "area_afetada": 1,
-             "tag_rapida": 1, "nudge_acao": 1, "causa_provavel": 1}
+                analyses = await db.analyses.find(
+            {
+                "colaborador_id": colaborador["id"],
+                "data_mode": "real",
+                "timestamp": {"$gte": period_start.isoformat()},
+            },
+            {
+                "_id": 0,
+                "v_score": 1,
+                "timestamp": 1,
+                "status_visual": 1,
+                "area_afetada": 1,
+                "tag_rapida": 1,
+                "nudge_acao": 1,
+                "causa_provavel": 1,
+            }
         ).sort("timestamp", 1).to_list(5000)
+
 
         total = len(analyses)
         if total == 0:
@@ -230,11 +243,24 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
         period_start = now - timedelta(days=days)
         period_label = {"7d": "7 dias", "30d": "30 dias", "6m": "6 meses"}.get(period, "7 dias")
 
-        analyses = await db.analyses.find(
-            {"colaborador_id": colaborador["id"], "timestamp": {"$gte": period_start.isoformat()}},
-            {"_id": 0, "v_score": 1, "status_visual": 1, "timestamp": 1, "area_afetada": 1,
-             "tag_rapida": 1, "nudge_acao": 1, "causa_provavel": 1}
+                analyses = await db.analyses.find(
+            {
+                "colaborador_id": colaborador["id"],
+                "data_mode": "real",
+                "timestamp": {"$gte": period_start.isoformat()},
+            },
+            {
+                "_id": 0,
+                "v_score": 1,
+                "status_visual": 1,
+                "timestamp": 1,
+                "area_afetada": 1,
+                "tag_rapida": 1,
+                "nudge_acao": 1,
+                "causa_provavel": 1,
+            }
         ).sort("timestamp", 1).to_list(5000)
+
 
         total = len(analyses)
         all_scores = [a["v_score"] for a in analyses]
@@ -337,11 +363,16 @@ async def get_morning_report(request: Request):
         cid = colaborador["id"]
 
         # Buscar ultimo sync com dados de sono
-        last_sync = await db.google_fit_data.find_one(
-            {"colaborador_id": cid, "sleep_hours": {"$exists": True, "$gt": 0}},
+                last_sync = await db.google_fit_data.find_one(
+            {
+                "colaborador_id": cid,
+                "data_mode": "real",
+                "sleep_hours": {"$exists": True, "$gt": 0},
+            },
             {"_id": 0},
             sort=[("synced_at", -1)]
         )
+
 
         if not last_sync:
             return {
