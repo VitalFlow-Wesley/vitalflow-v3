@@ -2,9 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 
-const API = `${
-  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app"
-}/api`;
+// PADRONIZADO: Sem o /api no final para evitar duplicidade
+const API_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 
 const CACHE_KEY = "vitalflow_offline_queue";
 const PING_INTERVAL = 15000;
@@ -50,7 +49,9 @@ const ConnectionStatus = () => {
 
       for (const item of queue) {
         try {
-          await axios.post(`${API}/${item.endpoint}`, item.payload, {
+          // Garante que o endpoint tenha a barra correta, sem duplicar
+          const endpoint = item.endpoint.startsWith('/') ? item.endpoint : `/${item.endpoint}`;
+          await axios.post(`${API_URL}${endpoint}`, item.payload, {
             withCredentials: true,
             timeout: 10000,
           });
@@ -74,9 +75,11 @@ const ConnectionStatus = () => {
 
   const checkConnection = useCallback(async () => {
     try {
-      await axios.get(`${API}/`, {
+      // Bate na raiz do servidor para ver se ele está vivo
+      await axios.get(`${API_URL}/`, {
         timeout: 5000,
-        withCredentials: true,
+        // DICA PRO: Aceita erro 404 como "online", pois significa que o servidor atendeu a chamada
+        validateStatus: (status) => status < 500, 
       });
 
       if (offlineTimeoutRef.current) {
@@ -178,7 +181,6 @@ const ConnectionStatus = () => {
   );
 };
 
-// Utility: queue data when offline
 export const queueOfflineData = (endpoint, payload) => {
   try {
     const raw = localStorage.getItem(CACHE_KEY) || "[]";

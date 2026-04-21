@@ -34,8 +34,8 @@ import {
   BedDouble,
 } from "lucide-react";
 
-const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || "https://api.vitalflow.ia.br";
+// MUDANÇA AQUI: Apontando para o Railway no fallback
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 const API = `${BACKEND_URL}/api`;
 const POLLING_INTERVAL = 10000;
 const BACKGROUND_SYNC_INTERVAL = 30 * 60 * 1000;

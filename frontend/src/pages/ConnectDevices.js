@@ -20,14 +20,12 @@ import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router-dom";
 
-const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || "https://api.vitalflow.ia.br";
+// MUDANÇA AQUI: Apontando o fallback para o servidor do Railway
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 const API = `${BACKEND_URL}/api`;
 
 const ENABLE_SCENARIO_SIMULATOR =
   process.env.REACT_APP_ENABLE_SCENARIO_SIMULATOR === "true";
-
-
 
 const OAUTH_STEPS = [
   "Abrindo autorizacao...",
