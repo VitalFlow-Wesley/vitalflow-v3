@@ -21,11 +21,12 @@ import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router-dom";
 
 const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+  process.env.REACT_APP_BACKEND_URL || "https://api.vitalflow.ia.br";
 const API = `${BACKEND_URL}/api`;
 
 const ENABLE_SCENARIO_SIMULATOR =
   process.env.REACT_APP_ENABLE_SCENARIO_SIMULATOR === "true";
+
 
 
 const OAUTH_STEPS = [
