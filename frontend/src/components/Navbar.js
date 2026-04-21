@@ -125,10 +125,7 @@ const Navbar = () => {
   const isGestorPage = location.pathname === "/gestor";
   const isDevicesPage = location.pathname === "/devices";
 
-  const primaryButtonClass =
-    "flex px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-black text-sm font-bold transition-all duration-200 items-center gap-2 shadow-lg shadow-cyan-500/10 hover:scale-[1.03]";
-
-  const secondaryButtonClass = (active) =>
+  const navButtonClass = (active) =>
     `px-3 py-2 border text-sm font-semibold rounded-xl transition-all duration-200 flex items-center gap-2 ${
       active
         ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-300"
@@ -203,7 +200,7 @@ const Navbar = () => {
               (isGestorPage ? (
                 <button
                   onClick={() => navigate("/")}
-                  className={primaryButtonClass}
+                  className={navButtonClass(false)}
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   <span>Meus Dados</span>
@@ -211,7 +208,7 @@ const Navbar = () => {
               ) : (
                 <button
                   onClick={() => navigate("/gestor")}
-                  className={primaryButtonClass}
+                  className={navButtonClass(isGestorPage)}
                 >
                   <BarChart3 className="w-4 h-4" />
                   <span>Gestor</span>
@@ -221,7 +218,7 @@ const Navbar = () => {
             {isRelatorio ? (
               <button
                 onClick={() => navigate("/")}
-                className={primaryButtonClass}
+                className={navButtonClass(false)}
               >
                 <LayoutDashboard className="w-4 h-4" />
                 <span>Meus Dados</span>
@@ -229,7 +226,7 @@ const Navbar = () => {
             ) : (
               <button
                 onClick={() => navigate("/relatorio")}
-                className={primaryButtonClass}
+                className={navButtonClass(isRelatorio)}
               >
                 <FileText className="w-4 h-4" />
                 <span>Relatório</span>
@@ -238,7 +235,7 @@ const Navbar = () => {
 
             <button
               onClick={() => navigate("/devices")}
-              className={secondaryButtonClass(isDevicesPage)}
+              className={navButtonClass(isDevicesPage)}
             >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Dispositivos</span>
