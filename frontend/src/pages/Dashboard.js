@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 
 const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
+  process.env.REACT_APP_BACKEND_URL || "https://api.vitalflow.ia.br";
 const API = `${BACKEND_URL}/api`;
 const POLLING_INTERVAL = 10000;
 const BACKGROUND_SYNC_INTERVAL = 30 * 60 * 1000;
@@ -335,6 +335,7 @@ export default function Dashboard() {
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
   const [history, setHistory] = useState([]);
   const [connectedDevices, setConnectedDevices] = useState([]);
+  const [devicesLoading, setDevicesLoading] = useState(true);
   const [selectedRoutine, setSelectedRoutine] = useState(null);
   const [predictiveAlert, setPredictiveAlert] = useState(null);
   const [gamStats, setGamStats] = useState(null);
@@ -364,13 +365,12 @@ export default function Dashboard() {
     });
   };
 
-    const filterRealAnalyses = (items) => {
+  const filterRealAnalyses = (items) => {
     const list = Array.isArray(items) ? items : [];
     return list.filter((item) => item?.data_mode === "real");
   };
 
-
-    const fetchHistory = async () => {
+  const fetchHistory = async () => {
     try {
       const response = await axios.get(`${API}/history?limit=30`, {
         withCredentials: true,
@@ -378,6 +378,7 @@ export default function Dashboard() {
 
       const realHistory = filterRealAnalyses(response.data);
       const orderedHistory = sortHistoryDesc(realHistory);
+
       setHistory(orderedHistory);
 
       if (orderedHistory.length > 0) {
@@ -393,15 +394,27 @@ export default function Dashboard() {
     }
   };
 
-
   const fetchConnectedDevices = async () => {
     try {
+      setDevicesLoading(true);
+
       const response = await axios.get(`${API}/wearables`, {
         withCredentials: true,
       });
-      setConnectedDevices(response.data.filter((d) => d.is_connected));
+
+      const payload = response?.data;
+      const list = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.devices)
+        ? payload.devices
+        : [];
+
+      setConnectedDevices(list);
     } catch (error) {
       console.error("Erro ao buscar dispositivos:", error);
+      setConnectedDevices([]);
+    } finally {
+      setDevicesLoading(false);
     }
   };
 
@@ -439,6 +452,7 @@ export default function Dashboard() {
           "vitalflow_medical_alert_dismissed"
         );
         const today = new Date().toISOString().split("T")[0];
+
         if (dismissed !== today) {
           setMedicalAlertData(data.medical_alert);
           setShowMedicalAlert(true);
@@ -454,13 +468,44 @@ export default function Dashboard() {
       const { data } = await axios.get(`${API}/health/morning-report`, {
         withCredentials: true,
       });
-      if (data.available) setMorningReport(data);
+
+      if (data?.available) {
+        setMorningReport(data);
+      } else {
+        setMorningReport(null);
+      }
     } catch {
-      // silencioso
+      setMorningReport(null);
     }
   };
 
-    const backgroundSync = useCallback(async () => {
+  const checkForNewAnalysis = async () => {
+    try {
+      const response = await axios.get(`${API}/history?limit=5`, {
+        withCredentials: true,
+      });
+
+      const realHistory = filterRealAnalyses(response.data);
+      const orderedHistory = sortHistoryDesc(realHistory);
+
+      if (orderedHistory.length === 0) {
+        return;
+      }
+
+      const latest = orderedHistory[0];
+      const latestKey = getAnalysisKey(latest);
+
+      if (lastAnalysisKeyRef.current !== latestKey) {
+        lastAnalysisKeyRef.current = latestKey;
+        setCurrentAnalysis(latest);
+        setHistory(orderedHistory);
+      }
+    } catch (error) {
+      console.error("Erro ao verificar nova análise:", error);
+    }
+  };
+
+  const backgroundSync = useCallback(async () => {
     try {
       const { data } = await axios.post(
         `${API}/wearables/sync`,
@@ -476,12 +521,15 @@ export default function Dashboard() {
           const exerciseMsg = a.exercise_detected
             ? " | Exercício detectado!"
             : "";
+
           toast.success(
             `Sync: V-Score ${a.v_score} (${a.status_visual}) - ${a.recovery_label}${exerciseMsg}`,
             { duration: 5000 }
           );
         } else {
-          toast.success("Dados do wearable sincronizados!", { duration: 3000 });
+          toast.success("Dados do wearable sincronizados!", {
+            duration: 3000,
+          });
         }
 
         await fetchHistory();
@@ -489,7 +537,8 @@ export default function Dashboard() {
         await fetchMorningReport();
       } else if (data.status === "no_real_data") {
         toast.info(
-          data.message || "Conecte um wearable real para carregar dados verdadeiros.",
+          data.message ||
+            "Conecte um wearable real para carregar dados verdadeiros.",
           { duration: 4000 }
         );
       } else if (data.status === "no_data") {
@@ -503,13 +552,33 @@ export default function Dashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    fetchHistory();
+    fetchConnectedDevices();
+    fetchPredictiveAlert();
+    fetchGamificationStats();
+    fetchHealthTrend();
+    fetchMorningReport();
+  }, []);
 
   useEffect(() => {
     bgSyncRef.current = setInterval(backgroundSync, BACKGROUND_SYNC_INTERVAL);
+
     return () => {
       if (bgSyncRef.current) clearInterval(bgSyncRef.current);
     };
   }, [backgroundSync]);
+
+  useEffect(() => {
+    pollingIntervalRef.current = setInterval(() => {
+      checkForNewAnalysis();
+      fetchConnectedDevices();
+    }, POLLING_INTERVAL);
+
+    return () => {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    };
+  }, []);
 
   const handlePointsEarned = () => {
     fetchGamificationStats();
@@ -541,37 +610,44 @@ export default function Dashboard() {
   };
 
   const accountType = String(user?.account_type || "")
-  .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .toLowerCase();
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
-const isB2BUser =
-  Boolean(user?.is_b2b) ||
-  accountType.includes("b2b") ||
-  accountType.includes("business") ||
-  accountType.includes("empresa") ||
-  accountType.includes("empresarial") ||
-  accountType.includes("corporate") ||
-  accountType.includes("rh");
+  const isB2BUser =
+    Boolean(user?.is_b2b) ||
+    accountType.includes("b2b") ||
+    accountType.includes("business") ||
+    accountType.includes("empresa") ||
+    accountType.includes("empresarial") ||
+    accountType.includes("corporate") ||
+    accountType.includes("rh");
 
-const isPremiumUser = Boolean(user?.is_premium);
-const userPlan = String(
-  user?.plan || (isPremiumUser ? "premium" : "free")
-).toLowerCase();
+  const isPremiumUser = Boolean(user?.is_premium);
+  const userPlan = String(
+    user?.plan || (isPremiumUser ? "premium" : "free")
+  ).toLowerCase();
 
-const isFreeLocked =
-  userPlan === "free" && !isPremiumUser && !isB2BUser;
+  const isFreeLocked =
+    userPlan === "free" && !isPremiumUser && !isB2BUser;
 
-console.log("USER PLAN DEBUG", {
-  accountType,
-  isB2BUser,
-  isPremiumUser,
-  userPlan,
-  isFreeLocked,
-  user,
-});
+  console.log("USER PLAN DEBUG", {
+    accountType,
+    isB2BUser,
+    isPremiumUser,
+    userPlan,
+    isFreeLocked,
+    user,
+  });
 
   const hasData = currentAnalysis !== null;
+
+  const connectedDevicesCount = useMemo(() => {
+    if (!Array.isArray(connectedDevices)) return 0;
+    return connectedDevices.filter((device) => device?.is_connected).length;
+  }, [connectedDevices]);
+
+  const hasConnectedWearables = connectedDevicesCount > 0;
 
   const engine = currentAnalysis?.engine || {};
   const inputData = currentAnalysis?.input_data || {};
@@ -966,36 +1042,52 @@ console.log("USER PLAN DEBUG", {
 
               <div className="xl:col-span-4 space-y-6">
                 <RoutineSuggestionCard
-  currentData={{
-    stress: currentAnalysis?.stress ?? currentAnalysis?.stress_score ?? 0,
-    sleep: currentAnalysis?.input_data?.sleep_hours ?? 0,
-    hrv: currentAnalysis?.input_data?.hrv ?? 0,
-    recovery: currentAnalysis?.recovery ?? currentAnalysis?.recovery_score ?? 100,
-    bpm: currentAnalysis?.input_data?.bpm ?? 0,
-    v_score: currentAnalysis?.v_score ?? 100,
-    status: currentAnalysis?.status_visual || currentAnalysis?.status || "normal",
-  }}
-  previousData={{
-    stress: history?.[1]?.stress ?? history?.[1]?.stress_score ?? 0,
-    sleep: history?.[1]?.input_data?.sleep_hours ?? 0,
-    hrv: history?.[1]?.input_data?.hrv ?? 0,
-    recovery: history?.[1]?.recovery ?? history?.[1]?.recovery_score ?? 100,
-    bpm: history?.[1]?.input_data?.bpm ?? 0,
-    v_score: history?.[1]?.v_score ?? 100,
-    status: history?.[1]?.status_visual || history?.[1]?.status || "normal",
-  }}
-        onStartRoutine={(routineData) => setSelectedRoutine(routineData)}
-    />
-  </div>
-</section>
-</motion.div>
-) : (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="space-y-6"
-  >
-
+                  currentData={{
+                    stress:
+                      currentAnalysis?.stress ??
+                      currentAnalysis?.stress_score ??
+                      0,
+                    sleep: currentAnalysis?.input_data?.sleep_hours ?? 0,
+                    hrv: currentAnalysis?.input_data?.hrv ?? 0,
+                    recovery:
+                      currentAnalysis?.recovery ??
+                      currentAnalysis?.recovery_score ??
+                      100,
+                    bpm: currentAnalysis?.input_data?.bpm ?? 0,
+                    v_score: currentAnalysis?.v_score ?? 100,
+                    status:
+                      currentAnalysis?.status_visual ||
+                      currentAnalysis?.status ||
+                      "normal",
+                  }}
+                  previousData={{
+                    stress: history?.[1]?.stress ?? history?.[1]?.stress_score ?? 0,
+                    sleep: history?.[1]?.input_data?.sleep_hours ?? 0,
+                    hrv: history?.[1]?.input_data?.hrv ?? 0,
+                    recovery:
+                      history?.[1]?.recovery ??
+                      history?.[1]?.recovery_score ??
+                      100,
+                    bpm: history?.[1]?.input_data?.bpm ?? 0,
+                    v_score: history?.[1]?.v_score ?? 100,
+                    status:
+                      history?.[1]?.status_visual ||
+                      history?.[1]?.status ||
+                      "normal",
+                  }}
+                  onStartRoutine={(routineData) =>
+                    setSelectedRoutine(routineData)
+                  }
+                />
+              </div>
+            </section>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
             {gamStats && (
               <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-2xl p-4 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-400" />
@@ -1013,26 +1105,36 @@ console.log("USER PLAN DEBUG", {
                 <Wifi className="w-10 h-10 text-cyan-400" />
               </div>
 
-              <h2 className="text-3xl font-black tracking-tight mb-3">
-                Aguardando sincronização
+              <h2 className="text-3xl font-black tracking-tight mb-3 text-white">
+                {devicesLoading
+                  ? "Verificando wearables..."
+                  : hasConnectedWearables
+                  ? "Aguardando sincronização"
+                  : "Nenhum dispositivo conectado"}
               </h2>
 
               <p className="text-neutral-400 max-w-2xl mx-auto">
-                Seu dispositivo está conectado. Assim que os primeiros dados
-                biométricos forem sincronizados, o VitalFlow vai gerar sua
-                primeira análise automaticamente.
+                {devicesLoading
+                  ? "Estamos verificando seus dispositivos conectados."
+                  : hasConnectedWearables
+                  ? "Seu dispositivo está conectado. Assim que os primeiros dados biométricos reais forem sincronizados, o VitalFlow vai gerar sua primeira análise automaticamente."
+                  : "Conecte um wearable para começar a receber seus dados biométricos reais e gerar suas análises automaticamente."}
               </p>
 
               <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 text-sm font-semibold">
                 <Smartphone className="w-4 h-4" />
-                {connectedDevices.length} dispositivo(s) conectado(s)
+                {devicesLoading
+                  ? "Verificando..."
+                  : `${connectedDevicesCount} dispositivo(s) conectado(s)`}
               </div>
 
               <div className="mt-4 text-xs text-neutral-500">
-                A primeira análise será gerada automaticamente após a sincronização
+                {hasConnectedWearables
+                  ? "A primeira análise será gerada automaticamente após a sincronização"
+                  : "Conecte um dispositivo em Dispositivos para começar"}
               </div>
 
-              {lastSyncData?.auto_analysis && (
+              {lastSyncData?.auto_analysis ? (
                 <button
                   onClick={async () => {
                     await fetchHistory();
@@ -1041,7 +1143,14 @@ console.log("USER PLAN DEBUG", {
                 >
                   Carregar última análise
                 </button>
-              )}
+              ) : hasConnectedWearables ? (
+                <button
+                  onClick={backgroundSync}
+                  className="mt-6 px-4 py-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all text-sm font-semibold"
+                >
+                  Sincronizar agora
+                </button>
+              ) : null}
             </div>
 
             <div className="border border-white/10 bg-neutral-900/50 rounded-3xl p-6">
@@ -1059,14 +1168,14 @@ console.log("USER PLAN DEBUG", {
       </div>
 
       <RoutineExecutionModal
-  open={!!selectedRoutine}
-  routine={selectedRoutine}
-  onClose={() => setSelectedRoutine(null)}
-  onComplete={(routine) => {
-    setSelectedRoutine(null);
-    fetchHistory?.();
-  }}
-/>
+        open={!!selectedRoutine}
+        routine={selectedRoutine}
+        onClose={() => setSelectedRoutine(null)}
+        onComplete={() => {
+          setSelectedRoutine(null);
+          fetchHistory();
+        }}
+      />
     </div>
   );
 }
