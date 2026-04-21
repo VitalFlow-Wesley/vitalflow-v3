@@ -1,25 +1,29 @@
-import logging
+import os
 import uuid
+import random
+import logging
+from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import RedirectResponse
 
-from auth_utils import get_current_colaborador
-from core_engine import process_analysis
 from database import db
+from auth_utils import get_current_colaborador
+from models import WearableConnectionRequest, WearableConnectionResponse
+from services import google_fit_service
+from core_engine import process_analysis, calculate_baseline
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+ALLOW_MOCK_SCENARIOS = (
+    os.getenv("ALLOW_MOCK_SCENARIOS", "false").strip().lower() == "true"
+)
 
-REAL_SOURCES = {
-    "google_fit",
-    "wearable",
-    "google_health_connect",
-    "health_connect",
-    "google_fit_oauth",
-}
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _to_dict(value: Any) -> Dict[str, Any]:
@@ -37,286 +41,772 @@ def _to_dict(value: Any) -> Dict[str, Any]:
         return {}
 
 
-def _pick_first_non_none(*values: Any) -> Any:
-    for value in values:
-        if value is not None:
-            return value
-    return None
+def _to_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except Exception:
+        return default
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _to_int(value: Any, default: int = 0) -> int:
+    try:
+        if value is None or value == "":
+            return default
+        return int(round(float(value)))
+    except Exception:
+        return default
 
 
-def _normalize_source(source: Optional[str], has_real_data: bool) -> str:
-    if source:
-        return str(source).strip().lower()
-    return "google_fit" if has_real_data else "manual"
+def normalize_scenario(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+
+    value = str(value).strip().lower()
+    return value or None
 
 
-def _normalize_data_mode(
-    payload: Dict[str, Any],
-    engine_output: Dict[str, Any],
-    source: str,
-    real_data: Dict[str, Any],
-) -> str:
-    explicit = payload.get("data_mode") or engine_output.get("data_mode")
-    if explicit:
-        return str(explicit).strip().lower()
-
-    if real_data or source in REAL_SOURCES:
-        return "real"
-
-    return "manual"
-
-
-def _build_real_filter(
-    colaborador_id: str,
-    since_iso: Optional[str] = None,
-    analysis_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    query: Dict[str, Any] = {
-        "colaborador_id": colaborador_id,
-        "$or": [
-            {"data_mode": "real"},
-            {"has_real_data": True},
-            {"source": {"$in": list(REAL_SOURCES)}},
-        ],
+def get_mock_scenario(name: Optional[str]):
+    scenarios = {
+        "stable": {
+            "hrv": 72,
+            "bpm": 64,
+            "bpm_average": 66,
+            "sleep_hours": 8.1,
+            "steps": 9400,
+            "sleep_quality": "boa",
+            "has_real_data": False,
+            "data_mode": "mock",
+            "activity_analysis": {
+                "exercise_detected": False,
+                "total_exercise_hours": 0,
+                "total_stress_hours": 1,
+            },
+            "source": "mock_stable",
+        },
+        "stress_high": {
+            "hrv": 28,
+            "bpm": 108,
+            "bpm_average": 92,
+            "sleep_hours": 5.2,
+            "steps": 3100,
+            "sleep_quality": "ruim",
+            "has_real_data": False,
+            "data_mode": "mock",
+            "activity_analysis": {
+                "exercise_detected": False,
+                "total_exercise_hours": 0,
+                "total_stress_hours": 8,
+            },
+            "source": "mock_stress_high",
+        },
+        "sleep_poor": {
+            "hrv": 38,
+            "bpm": 86,
+            "bpm_average": 80,
+            "sleep_hours": 4.3,
+            "steps": 4200,
+            "sleep_quality": "ruim",
+            "has_real_data": False,
+            "data_mode": "mock",
+            "activity_analysis": {
+                "exercise_detected": False,
+                "total_exercise_hours": 0,
+                "total_stress_hours": 5,
+            },
+            "source": "mock_sleep_poor",
+        },
+        "recovery_good": {
+            "hrv": 81,
+            "bpm": 58,
+            "bpm_average": 61,
+            "sleep_hours": 8.7,
+            "steps": 7600,
+            "sleep_quality": "excelente",
+            "has_real_data": False,
+            "data_mode": "mock",
+            "activity_analysis": {
+                "exercise_detected": False,
+                "total_exercise_hours": 0,
+                "total_stress_hours": 1,
+            },
+            "source": "mock_recovery_good",
+        },
+        "fatigue_risk": {
+            "hrv": 31,
+            "bpm": 96,
+            "bpm_average": 89,
+            "sleep_hours": 5.0,
+            "steps": 2600,
+            "sleep_quality": "regular",
+            "has_real_data": False,
+            "data_mode": "mock",
+            "activity_analysis": {
+                "exercise_detected": False,
+                "total_exercise_hours": 0,
+                "total_stress_hours": 7,
+            },
+            "source": "mock_fatigue_risk",
+        },
+        "exercise_mode": {
+            "hrv": 55,
+            "bpm": 126,
+            "bpm_average": 78,
+            "sleep_hours": 7.4,
+            "steps": 14300,
+            "sleep_quality": "boa",
+            "has_real_data": False,
+            "data_mode": "mock",
+            "activity_analysis": {
+                "exercise_detected": True,
+                "total_exercise_hours": 2,
+                "total_stress_hours": 1,
+            },
+            "source": "mock_exercise_mode",
+        },
     }
 
-    if since_iso:
-        query["timestamp"] = {"$gte": since_iso}
+    if name in (None, "", "random"):
+        chosen = random.choice(list(scenarios.values()))
+        return dict(chosen)
 
-    if analysis_id:
-        query["id"] = analysis_id
-
-    return query
+    return dict(scenarios.get(name, scenarios["stable"]))
 
 
-def _serialize_analysis(doc: Dict[str, Any]) -> Dict[str, Any]:
-    engine = _to_dict(doc.get("engine"))
-    recovery = _to_dict(doc.get("recovery"))
-    input_data = _to_dict(doc.get("input_data"))
-    real_data = _to_dict(doc.get("real_data"))
+async def _activate_premium_trial_on_first_wearable(colaborador_id: str):
+    colab = await db.colaboradores.find_one(
+        {"id": colaborador_id},
+        {"_id": 0, "is_premium": 1, "premium_expires_at": 1},
+    )
+    if colab and not colab.get("is_premium") and not colab.get("premium_expires_at"):
+        trial_expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+        await db.colaboradores.update_one(
+            {"id": colaborador_id},
+            {
+                "$set": {
+                    "is_premium": True,
+                    "premium_expires_at": trial_expires,
+                    "updated_at": _now_iso(),
+                }
+            },
+        )
+
+
+async def _ensure_connected_device(
+    colaborador_id: str,
+    provider: str = "google_health_connect",
+    device_name: str = "Google Health Connect",
+):
+    existing = await db.wearable_devices.find_one(
+        {"colaborador_id": colaborador_id, "provider": provider},
+        {"_id": 0},
+    )
+
+    now_iso = _now_iso()
+
+    if existing:
+        await db.wearable_devices.update_one(
+            {"id": existing["id"]},
+            {
+                "$set": {
+                    "device_name": existing.get("device_name") or device_name,
+                    "is_connected": True,
+                    "last_sync": now_iso,
+                }
+            },
+        )
+        return existing["id"]
+
+    device_id = str(uuid.uuid4())
+    await db.wearable_devices.insert_one(
+        {
+            "id": device_id,
+            "colaborador_id": colaborador_id,
+            "provider": provider,
+            "device_name": device_name,
+            "is_connected": True,
+            "last_sync": now_iso,
+            "created_at": now_iso,
+        }
+    )
+    return device_id
+
+
+async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], biometrics: Dict[str, Any]):
+    from services.ai_service import (
+        analyze_biometrics,
+        classify_activity,
+        calculate_sleep_recovery,
+    )
+    from models import BiometricInput, Analysis
+
+    cid = colaborador["id"]
+
+    bpm = _to_int(biometrics.get("bpm"))
+    bpm_average = _to_int(biometrics.get("bpm_average"))
+    hrv = _to_int(biometrics.get("hrv"))
+    sleep_hours = _to_float(biometrics.get("sleep_hours"))
+    steps = _to_int(biometrics.get("steps"))
+
+    has_minimum_signal = any(
+        [
+            bpm > 0,
+            bpm_average > 0,
+            hrv > 0,
+            sleep_hours > 0,
+            steps > 0,
+        ]
+    )
+
+    if not has_minimum_signal:
+        return None
+
+    if bpm <= 0:
+        bpm = bpm_average if bpm_average > 0 else 70
+
+    if bpm_average <= 0:
+        bpm_average = bpm
+
+    if hrv <= 0:
+        hrv = 45
+
+    activity_analysis = biometrics.get("activity_analysis", {})
+    if not isinstance(activity_analysis, dict):
+        activity_analysis = {}
+
+    exercise_detected = bool(activity_analysis.get("exercise_detected", False))
+    total_exercise_hours = _to_float(activity_analysis.get("total_exercise_hours"))
+    total_stress_hours = _to_float(activity_analysis.get("total_stress_hours"))
+    avg_steps_per_hour = steps // 24 if steps > 0 else 0
+
+    try:
+        activity_ctx_raw = classify_activity(bpm, steps, avg_steps_per_hour)
+        activity_ctx = activity_ctx_raw if isinstance(activity_ctx_raw, dict) else {"label": str(activity_ctx_raw)}
+    except Exception:
+        activity_ctx = {"label": "unknown"}
+
+    try:
+        recovery_raw = calculate_sleep_recovery(
+            sleep_hours if sleep_hours > 0 else 7,
+            biometrics.get("sleep_quality"),
+        )
+        recovery = recovery_raw if isinstance(recovery_raw, dict) else {"label": str(recovery_raw), "score": 0}
+    except Exception:
+        recovery = {"label": "unknown", "score": 0}
+
+    history = await db.analyses.find(
+        {
+            "colaborador_id": cid,
+            "$or": [
+                {"data_mode": "real"},
+                {"has_real_data": True},
+                {"source": "google_fit_auto"},
+                {"source": "google_fit"},
+                {"source": "google_health_connect"},
+            ],
+        },
+        {"_id": 0, "v_score": 1, "input_data": 1, "timestamp": 1},
+    ).sort("timestamp", -1).to_list(20)
+
+    history_data = []
+    history_scores = []
+
+    for item in history:
+        if not isinstance(item, dict):
+            continue
+
+        previous_input = item.get("input_data", {})
+        if not isinstance(previous_input, dict):
+            previous_input = {}
+
+        previous_bpm = _to_int(previous_input.get("bpm"))
+        previous_hrv = _to_int(previous_input.get("hrv"))
+
+        if previous_bpm > 0 or previous_hrv > 0:
+            history_data.append(
+                {
+                    "bpm": previous_bpm if previous_bpm > 0 else 70,
+                    "hrv": previous_hrv if previous_hrv > 0 else 45,
+                }
+            )
+
+        if item.get("v_score") is not None:
+            history_scores.append(item["v_score"])
+
+    baseline = calculate_baseline(history_data)
+    history_avg = sum(history_scores) / len(history_scores) if history_scores else None
+
+    engine_result = process_analysis(
+        {"bpm": bpm, "hrv": hrv},
+        baseline,
+        history_avg,
+    )
+    if not isinstance(engine_result, dict):
+        engine_result = _to_dict(engine_result)
+
+    if not engine_result:
+        engine_result = {
+            "v_score": 50,
+            "status_visual": "Atencao",
+            "stress_score": 50,
+            "recovery_score": 50,
+            "risk_score": 50,
+            "contexto": "unknown",
+            "alert": None,
+        }
+
+    input_data = BiometricInput(
+        hrv=max(0, min(200, hrv)),
+        bpm=max(40, min(200, bpm)),
+        bpm_average=max(40, min(120, bpm_average)),
+        sleep_hours=min(24, sleep_hours if sleep_hours > 0 else 0),
+        cognitive_load=5,
+        colaborador_id=cid,
+        user_name=colaborador.get("nome", "Colaborador"),
+        age=30,
+    )
+
+    try:
+        ai_result_raw = await analyze_biometrics(input_data, activity_ctx, recovery)
+    except TypeError:
+        ai_result_raw = await analyze_biometrics(input_data)
+    except Exception:
+        ai_result_raw = None
+
+    ai_result = ai_result_raw if isinstance(ai_result_raw, dict) else _to_dict(ai_result_raw)
+    if not ai_result:
+        ai_result = {
+            "v_score": engine_result.get("v_score", 50),
+            "area_afetada": [],
+            "status_visual": engine_result.get("status_visual", "Atencao"),
+            "tag_rapida": "Analise automatica",
+            "causa_provavel": "Processamento automatico do VitalFlow.",
+            "nudge_acao": "Continue monitorando seus dados.",
+        }
+
+    final_v_score = int(
+        round(
+            (
+                ai_result.get("v_score", engine_result.get("v_score", 50))
+                + engine_result.get("v_score", 50)
+            )
+            / 2
+        )
+    )
+
+    analysis = Analysis(
+        v_score=final_v_score,
+        area_afetada=ai_result.get("area_afetada", []),
+        status_visual=engine_result.get("status_visual", ai_result.get("status_visual", "Atencao")),
+        tag_rapida=ai_result.get("tag_rapida", "Analise automatica"),
+        causa_provavel=ai_result.get("causa_provavel", "Sem causa definida"),
+        nudge_acao=ai_result.get("nudge_acao", "Continue monitorando seus dados."),
+        input_data=input_data,
+        colaborador_id=cid,
+    )
+
+    doc = analysis.model_dump()
+    doc["id"] = str(uuid.uuid4())
+    doc["timestamp"] = doc["timestamp"].isoformat()
+    doc["created_at"] = _now_iso()
+    doc["updated_at"] = _now_iso()
+    doc["input_data"] = input_data.model_dump()
+    doc["source"] = biometrics.get("source", "google_fit_auto")
+    doc["scenario"] = biometrics.get("scenario", "real")
+    doc["data_mode"] = "real"
+    doc["has_real_data"] = True
+    doc["activity_context"] = activity_ctx
+    doc["recovery"] = recovery
+    doc["engine"] = engine_result
+    doc["stress_score"] = engine_result.get("stress_score", 50)
+    doc["recovery_score"] = engine_result.get("recovery_score", 50)
+    doc["risk_score"] = engine_result.get("risk_score", 50)
+    doc["bpm"] = bpm
+    doc["hrv"] = hrv
+    doc["sleep_hours"] = sleep_hours
+    doc["steps"] = steps
+    doc["real_data"] = {
+        "bpm": bpm,
+        "bpm_average": bpm_average,
+        "hrv": hrv,
+        "sleep_hours": sleep_hours,
+        "steps": steps,
+        "sleep_quality": biometrics.get("sleep_quality"),
+        "exercise_detected": exercise_detected,
+        "exercise_hours": total_exercise_hours,
+        "stress_periods": total_stress_hours,
+    }
+
+    await db.analyses.insert_one(doc)
 
     return {
-        "id": doc.get("id"),
-        "timestamp": doc.get("timestamp"),
-        "v_score": doc.get("v_score", 0),
-        "status_visual": doc.get("status_visual", "normal"),
-        "area_afetada": doc.get("area_afetada", []),
-        "tag_rapida": doc.get("tag_rapida"),
-        "nudge_acao": doc.get("nudge_acao"),
-        "causa_provavel": doc.get("causa_provavel"),
-        "engine": engine,
-        "input_data": input_data,
-        "real_data": real_data,
-        "activity_context": doc.get("activity_context"),
-        "recovery": recovery,
-        "source": doc.get("source", "unknown"),
-        "data_mode": doc.get("data_mode", "real"),
-        "has_real_data": doc.get("has_real_data", False),
-        "bpm": _pick_first_non_none(doc.get("bpm"), input_data.get("bpm"), real_data.get("bpm")),
-        "hrv": _pick_first_non_none(doc.get("hrv"), input_data.get("hrv"), real_data.get("hrv")),
-        "sleep_hours": _pick_first_non_none(
-            doc.get("sleep_hours"),
-            input_data.get("sleep_hours"),
-            real_data.get("sleep_hours"),
-        ),
-        "steps": _pick_first_non_none(doc.get("steps"), input_data.get("steps"), real_data.get("steps")),
-        "stress_score": _pick_first_non_none(doc.get("stress_score"), engine.get("stress_score")),
-        "recovery_score": _pick_first_non_none(doc.get("recovery_score"), engine.get("recovery_score")),
-        "risk_score": _pick_first_non_none(doc.get("risk_score"), engine.get("risk_score")),
+        "id": doc["id"],
+        "timestamp": doc["timestamp"],
+        "v_score": final_v_score,
+        "status_visual": doc["status_visual"],
+        "tag_rapida": doc["tag_rapida"],
+        "causa_provavel": doc["causa_provavel"],
+        "nudge_acao": doc["nudge_acao"],
+        "area_afetada": doc["area_afetada"],
+        "exercise_detected": exercise_detected,
+        "recovery_label": recovery.get("label", "Sem classificacao"),
+        "sleep_hours": sleep_hours,
+        "steps": steps,
+        "stress_score": doc["stress_score"],
+        "recovery_score": doc["recovery_score"],
+        "risk_score": doc["risk_score"],
+        "contexto": engine_result.get("contexto", "unknown"),
+        "alert": engine_result.get("alert"),
+        "scenario": doc["scenario"],
+        "data_mode": "real",
+        "has_real_data": True,
+        "source": doc["source"],
+        "input_data": doc["input_data"],
+        "real_data": doc["real_data"],
+        "engine": doc["engine"],
+        "recovery": doc["recovery"],
+        "activity_context": doc["activity_context"],
+        "bpm": bpm,
+        "hrv": hrv,
     }
 
 
-@router.post("/analyze")
-async def create_analysis(input_data: Dict[str, Any], request: Request):
+@router.post("/wearables/connect", response_model=WearableConnectionResponse)
+async def connect_wearable(data: WearableConnectionRequest, request: Request):
     try:
         colaborador = await get_current_colaborador(request)
 
-        payload = _to_dict(input_data)
-        analysis_engine_output = _to_dict(process_analysis(payload))
-
-        incoming_real_data = _to_dict(payload.get("real_data"))
-        incoming_input_data = _to_dict(payload.get("input_data"))
-        engine = _to_dict(analysis_engine_output.get("engine"))
-        recovery = _to_dict(analysis_engine_output.get("recovery"))
-
-        bpm = _pick_first_non_none(
-            payload.get("bpm"),
-            incoming_input_data.get("bpm"),
-            incoming_real_data.get("bpm"),
-            analysis_engine_output.get("bpm"),
-            engine.get("bpm"),
-        )
-        hrv = _pick_first_non_none(
-            payload.get("hrv"),
-            incoming_input_data.get("hrv"),
-            incoming_real_data.get("hrv"),
-            analysis_engine_output.get("hrv"),
-            engine.get("hrv"),
-        )
-        sleep_hours = _pick_first_non_none(
-            payload.get("sleep_hours"),
-            incoming_input_data.get("sleep_hours"),
-            incoming_real_data.get("sleep_hours"),
-            analysis_engine_output.get("sleep_hours"),
-            engine.get("sleep_hours"),
-        )
-        steps = _pick_first_non_none(
-            payload.get("steps"),
-            incoming_input_data.get("steps"),
-            incoming_real_data.get("steps"),
-            analysis_engine_output.get("steps"),
-            engine.get("steps"),
-        )
-
-        normalized_input_data = {
-            "bpm": bpm,
-            "hrv": hrv,
-            "sleep_hours": sleep_hours,
-            "steps": steps,
-        }
-        normalized_input_data = {
-            key: value for key, value in normalized_input_data.items() if value is not None
-        }
-
-        normalized_real_data = dict(incoming_real_data)
-        for key, value in normalized_input_data.items():
-            normalized_real_data.setdefault(key, value)
-
-        provisional_has_real_data = bool(
-            payload.get("has_real_data")
-            or analysis_engine_output.get("has_real_data")
-            or normalized_real_data
-        )
-
-        provisional_source = _normalize_source(
-            payload.get("source") or analysis_engine_output.get("source"),
-            provisional_has_real_data,
-        )
-
-        data_mode = _normalize_data_mode(
-            payload,
-            analysis_engine_output,
-            provisional_source,
-            normalized_real_data,
-        )
-
-        has_real_data = bool(
-            provisional_has_real_data
-            or data_mode == "real"
-            or provisional_source in REAL_SOURCES
-        )
-
-        source = _normalize_source(provisional_source, has_real_data)
-        timestamp = (
-            payload.get("timestamp")
-            or analysis_engine_output.get("timestamp")
-            or _now_iso()
-        )
-        now_iso = _now_iso()
-
-        analysis_doc = {
+        device = {
             "id": str(uuid.uuid4()),
             "colaborador_id": colaborador["id"],
-            "timestamp": timestamp,
-            "created_at": now_iso,
-            "updated_at": now_iso,
-            "source": source,
-            "data_mode": "real" if has_real_data else data_mode,
-            "has_real_data": has_real_data,
-            "input_data": normalized_input_data,
-            "real_data": normalized_real_data,
-            "engine": engine,
-            "recovery": recovery,
-            "activity_context": analysis_engine_output.get("activity_context"),
-            "v_score": analysis_engine_output.get("v_score", payload.get("v_score", 0)),
-            "status_visual": analysis_engine_output.get(
-                "status_visual", payload.get("status_visual", "normal")
-            ),
-            "area_afetada": analysis_engine_output.get(
-                "area_afetada", payload.get("area_afetada", [])
-            ),
-            "tag_rapida": analysis_engine_output.get(
-                "tag_rapida", payload.get("tag_rapida")
-            ),
-            "nudge_acao": analysis_engine_output.get(
-                "nudge_acao", payload.get("nudge_acao")
-            ),
-            "causa_provavel": analysis_engine_output.get(
-                "causa_provavel", payload.get("causa_provavel")
-            ),
-            "stress_score": _pick_first_non_none(
-                analysis_engine_output.get("stress_score"),
-                engine.get("stress_score"),
-            ),
-            "recovery_score": _pick_first_non_none(
-                analysis_engine_output.get("recovery_score"),
-                engine.get("recovery_score"),
-            ),
-            "risk_score": _pick_first_non_none(
-                analysis_engine_output.get("risk_score"),
-                engine.get("risk_score"),
-            ),
-            "bpm": bpm,
-            "hrv": hrv,
-            "sleep_hours": sleep_hours,
-            "steps": steps,
+            "provider": data.provider,
+            "device_name": data.device_name,
+            "is_connected": True,
+            "last_sync": _now_iso(),
+            "created_at": _now_iso(),
         }
 
-        await db.analyses.insert_one(analysis_doc)
-        return _serialize_analysis(analysis_doc)
+        await db.wearable_devices.insert_one(device)
 
-    except HTTPException:
-        raise
+        return WearableConnectionResponse(
+            id=device["id"],
+            provider=device["provider"],
+            device_name=device["device_name"],
+            is_connected=device["is_connected"],
+            last_sync=device["last_sync"],
+            created_at=device["created_at"],
+        )
     except Exception as e:
-        logger.error(f"Error creating analysis: {str(e)}")
+        logger.error(f"Error connecting wearable: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/history")
-async def get_history(request: Request, limit: int = 30):
+@router.get("/wearables", response_model=List[WearableConnectionResponse])
+async def get_wearables(request: Request):
     try:
         colaborador = await get_current_colaborador(request)
-        limit = max(1, min(limit, 100))
+        devices = await db.wearable_devices.find(
+            {"colaborador_id": colaborador["id"]},
+            {"_id": 0},
+        ).to_list(100)
 
-        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-        query = _build_real_filter(
-            colaborador_id=colaborador["id"],
-            since_iso=thirty_days_ago.isoformat(),
-        )
-
-        analyses = await db.analyses.find(query).sort("timestamp", -1).to_list(limit)
-        return [_serialize_analysis(a) for a in analyses]
-
-    except HTTPException:
-        raise
+        return [
+            WearableConnectionResponse(
+                id=d["id"],
+                provider=d["provider"],
+                device_name=d["device_name"],
+                is_connected=d["is_connected"],
+                last_sync=d.get("last_sync"),
+                created_at=d["created_at"],
+            )
+            for d in devices
+        ]
     except Exception as e:
-        logger.error(f"Error fetching history: {str(e)}")
+        logger.error(f"Error fetching wearables: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/analysis/{analysis_id}")
-async def get_analysis(analysis_id: str, request: Request):
+@router.delete("/wearables/{device_id}")
+async def disconnect_wearable(device_id: str, request: Request):
     try:
         colaborador = await get_current_colaborador(request)
-
-        query = _build_real_filter(
-            colaborador_id=colaborador["id"],
-            analysis_id=analysis_id,
+        result = await db.wearable_devices.delete_one(
+            {"id": device_id, "colaborador_id": colaborador["id"]}
         )
 
-        analysis = await db.analyses.find_one(query)
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Dispositivo nao encontrado")
 
-        if not analysis:
-            raise HTTPException(status_code=404, detail="Análise não encontrada.")
+        await db.wearable_tokens.delete_many(
+            {"colaborador_id": colaborador["id"], "provider": "google_health_connect"}
+        )
 
-        return _serialize_analysis(analysis)
+        return {"status": "success", "message": "Dispositivo desconectado"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error disconnecting wearable: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/wearables/google-fit/status")
+async def google_fit_status():
+    configured = google_fit_service.is_configured()
+    return {
+        "configured": configured,
+        "message": (
+            "Google Fit configurado e pronto."
+            if configured
+            else "Credenciais do Google Fit nao configuradas. Adicione GOOGLE_FIT_CLIENT_ID e GOOGLE_FIT_CLIENT_SECRET no ambiente."
+        ),
+    }
+
+
+@router.get("/wearables/google-fit/auth")
+async def google_fit_auth(request: Request):
+    colaborador = await get_current_colaborador(request)
+
+    if not google_fit_service.is_configured():
+        raise HTTPException(
+            status_code=501,
+            detail="Google Fit nao configurado. Credenciais OAuth pendentes.",
+        )
+
+    auth_url = google_fit_service.get_auth_url(state=colaborador["id"])
+    return {"auth_url": auth_url}
+
+
+@router.get("/wearables/google-fit/callback")
+async def google_fit_callback(code: str = "", state: str = ""):
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="Parametros invalidos no callback.")
+
+    tokens = await google_fit_service.exchange_code(code)
+    if not tokens:
+        raise HTTPException(
+            status_code=502,
+            detail="Falha ao trocar codigo por token no Google.",
+        )
+
+    await db.wearable_tokens.update_one(
+        {"colaborador_id": state, "provider": "google_health_connect"},
+        {
+            "$set": {
+                "access_token": tokens.get("access_token"),
+                "refresh_token": tokens.get("refresh_token"),
+                "expires_in": tokens.get("expires_in"),
+                "token_type": tokens.get("token_type", "Bearer"),
+                "updated_at": _now_iso(),
+            }
+        },
+        upsert=True,
+    )
+
+    await _ensure_connected_device(
+        colaborador_id=state,
+        provider="google_health_connect",
+        device_name="Google Health Connect",
+    )
+
+    colab = await db.colaboradores.find_one(
+        {"id": state},
+        {"_id": 0},
+    )
+
+    await _activate_premium_trial_on_first_wearable(state)
+
+    biometrics = await google_fit_service.fetch_biometrics(tokens.get("access_token"))
+    if isinstance(biometrics, dict):
+        biometrics["colaborador_id"] = state
+        biometrics["synced_at"] = _now_iso()
+        biometrics["scenario"] = "real"
+        biometrics["data_mode"] = "real"
+        biometrics["has_real_data"] = True
+        biometrics["source"] = biometrics.get("source", "google_fit")
+        await db.google_fit_data.insert_one(biometrics)
+
+        if colab:
+            try:
+                await _create_real_analysis_from_biometrics(colab, biometrics)
+            except Exception as sync_error:
+                logger.warning(f"Google Fit callback salvou wearable, mas nao gerou analise: {sync_error}")
+
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    return RedirectResponse(url=f"{frontend_url}/devices?google_fit=success")
+
+
+@router.post("/wearables/oauth/callback")
+async def wearable_oauth_callback(request: Request):
+    try:
+        colaborador = await get_current_colaborador(request)
+        body = await request.json()
+        provider = body.get("provider", "google_health_connect")
+
+        if not ALLOW_MOCK_SCENARIOS:
+            raise HTTPException(
+                status_code=400,
+                detail="Fluxo simulado desabilitado. Use a autorizacao real do Google Fit.",
+            )
+
+        sync_data = get_mock_scenario("random")
+        sync_data["source"] = provider
+        sync_data["scenario"] = "random"
+        sync_data["provider"] = provider
+
+        device_id = await _ensure_connected_device(
+            colaborador_id=colaborador["id"],
+            provider=provider,
+            device_name=provider.replace("_", " ").title(),
+        )
+
+        await _activate_premium_trial_on_first_wearable(colaborador["id"])
+
+        return {
+            "status": "authorized",
+            "device_id": device_id,
+            "provider": provider,
+            "sync_data": sync_data,
+            "message": f"Dispositivo {provider} autorizado em modo simulacao.",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in OAuth callback: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/wearables/sync")
+async def sync_wearable_data(request: Request):
+    try:
+        colaborador = await get_current_colaborador(request)
+        cid = colaborador["id"]
+
+        body = {}
+        try:
+            body = await request.json()
+            if not isinstance(body, dict):
+                body = {}
+        except Exception:
+            body = {}
+
+        requested_scenario = normalize_scenario(body.get("scenario"))
+
+        token_doc = await db.wearable_tokens.find_one(
+            {"colaborador_id": cid, "provider": "google_health_connect"},
+            {"_id": 0},
+        )
+
+        has_real_token = bool(token_doc and token_doc.get("access_token"))
+        biometrics = None
+
+        if requested_scenario and requested_scenario not in ("real",) and not ALLOW_MOCK_SCENARIOS:
+            raise HTTPException(
+                status_code=400,
+                detail="Simulacao desabilitada neste ambiente.",
+            )
+
+        if has_real_token and requested_scenario in (None, "real"):
+            access_token = token_doc["access_token"]
+            refresh_token = token_doc.get("refresh_token")
+
+            biometrics = await google_fit_service.fetch_biometrics(access_token)
+
+            if not biometrics and refresh_token:
+                new_tokens = await google_fit_service.refresh_access_token(refresh_token)
+                if isinstance(new_tokens, dict) and new_tokens.get("access_token"):
+                    access_token = new_tokens["access_token"]
+
+                    await db.wearable_tokens.update_one(
+                        {"colaborador_id": cid, "provider": "google_health_connect"},
+                        {
+                            "$set": {
+                                "access_token": access_token,
+                                "updated_at": _now_iso(),
+                            }
+                        },
+                    )
+
+                    biometrics = await google_fit_service.fetch_biometrics(access_token)
+
+            if isinstance(biometrics, dict):
+                biometrics["data_mode"] = "real"
+                biometrics["has_real_data"] = True
+                biometrics["scenario"] = "real"
+                biometrics["source"] = biometrics.get("source", "google_fit")
+
+        if not isinstance(biometrics, dict):
+            if requested_scenario and requested_scenario not in (None, "real"):
+                if not ALLOW_MOCK_SCENARIOS:
+                    return {
+                        "status": "no_real_data",
+                        "message": "Simulacao desabilitada e nenhum dado real foi sincronizado.",
+                    }
+
+                biometrics = get_mock_scenario(requested_scenario)
+                biometrics["scenario"] = requested_scenario or "random"
+            else:
+                if has_real_token:
+                    return {
+                        "status": "no_data",
+                        "message": "Nao foi possivel obter dados reais do Google Fit agora. Tente novamente em instantes.",
+                    }
+
+                return {
+                    "status": "no_real_data",
+                    "message": "Nenhum wearable real conectado. Conecte o Google Health Connect primeiro.",
+                }
+
+        biometrics["colaborador_id"] = cid
+        biometrics["synced_at"] = _now_iso()
+        biometrics["data_mode"] = biometrics.get("data_mode", "real")
+        biometrics["has_real_data"] = biometrics.get("data_mode") == "real"
+        biometrics["scenario"] = biometrics.get("scenario", "real")
+        biometrics["source"] = biometrics.get("source", "google_fit")
+
+        await db.google_fit_data.insert_one(biometrics)
+
+        await _ensure_connected_device(
+            colaborador_id=cid,
+            provider="google_health_connect",
+            device_name="Google Health Connect",
+        )
+
+        analysis_result = None
+        try:
+            analysis_result = await _create_real_analysis_from_biometrics(colaborador, biometrics)
+        except Exception as analysis_error:
+            logger.error(f"Erro ao gerar analise a partir do sync: {analysis_error}")
+
+        safe_biometrics = {
+            key: value
+            for key, value in biometrics.items()
+            if key not in ("_id", "hourly_bpm", "hourly_steps")
+        }
+
+        if analysis_result:
+            return {
+                "status": "synced",
+                "scenario": biometrics.get("scenario", "real"),
+                "has_real_data": True,
+                "data_mode": "real",
+                "data": safe_biometrics,
+                "real_data": analysis_result.get("real_data", safe_biometrics),
+                "auto_analysis": analysis_result,
+            }
+
+        return {
+            "status": "synced",
+            "scenario": biometrics.get("scenario", "real"),
+            "has_real_data": biometrics.get("has_real_data", False),
+            "data_mode": biometrics.get("data_mode", "real"),
+            "data": safe_biometrics,
+            "message": "Dados do wearable foram sincronizados, mas ainda sem sinais suficientes para gerar analise.",
+            "auto_analysis": None,
+        }
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching analysis {analysis_id}: {str(e)}")
+        logger.error(f"Error syncing wearable data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
