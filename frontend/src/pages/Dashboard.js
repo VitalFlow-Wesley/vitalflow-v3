@@ -331,7 +331,7 @@ function getMetricTheme(metricLabel, metricValue, analysis) {
 
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
-
+const [dashboardLoading, setDashboardLoading] = useState(true);
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
   const [history, setHistory] = useState([]);
   const [connectedDevices, setConnectedDevices] = useState([]);
@@ -391,6 +391,8 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error("Erro ao buscar histórico:", error);
+    } finally {
+      setDashboardLoading(false);
     }
   };
 
@@ -640,7 +642,7 @@ export default function Dashboard() {
     user,
   });
 
-  const hasData = currentAnalysis !== null;
+  const hasData = !dashboardLoading && currentAnalysis !== null;
 
   const connectedDevicesCount = useMemo(() => {
     if (!Array.isArray(connectedDevices)) return 0;
