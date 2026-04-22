@@ -34,7 +34,7 @@ import {
   BedDouble,
 } from "lucide-react";
 
-// MUDANÇA AQUI: Apontando para o Railway no fallback
+// Apontando para o Railway no fallback
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 const API = `${BACKEND_URL}/api`;
 const POLLING_INTERVAL = 10000;
@@ -365,8 +365,9 @@ export default function Dashboard() {
     });
   };
 
+  // ✅ CORRIGIDO: Retornando os dados normalmente sem filtro fantasma!
   const filterRealAnalyses = (items) => {
-    const list = Array.isArray(items) ? items : [];
+    return Array.isArray(items) ? items : [];
   };
 
   const fetchHistory = async () => {
