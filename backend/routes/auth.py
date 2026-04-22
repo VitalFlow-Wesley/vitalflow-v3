@@ -397,6 +397,18 @@ async def forgot_password(data: ForgotPasswordRequest):
         logger.error(f"Error in forgot_password: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+        # ✅ ADICIONE ESTE TRECHO NO FINAL DO auth.py (antes do último endpoint)
+# Alias /me → /auth/me para compatibilidade com chamadas antigas
+@router.get("/me", response_model=AuthResponse)
+async def get_me_alias(request: Request):
+    """Alias de /auth/me para compatibilidade."""
+    colaborador = await get_current_colaborador(request)
+    company_name = await _get_company_name(
+        colaborador.get("account_type", "personal"),
+        colaborador.get("domain"),
+    )
+    return _build_auth_response(colaborador, company_name)
+
 
 @router.post("/seed-admin")
 async def seed_admin_endpoint():
