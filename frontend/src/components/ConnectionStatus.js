@@ -76,7 +76,7 @@ const ConnectionStatus = () => {
   const checkConnection = useCallback(async () => {
     try {
       // Bate na raiz do servidor para ver se ele está vivo
-      await axios.get(`${API_URL}/`, {
+      await axios.get(`${API_URL}/api/auth/me`, {
         timeout: 5000,
         // DICA PRO: Aceita erro 404 como "online", pois significa que o servidor atendeu a chamada
         validateStatus: (status) => status < 500, 
