@@ -367,7 +367,6 @@ export default function Dashboard() {
 
   const filterRealAnalyses = (items) => {
     const list = Array.isArray(items) ? items : [];
-    return list.filter((item) => item?.data_mode === "real");
   };
 
   const fetchHistory = async () => {
