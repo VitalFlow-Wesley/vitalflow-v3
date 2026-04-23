@@ -544,3 +544,21 @@ async def get_morning_report(request: Request):
     except Exception as e:
         logger.error(f"Error generating morning report: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/history")
+async def get_history(request: Request, limit: int = 30):
+    """Rota de histórico de análises do usuário logado."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        cid = colaborador["id"]
+
+        analyses = await db.analyses.find(
+            {"colaborador_id": cid},
+            {"_id": 0},
+        ).sort("timestamp", -1).to_list(limit)
+
+        return analyses
+    except Exception as e:
+        logger.error(f"Error fetching history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
