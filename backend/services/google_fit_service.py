@@ -106,10 +106,18 @@ async def fetch_biometrics(access_token: str) -> dict | None:
     try:
         import httpx
         headers = {"Authorization": f"Bearer {access_token}"}
-        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        
+        now = datetime.now(timezone.utc)
+        now_ms = int(now.timestamp() * 1000)
         day_ms = 86400000
         hour_ms = 3600000
-        start_ms = now_ms - (day_ms * 7)  # Busca ultimos 7 dias
+        
+        # BUSCA APENAS AS ULTIMAS 24 HORAS PARA NAO POLUIR OS DADOS
+        start_ms = now_ms - day_ms  
+
+        # Referencia da meia-noite de hoje para contar os passos corretos
+        start_of_day = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+        start_of_day_ms = int(start_of_day.timestamp() * 1000)
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Heart rate (hourly buckets for exercise detection)
@@ -162,7 +170,7 @@ async def fetch_biometrics(access_token: str) -> dict | None:
 
             result = {
                 "source": "google_fit",
-                "synced_at": datetime.now(timezone.utc).isoformat(),
+                "synced_at": now.isoformat(),
                 "has_real_data": False,
             }
 
@@ -191,16 +199,14 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                         }
 
                 if all_bpm:
-                    result["bpm"] = round(sum(all_bpm) / len(all_bpm))
+                    # Usa o ultimo batimento registrado para a tela inicial
+                    result["bpm"] = all_bpm[-1]
+                    result["bpm_average"] = round(sum(all_bpm) / len(all_bpm))
                     result["bpm_max"] = max(all_bpm)
                     result["bpm_min"] = min(all_bpm)
-                    result["bpm_average"] = result["bpm_min"]
-                    # HRV estimado pela variacao (Google Fit nao retorna HRV diretamente)
-                    # HRV estimado via BPM de repouso (formula baseada em estudos)
-                    # Relacao inversa: BPM repouso alto = HRV baixo
-                    bpm_repouso = result.get("bpm_average", result["bpm"])
-                    if bpm_repouso <= 0:
-                        bpm_repouso = result["bpm"]
+                    
+                    # HRV estimado via BPM de repouso
+                    bpm_repouso = result["bpm_average"]
                     hrv_estimado = round(1000 / bpm_repouso * 2.2)
                     hrv_estimado = max(20, min(80, hrv_estimado))
                     result["hrv"] = hrv_estimado
@@ -222,7 +228,11 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                             for val in point.get("value", []):
                                 if "intVal" in val:
                                     bucket_steps += val["intVal"]
-                    total_steps += bucket_steps
+                    
+                    # Soma apenas os passos dados apos a meia-noite de hoje
+                    if bucket_start >= start_of_day_ms:
+                        total_steps += bucket_steps
+                        
                     if bucket_steps > 0:
                         hourly_steps[hour_key] = bucket_steps
 
@@ -286,7 +296,8 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                                 if "fpVal" in val and val["fpVal"] > 0:
                                     all_spo2.append(round(val["fpVal"] * 100, 1))
                 if all_spo2:
-                    result["spo2"] = round(sum(all_spo2) / len(all_spo2), 1)
+                    # Usa a ultima leitura disponivel
+                    result["spo2"] = all_spo2[-1]
                     result["spo2_min"] = min(all_spo2)
                     result["has_real_data"] = True
 
