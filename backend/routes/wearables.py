@@ -512,11 +512,15 @@ async def sync_wearable_data(request: Request):
             )
             from models import BiometricInput, Analysis
 
-            sleep_h = biometrics.get("sleep_hours", 7)
+            # ====================================================
+            # CORREÇÃO AQUI: Resgatando todos os dados, incluindo o SpO2
+            # ====================================================
+            sleep_h = biometrics.get("sleep_hours", 0)
             steps = biometrics.get("steps", 0)
-            bpm = biometrics.get("bpm", 70)
-            hrv = biometrics.get("hrv", 50)
-            bpm_avg = biometrics.get("bpm_average", 70)
+            bpm = biometrics.get("bpm", 0)
+            hrv = biometrics.get("hrv", 0)
+            bpm_avg = biometrics.get("bpm_average", 0)
+            spo2 = biometrics.get("spo2", None)
 
             activity_analysis = biometrics.get("activity_analysis", {})
             if not isinstance(activity_analysis, dict):
@@ -660,7 +664,17 @@ async def sync_wearable_data(request: Request):
 
             doc = analysis.model_dump()
             doc["timestamp"] = doc["timestamp"].isoformat()
+            
+            # ====================================================
+            # CORREÇÃO AQUI: Forçando a injeção do SpO2 e passos reais
+            # ====================================================
             doc["input_data"] = input_data.model_dump()
+            doc["input_data"]["bpm"] = bpm
+            doc["input_data"]["hrv"] = hrv
+            doc["input_data"]["steps"] = steps
+            if spo2:
+                doc["input_data"]["spo2"] = spo2
+
             doc["source"] = biometrics.get("source", "google_fit_auto")
             doc["scenario"] = biometrics.get("scenario", "real")
             doc["data_mode"] = biometrics.get("data_mode", "real")
@@ -671,6 +685,7 @@ async def sync_wearable_data(request: Request):
             doc["real_data"] = {
                 "steps": steps,
                 "sleep_hours": sleep_h,
+                "spo2": spo2, # Salvando o SpO2
                 "exercise_detected": exercise_detected,
                 "exercise_hours": total_exercise_hours,
                 "stress_periods": total_stress_hours,
@@ -678,6 +693,9 @@ async def sync_wearable_data(request: Request):
 
             await db.analyses.insert_one(doc)
 
+            # ====================================================
+            # CORREÇÃO AQUI: Retornando tudo na raiz para o Dashboard.js ler
+            # ====================================================
             analysis_result = {
                 "v_score": final_v_score,
                 "status_visual": engine_result.get("status_visual", "Atencao"),
@@ -685,7 +703,10 @@ async def sync_wearable_data(request: Request):
                 "exercise_detected": exercise_detected,
                 "recovery_label": recovery.get("label", "Sem classificacao"),
                 "sleep_hours": sleep_h,
-                "steps": steps,
+                "steps": steps, # <-- Passos reais aqui!
+                "bpm": bpm,     # <-- BPM real aqui!
+                "hrv": hrv,     # <-- HRV real aqui!
+                "spo2": spo2,   # <-- SpO2 finalmente aqui!
                 "stress_score": engine_result.get("stress_score", 50),
                 "recovery_score": engine_result.get("recovery_score", 50),
                 "risk_score": engine_result.get("risk_score", 50),
