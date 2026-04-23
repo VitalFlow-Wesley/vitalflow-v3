@@ -534,9 +534,11 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
           });
         }
 
+        setDashboardLoading(true);
         await fetchHistory();
         await fetchConnectedDevices();
         await fetchMorningReport();
+        setDashboardLoading(false);
       } else if (data.status === "no_real_data") {
         toast.info(
           data.message ||
@@ -551,6 +553,7 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
       }
     } catch {
       queueOfflineData("wearables/sync", {});
+      setDashboardLoading(false);
     }
   }, []);
 
@@ -1136,23 +1139,25 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
                   : "Conecte um dispositivo em Dispositivos para começar"}
               </div>
 
-              {lastSyncData?.auto_analysis ? (
-                <button
-                  onClick={async () => {
-                    await fetchHistory();
-                  }}
-                  className="mt-6 px-4 py-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all text-sm font-semibold"
-                >
-                  Carregar última análise
-                </button>
-              ) : hasConnectedWearables ? (
-                <button
-                  onClick={backgroundSync}
-                  className="mt-6 px-4 py-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all text-sm font-semibold"
-                >
-                  Sincronizar agora
-                </button>
-              ) : null}
+              {hasConnectedWearables && (
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={async () => {
+                      setDashboardLoading(true);
+                      await fetchHistory();
+                    }}
+                    className="px-4 py-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all text-sm font-semibold"
+                  >
+                    Carregar última análise
+                  </button>
+                  <button
+                    onClick={backgroundSync}
+                    className="px-4 py-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-all text-sm font-semibold"
+                  >
+                    Sincronizar agora
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="border border-white/10 bg-neutral-900/50 rounded-3xl p-6">
