@@ -156,6 +156,42 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 }
             )
 
+            # Calorias
+            calories_response = await client.post(
+                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
+                headers=headers,
+                json={
+                    "aggregateBy": [{"dataTypeName": "com.google.calories.expended"}],
+                    "bucketByTime": {"durationMillis": day_ms},
+                    "startTimeMillis": start_ms,
+                    "endTimeMillis": now_ms,
+                }
+            )
+
+            # Distância
+            distance_response = await client.post(
+                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
+                headers=headers,
+                json={
+                    "aggregateBy": [{"dataTypeName": "com.google.distance.delta"}],
+                    "bucketByTime": {"durationMillis": day_ms},
+                    "startTimeMillis": start_ms,
+                    "endTimeMillis": now_ms,
+                }
+            )
+
+            # Minutos Ativos
+            active_response = await client.post(
+                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
+                headers=headers,
+                json={
+                    "aggregateBy": [{"dataTypeName": "com.google.active_minutes"}],
+                    "bucketByTime": {"durationMillis": day_ms},
+                    "startTimeMillis": start_ms,
+                    "endTimeMillis": now_ms,
+                }
+            )
+
             # SpO2 (oxygen saturation)
             spo2_response = await client.post(
                 f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
@@ -283,6 +319,48 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                         "rem_hours": round(rem_sleep_ms / 3600000, 1),
                         "segments": sleep_segments[:20],  # limite para nao encher o doc
                     }
+                    result["has_real_data"] = True
+
+            # ── Parse Calorias ──
+            if calories_response.status_code == 200:
+                cal_data = calories_response.json()
+                total_cal = 0.0
+                for bucket in cal_data.get("bucket", []):
+                    for dataset in bucket.get("dataset", []):
+                        for point in dataset.get("point", []):
+                            for val in point.get("value", []):
+                                if "fpVal" in val:
+                                    total_cal += val["fpVal"]
+                if total_cal > 0:
+                    result["calories"] = round(total_cal, 1)
+                    result["has_real_data"] = True
+
+            # ── Parse Distância ──
+            if distance_response.status_code == 200:
+                dist_data = distance_response.json()
+                total_dist = 0.0
+                for bucket in dist_data.get("bucket", []):
+                    for dataset in bucket.get("dataset", []):
+                        for point in dataset.get("point", []):
+                            for val in point.get("value", []):
+                                if "fpVal" in val:
+                                    total_dist += val["fpVal"]
+                if total_dist > 0:
+                    result["distance_km"] = round(total_dist / 1000, 2)
+                    result["has_real_data"] = True
+
+            # ── Parse Minutos Ativos ──
+            if active_response.status_code == 200:
+                active_data = active_response.json()
+                total_active = 0
+                for bucket in active_data.get("bucket", []):
+                    for dataset in bucket.get("dataset", []):
+                        for point in dataset.get("point", []):
+                            for val in point.get("value", []):
+                                if "intVal" in val:
+                                    total_active += val["intVal"]
+                if total_active > 0:
+                    result["active_minutes"] = total_active
                     result["has_real_data"] = True
 
             # ── Parse SpO2 ──

@@ -728,6 +728,26 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
           : engine.contexto?.label || "--",
       icon: Radio,
     },
+    {
+      label: "SpO2",
+      value: realData.spo2 !== undefined ? `${realData.spo2}%` : "--",
+      icon: Activity,
+    },
+    {
+      label: "Calorias",
+      value: realData.calories !== undefined ? `${Math.round(realData.calories)} kcal` : "--",
+      icon: Flame,
+    },
+    {
+      label: "Distância",
+      value: realData.distance_km !== undefined ? `${realData.distance_km} km` : "--",
+      icon: Footprints,
+    },
+    {
+      label: "Min. Ativos",
+      value: realData.active_minutes !== undefined ? `${realData.active_minutes} min` : "--",
+      icon: TrendingUp,
+    },
   ];
 
   return (
