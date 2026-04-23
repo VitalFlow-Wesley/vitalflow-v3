@@ -29,6 +29,12 @@ def classify_activity(bpm: int, steps: int = 0, steps_per_hour: int = 0) -> dict
         confidence = 0.6
         label = "dia_ativo"
 
+    
+    if final_v_score >= 80:
+        status, tag = "Verde", "Resiliencia otima"
+    elif final_v_score < 50:
+        status, tag = "Vermelho", "Alerta - Recuperacao Urgente"
+    
     return {
         "is_exercise": is_exercise,
         "confidence": round(confidence, 2),
@@ -63,6 +69,12 @@ def calculate_sleep_recovery(sleep_hours: float, sleep_quality: dict = None) -> 
     # recovery_factor=0.5 => threshold rigoroso (BPM 85)
     bpm_threshold = round(85 + (factor * 15))
 
+    
+    if final_v_score >= 80:
+        status, tag = "Verde", "Resiliencia otima"
+    elif final_v_score < 50:
+        status, tag = "Vermelho", "Alerta - Recuperacao Urgente"
+    
     return {
         "factor": round(factor, 2),
         "label": label,
@@ -255,6 +267,12 @@ def fallback_analysis(data: BiometricInput, activity_context: dict = None, recov
     if not areas:
         areas = ["Sistema Geral"]
 
+    
+    if final_v_score >= 80:
+        status, tag = "Verde", "Resiliencia otima"
+    elif final_v_score < 50:
+        status, tag = "Vermelho", "Alerta - Recuperacao Urgente"
+    
     return {
         "v_score": score,
         "area_afetada": areas,
@@ -361,6 +379,12 @@ Forneca uma recomendacao apropriada para este cenario.
         else:
             recommendation = "Faca uma pausa de 5 minutos: levante-se, caminhe e respire profundamente 5 vezes."
 
+    
+    if final_v_score >= 80:
+        status, tag = "Verde", "Resiliencia otima"
+    elif final_v_score < 50:
+        status, tag = "Vermelho", "Alerta - Recuperacao Urgente"
+    
     return {
         "anonymous_id": anonymous_id,
         "status": status,
