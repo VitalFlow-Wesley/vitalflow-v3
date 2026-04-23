@@ -243,11 +243,13 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
 
     cid = colaborador["id"]
 
+    # --- INICIO DA CORRECAO DE DADOS (SpO2 ADICIONADO) ---
     bpm = _to_int(biometrics.get("bpm"))
     bpm_average = _to_int(biometrics.get("bpm_average"))
     hrv = _to_int(biometrics.get("hrv"))
     sleep_hours = _to_float(biometrics.get("sleep_hours"))
     steps = _to_int(biometrics.get("steps"))
+    spo2 = _to_float(biometrics.get("spo2"))
 
     has_minimum_signal = any(
         [
@@ -256,6 +258,7 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
             hrv > 0,
             sleep_hours > 0,
             steps > 0,
+            spo2 > 0, # Considera SpO2 como sinal valido
         ]
     )
 
@@ -411,7 +414,11 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
     doc["timestamp"] = doc["timestamp"].isoformat()
     doc["created_at"] = _now_iso()
     doc["updated_at"] = _now_iso()
+    
+    # --- INJETA SPO2 NO INPUT_DATA PARA O FRONTEND LER ---
     doc["input_data"] = input_data.model_dump()
+    doc["input_data"]["spo2"] = spo2 
+
     doc["source"] = biometrics.get("source", "google_fit_auto")
     doc["scenario"] = biometrics.get("scenario", "real")
     doc["data_mode"] = "real"
@@ -426,12 +433,16 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
     doc["hrv"] = hrv
     doc["sleep_hours"] = sleep_hours
     doc["steps"] = steps
+    doc["spo2"] = spo2 # <-- Salva no root do DB
+    
+    # --- SALVA SPO2 NOS DADOS REAIS ---
     doc["real_data"] = {
         "bpm": bpm,
         "bpm_average": bpm_average,
         "hrv": hrv,
         "sleep_hours": sleep_hours,
         "steps": steps,
+        "spo2": spo2, # <-- Salva no real_data
         "sleep_quality": biometrics.get("sleep_quality"),
         "exercise_detected": exercise_detected,
         "exercise_hours": total_exercise_hours,
@@ -453,6 +464,7 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
         "recovery_label": recovery.get("label", "Sem classificacao"),
         "sleep_hours": sleep_hours,
         "steps": steps,
+        "spo2": spo2, # <-- Retorna pra API
         "stress_score": doc["stress_score"],
         "recovery_score": doc["recovery_score"],
         "risk_score": doc["risk_score"],
@@ -573,7 +585,7 @@ async def google_fit_auth(request: Request):
             detail="Google Fit nao configurado. Credenciais OAuth pendentes.",
         )
 
-    auth_url = google_fit_service.get_auth_url(state=colaborador["id"])
+        auth_url = google_fit_service.get_auth_url(state=colaborador["id"])
     return {"auth_url": auth_url}
 
 
