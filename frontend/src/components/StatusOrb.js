@@ -50,33 +50,10 @@ function normalizeStatus(statusValue, scoreValue, tagValue) {
 
   const score = Number(scoreValue ?? 0);
 
-  if (
-    status.includes("vermelho") ||
-    status.includes("critico") ||
-    status.includes("crítico") ||
-    status.includes("urgente") ||
-    tag.includes("urgente") ||
-    tag.includes("critico") ||
-    tag.includes("crítico") ||
-    score < 50
-  ) {
-    return STATUS_PRESETS.critico;
-  }
-
-  if (
-    status.includes("amarelo") ||
-    status.includes("atencao") ||
-    status.includes("atenção") ||
-    status.includes("stress") ||
-    status.includes("alerta") ||
-    tag.includes("stress") ||
-    tag.includes("alerta") ||
-    (score >= 50 && score < 80)
-  ) {
-    return STATUS_PRESETS.atencao;
-  }
-
-  return STATUS_PRESETS.normal;
+  // Score tem prioridade — evita conflito entre score e tag
+  if (score >= 80) return STATUS_PRESETS.normal;
+  if (score >= 50) return STATUS_PRESETS.atencao;
+  return STATUS_PRESETS.critico;
 }
 
 const StatusOrb = ({
