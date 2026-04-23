@@ -729,11 +729,6 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
       icon: Radio,
     },
     {
-      label: "SpO2",
-      value: realData.spo2 !== undefined ? `${realData.spo2}%` : "--",
-      icon: Activity,
-    },
-    {
       label: "Calorias",
       value: realData.calories !== undefined ? `${Math.round(realData.calories)} kcal` : "--",
       icon: Flame,
