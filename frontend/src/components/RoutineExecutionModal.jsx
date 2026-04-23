@@ -206,9 +206,31 @@ export default function RoutineExecutionModal({
     setFinished(true);
   };
 
-  const closeAndComplete = () => {
+  const closeAndComplete = async () => {
+    // --- ENVIO DOS PONTOS PARA O BACKEND ---
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch('/api/gamification/follow-nudge', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            analysis_id: routine.id || "manual_" + Date.now() 
+          })
+        });
+      }
+    } catch (err) {
+      console.error("Erro ao creditar pontos:", err);
+    }
+
     onComplete?.(routine);
     onClose?.();
+    
+    // Força a atualização da página para garantir que a barra de energia suba
+    setTimeout(() => window.location.reload(), 500);
   };
 
   if (!open || !routine) return null;
