@@ -189,18 +189,6 @@ const AIAnalysis = ({ analysis }) => {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-neutral-950/35 p-5">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-2">
-              Estado visual
-            </p>
-            <p className={`text-base font-bold ${visual.text}`}>
-              {visual.key === "normal"
-                ? "Normal"
-                : visual.key === "atencao"
-                ? "Atenção"
-                : "Crítico"}
-            </p>
-          </div>
         </div>
       </div>
     </motion.div>

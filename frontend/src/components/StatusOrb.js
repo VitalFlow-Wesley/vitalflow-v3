@@ -314,47 +314,7 @@ const StatusOrb = ({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mt-6 relative z-10">
-        <div
-          className="rounded-2xl border p-4"
-          style={{
-            borderColor: `rgba(${config.rgb}, 0.22)`,
-            background: `rgba(${config.rgb}, 0.08)`,
-          }}
-        >
-          <p className="text-[10px] uppercase tracking-[0.16em] text-neutral-400 mb-2">
-            Status
-          </p>
-          <p
-            className="text-base font-bold"
-            style={{ color: config.color }}
-          >
-            {config.key === "normal"
-              ? "ótimo"
-              : config.key === "atencao"
-              ? "atenção"
-              : "crítico"}
-          </p>
-        </div>
 
-        <div
-          className="rounded-2xl border p-4"
-          style={{
-            borderColor: `rgba(${config.rgb}, 0.22)`,
-            background: `rgba(${config.rgb}, 0.08)`,
-          }}
-        >
-          <p className="text-[10px] uppercase tracking-[0.16em] text-neutral-400 mb-2">
-            Leitura
-          </p>
-          <p
-            className="text-sm font-bold leading-5"
-            style={{ color: config.color }}
-          >
-            {tag || config.title}
-          </p>
-        </div>
-      </div>
     </div>
   );
 };
