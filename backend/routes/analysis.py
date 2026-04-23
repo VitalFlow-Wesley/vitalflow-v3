@@ -585,7 +585,7 @@ async def google_fit_auth(request: Request):
             detail="Google Fit nao configurado. Credenciais OAuth pendentes.",
         )
 
-        auth_url = google_fit_service.get_auth_url(state=colaborador["id"])
+    auth_url = google_fit_service.get_auth_url(state=colaborador["id"])
     return {"auth_url": auth_url}
 
 
