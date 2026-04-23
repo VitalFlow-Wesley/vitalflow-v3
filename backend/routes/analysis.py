@@ -398,6 +398,21 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
         )
     )
 
+    # --- OVERRIDE DE SEGURANCA ---
+    if final_v_score >= 80:
+        ai_result['status_visual'] = 'Normal'
+        ai_result['tag_rapida'] = 'Resiliência ótima'
+        ai_result['causa_provavel'] = 'Equilíbrio mantido. Seu estado fisiológico está estável e positivo.'
+    elif final_v_score >= 50:
+        ai_result['status_visual'] = 'Atencao'
+        ai_result['tag_rapida'] = 'Atenção necessária'
+        ai_result['causa_provavel'] = 'Alerta leve. Seu corpo indica necessidade de pequenas correções.'
+    else:
+        ai_result['status_visual'] = 'Critico'
+        ai_result['tag_rapida'] = 'Recuperação urgente'
+        ai_result['causa_provavel'] = 'Intervenção necessária. Sinais críticos detectados, priorize o descanso.'
+    engine_result['status_visual'] = ai_result['status_visual']
+
     analysis = Analysis(
         v_score=final_v_score,
         area_afetada=ai_result.get("area_afetada", []),
