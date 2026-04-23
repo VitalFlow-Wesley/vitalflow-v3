@@ -148,6 +148,18 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 }
             )
 
+            # SpO2 (oxygen saturation)
+            spo2_response = await client.post(
+                f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
+                headers=headers,
+                json={
+                    "aggregateBy": [{"dataTypeName": "com.google.oxygen_saturation"}],
+                    "bucketByTime": {"durationMillis": day_ms},
+                    "startTimeMillis": start_ms,
+                    "endTimeMillis": now_ms,
+                }
+            )
+
             result = {
                 "source": "google_fit",
                 "synced_at": datetime.now(timezone.utc).isoformat(),
@@ -261,6 +273,21 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                         "rem_hours": round(rem_sleep_ms / 3600000, 1),
                         "segments": sleep_segments[:20],  # limite para nao encher o doc
                     }
+                    result["has_real_data"] = True
+
+            # ── Parse SpO2 ──
+            if spo2_response.status_code == 200:
+                spo2_data = spo2_response.json()
+                all_spo2 = []
+                for bucket in spo2_data.get("bucket", []):
+                    for dataset in bucket.get("dataset", []):
+                        for point in dataset.get("point", []):
+                            for val in point.get("value", []):
+                                if "fpVal" in val and val["fpVal"] > 0:
+                                    all_spo2.append(round(val["fpVal"] * 100, 1))
+                if all_spo2:
+                    result["spo2"] = round(sum(all_spo2) / len(all_spo2), 1)
+                    result["spo2_min"] = min(all_spo2)
                     result["has_real_data"] = True
 
             # ── Exercise Detection (hourly cross-reference) ──
