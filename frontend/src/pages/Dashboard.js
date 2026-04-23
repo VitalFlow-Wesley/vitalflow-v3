@@ -683,6 +683,11 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
       icon: Activity,
     },
     {
+          label: "SpO2",
+          value: inputData.spo2 ? `${inputData.spo2}%` : "--",
+          icon: Activity,
+        },
+    {
       label: "Sono",
       value:
         inputData.sleep_hours !== undefined
