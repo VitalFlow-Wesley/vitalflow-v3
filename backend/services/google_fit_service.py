@@ -18,6 +18,8 @@ GOOGLE_FIT_SCOPES = [
     "https://www.googleapis.com/auth/fitness.heart_rate.read",
     "https://www.googleapis.com/auth/fitness.sleep.read",
     "https://www.googleapis.com/auth/fitness.body.read",
+    "https://www.googleapis.com/auth/fitness.nutrition.read",
+    "https://www.googleapis.com/auth/fitness.oxygen_saturation.read",
 ]
 
 GOOGLE_FIT_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
