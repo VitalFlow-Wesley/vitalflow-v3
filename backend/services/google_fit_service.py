@@ -184,7 +184,15 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                     result["bpm_min"] = min(all_bpm)
                     result["bpm_average"] = result["bpm_min"]
                     # HRV estimado pela variacao (Google Fit nao retorna HRV diretamente)
-                    result["hrv"] = max(10, round(60 - (max(all_bpm) - min(all_bpm))))
+                    # HRV estimado via BPM de repouso (formula baseada em estudos)
+                    # Relacao inversa: BPM repouso alto = HRV baixo
+                    bpm_repouso = result.get("bpm_average", result["bpm"])
+                    if bpm_repouso <= 0:
+                        bpm_repouso = result["bpm"]
+                    hrv_estimado = round(1000 / bpm_repouso * 2.2)
+                    hrv_estimado = max(20, min(80, hrv_estimado))
+                    result["hrv"] = hrv_estimado
+                    result["hrv_source"] = "estimated_from_resting_bpm"
                     result["hourly_bpm"] = hourly_bpm
                     result["has_real_data"] = True
 
