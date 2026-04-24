@@ -661,6 +661,24 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
 
   const hasConnectedWearables = connectedDevicesCount > 0;
 
+  const lastSyncTime = useMemo(() => {
+    if (!Array.isArray(connectedDevices)) return null;
+    const connected = connectedDevices.filter(d => d?.is_connected && d?.last_sync);
+    if (connected.length === 0) return null;
+    const latest = connected.sort((a, b) => new Date(b.last_sync) - new Date(a.last_sync))[0];
+    return latest?.last_sync ? new Date(latest.last_sync) : null;
+  }, [connectedDevices]);
+
+  const formatSyncTime = (date) => {
+    if (!date) return null;
+    const now = new Date();
+    const diff = Math.floor((now - date) / 60000);
+    if (diff < 1) return "agora mesmo";
+    if (diff < 60) return `há ${diff} min`;
+    if (diff < 1440) return `há ${Math.floor(diff/60)}h`;
+    return `há ${Math.floor(diff/1440)}d`;
+  };
+
   const engine = currentAnalysis?.engine || {};
   const inputData = currentAnalysis?.input_data || {};
   const realData = currentAnalysis?.real_data || {};
@@ -905,6 +923,25 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
                 <span className="text-xs text-neutral-600">
                   Próximo badge em {gamStats.next_badge_in} dia(s)
                 </span>
+              </motion.div>
+            )}
+
+            {lastSyncTime && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-white/8 bg-neutral-900/30 text-xs text-neutral-500"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Dados sincronizados <span className="text-neutral-400 font-medium">{formatSyncTime(lastSyncTime)}</span></span>
+                </div>
+                <button
+                  onClick={backgroundSync}
+                  className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
+                >
+                  Atualizar agora
+                </button>
               </motion.div>
             )}
 
