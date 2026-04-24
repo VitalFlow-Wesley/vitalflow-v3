@@ -151,7 +151,7 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
                 headers=headers,
                 json={
-                    "aggregateBy": [{"dataTypeName": "com.google.sleep.segment"}],
+                    "aggregateBy": [{"dataTypeName": "com.google.sleep.segment"}, {"dataTypeName": "com.google.activity.segment"}],
                     "bucketByTime": {"durationMillis": day_ms},
                     "startTimeMillis": start_ms,
                     "endTimeMillis": now_ms,
