@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 import logging
 import os
@@ -7,14 +8,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import db, client
+from database import db
+from scheduler import run_scheduler, client
 
 # --- LOGGING ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- APP ---
+@asynccontextmanager
+async def lifespan(app):
+    asyncio.create_task(run_scheduler())
+    yield
+
 app = FastAPI(
+    lifespan=lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
