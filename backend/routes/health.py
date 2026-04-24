@@ -633,3 +633,72 @@ async def scheduler_sync_all(request: Request):
     except Exception as e:
         logger.error(f"[SCHEDULER] Erro geral: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scheduler/sync-all")
+async def scheduler_sync_all(request: Request):
+    import os
+    auth = request.headers.get("X-Scheduler-Secret", "")
+    expected = os.environ.get("SCHEDULER_SECRET", "")
+    if expected and auth != expected:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    try:
+        from services import google_fit_service
+        from routes.wearables import _create_real_analysis_from_biometrics, _ensure_connected_device
+        from datetime import datetime, timezone
+
+        tokens = await db.wearable_tokens.find(
+            {"access_token": {"$exists": True, "$ne": None}},
+            {"_id": 0, "colaborador_id": 1, "access_token": 1, "refresh_token": 1}
+        ).to_list(10000)
+
+        success = 0
+        failed = 0
+
+        for token_doc in tokens:
+            try:
+                cid = token_doc["colaborador_id"]
+                access_token = token_doc["access_token"]
+                refresh_token = token_doc.get("refresh_token")
+
+                biometrics = await google_fit_service.fetch_biometrics(access_token)
+
+                if not biometrics and refresh_token:
+                    new_tokens = await google_fit_service.refresh_access_token(refresh_token)
+                    if new_tokens and new_tokens.get("access_token"):
+                        access_token = new_tokens["access_token"]
+                        await db.wearable_tokens.update_one(
+                            {"colaborador_id": cid, "provider": "google_health_connect"},
+                            {"$set": {"access_token": access_token, "updated_at": datetime.now(timezone.utc).isoformat()}}
+                        )
+                        biometrics = await google_fit_service.fetch_biometrics(access_token)
+
+                if not isinstance(biometrics, dict) or not biometrics.get("has_real_data"):
+                    continue
+
+                colaborador = await db.colaboradores.find_one({"id": cid}, {"_id": 0})
+                if not colaborador:
+                    continue
+
+                biometrics["colaborador_id"] = cid
+                biometrics["synced_at"] = datetime.now(timezone.utc).isoformat()
+                biometrics["data_mode"] = "real"
+                biometrics["has_real_data"] = True
+                biometrics["scenario"] = "real"
+                biometrics["source"] = "google_fit_scheduler"
+
+                await db.google_fit_data.insert_one(biometrics)
+                await _ensure_connected_device(cid, "google_health_connect", "Google Health Connect")
+                await _create_real_analysis_from_biometrics(colaborador, biometrics)
+                success += 1
+
+            except Exception as e:
+                failed += 1
+                logger.error(f"[SCHEDULER] Erro {token_doc.get('colaborador_id')}: {e}")
+
+        return {"status": "ok", "success": success, "failed": failed}
+
+    except Exception as e:
+        logger.error(f"[SCHEDULER] Erro geral: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
