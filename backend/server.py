@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from database import db
-from scheduler import run_scheduler, client
+from scheduler import run_scheduler
 
 # --- LOGGING ---
 logging.basicConfig(level=logging.INFO)
