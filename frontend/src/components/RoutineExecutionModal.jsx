@@ -207,6 +207,31 @@ export default function RoutineExecutionModal({
   };
 
   const closeAndComplete = async () => {
+    // --- LÓGICA DE CRÉDITO DE PONTOS REVISADA ---
+    const creditPoints = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch('https://api.vitalflow.ia.br/api/gamification/follow-nudge', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ analysis_id: "routine_" + Date.now() })
+        });
+        
+        if (response.ok) {
+           console.log("Pontos creditados com sucesso!");
+        }
+      } catch (err) {
+        console.error("Erro na API de pontos:", err);
+      }
+    };
+    
+    await creditPoints();
+
     // --- ENVIO DOS PONTOS PARA O BACKEND ---
     try {
       const token = localStorage.getItem('token');
