@@ -289,11 +289,19 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 sleep_data = sleep_response.json()
                 for bucket in sleep_data.get("bucket", []):
                     for dataset in bucket.get("dataset", []):
+                        data_source = dataset.get("dataSourceId", "")
                         for point in dataset.get("point", []):
                             start_ns = int(point.get("startTimeNanos", 0))
                             end_ns = int(point.get("endTimeNanos", 0))
                             duration_ms = (end_ns - start_ns) / 1e6
                             segment_type = 2  # default generic sleep
+                            # GloryFit: activity.segment activityType=72 (sono)
+                            if "activity.segment" in data_source:
+                                activity_type = point.get("value", [{}])[0].get("intVal", -1)
+                                if activity_type == 72:
+                                    total_sleep_ms += duration_ms
+                                    sleep_segments.append({"type": "sleep", "duration_min": round(duration_ms / 60000, 1)})
+                                continue
                             for val in point.get("value", []):
                                 if "intVal" in val:
                                     segment_type = val["intVal"]
