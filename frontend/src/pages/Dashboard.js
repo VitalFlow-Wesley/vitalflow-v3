@@ -633,8 +633,15 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
     user?.plan || (isPremiumUser ? "premium" : "free")
   ).toLowerCase();
 
+  const isAdmin = String(user?.nivel_acesso || user?.role || "")
+    .toLowerCase()
+    .includes("ceo") ||
+    String(user?.nivel_acesso || user?.role || "")
+    .toLowerCase()
+    .includes("admin");
+
   const isFreeLocked =
-    userPlan === "free" && !isPremiumUser && !isB2BUser;
+    userPlan === "free" && !isPremiumUser && !isB2BUser && !isAdmin;
 
   console.log("USER PLAN DEBUG", {
     accountType,
