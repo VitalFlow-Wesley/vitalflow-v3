@@ -163,7 +163,7 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 f"{GOOGLE_FIT_API_BASE}/dataset:aggregate",
                 headers=headers,
                 json={
-                    "aggregateBy": [{"dataTypeName": "com.google.calories.expended"}],
+                    "aggregateBy": [{"dataTypeName": "com.google.calories.expended"}, {"dataTypeName": "com.google.calories.bmr"}],
                     "bucketByTime": {"durationMillis": day_ms},
                     "startTimeMillis": start_ms,
                     "endTimeMillis": now_ms,
