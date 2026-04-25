@@ -288,38 +288,54 @@ async def fetch_biometrics(access_token: str) -> dict | None:
             if sleep_response.status_code == 200:
                 sleep_data = sleep_response.json()
                 for bucket in sleep_data.get("bucket", []):
-                    for dataset in bucket.get("dataset", []):
-                        data_source = dataset.get("dataSourceId", "")
-                        for point in dataset.get("point", []):
-                            start_ns = int(point.get("startTimeNanos", 0))
-                            end_ns = int(point.get("endTimeNanos", 0))
-                            duration_ms = (end_ns - start_ns) / 1e6
-                            segment_type = 2  # default generic sleep
-                            # GloryFit: activity.segment activityType=72 (sono)
-                            if "activity.segment" in data_source:
-                                activity_type = point.get("value", [{}])[0].get("intVal", -1)
-                                if activity_type == 72:
-                                    total_sleep_ms += duration_ms
-                                    sleep_segments.append({"type": "sleep", "duration_min": round(duration_ms / 60000, 1)})
-                                continue
-                            for val in point.get("value", []):
-                                if "intVal" in val:
-                                    segment_type = val["intVal"]
+                # Prioridade: sleep.segment (nativo) > activity.segment (GloryFit/fallback)
+                native_points = []
+                gloryfit_points = []
+                for dataset in bucket.get("dataset", []):
+                    data_source = dataset.get("dataSourceId", "")
+                    for point in dataset.get("point", []):
+                        if "sleep.segment" in data_source:
+                            native_points.append(point)
+                        elif "activity.segment" in data_source:
+                            gloryfit_points.append((point, data_source))
 
-                            type_name = SLEEP_TYPES.get(segment_type, "sleep")
-                            if type_name in ("sleep", "light_sleep", "deep_sleep", "rem"):
-                                total_sleep_ms += duration_ms
-                            if type_name == "deep_sleep":
-                                deep_sleep_ms += duration_ms
-                            elif type_name == "light_sleep" or type_name == "sleep":
-                                light_sleep_ms += duration_ms
-                            elif type_name == "rem":
-                                rem_sleep_ms += duration_ms
+                # Usa nativo se disponível, senão fallback GloryFit
+                if native_points:
+                    points_to_process = [("native", p) for p in native_points]
+                else:
+                    points_to_process = [("gloryfit", p) for p, _ in gloryfit_points]
 
-                            sleep_segments.append({
-                                "type": type_name,
-                                "duration_min": round(duration_ms / 60000, 1),
-                            })
+                for source_type, point in points_to_process:
+                    start_ns = int(point.get("startTimeNanos", 0))
+                    end_ns = int(point.get("endTimeNanos", 0))
+                    duration_ms = (end_ns - start_ns) / 1e6
+
+                    if source_type == "gloryfit":
+                        activity_type = point.get("value", [{}])[0].get("intVal", -1)
+                        if activity_type == 72:
+                            total_sleep_ms += duration_ms
+                            sleep_segments.append({"type": "sleep", "duration_min": round(duration_ms / 60000, 1)})
+                        continue
+
+                    segment_type = 2  # default generic sleep
+                    for val in point.get("value", []):
+                        if "intVal" in val:
+                            segment_type = val["intVal"]
+
+                    type_name = SLEEP_TYPES.get(segment_type, "sleep")
+                    if type_name in ("sleep", "light_sleep", "deep_sleep", "rem"):
+                        total_sleep_ms += duration_ms
+                    if type_name == "deep_sleep":
+                        deep_sleep_ms += duration_ms
+                    elif type_name == "light_sleep" or type_name == "sleep":
+                        light_sleep_ms += duration_ms
+                    elif type_name == "rem":
+                        rem_sleep_ms += duration_ms
+
+                    sleep_segments.append({
+                        "type": type_name,
+                        "duration_min": round(duration_ms / 60000, 1),
+                    })
 
                 if total_sleep_ms > 0:
                     result["sleep_hours"] = round(total_sleep_ms / 3600000, 1)
