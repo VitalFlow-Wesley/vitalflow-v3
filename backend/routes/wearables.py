@@ -250,7 +250,7 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
     steps = _to_int(biometrics.get("steps"))
     spo2 = _to_float(biometrics.get("spo2"))
     calories = _to_float(biometrics.get("calories"))
-    distance = _to_float(biometrics.get("distance"))
+    distance = _to_float(biometrics.get("distance"), _to_float(biometrics.get("distance_km")))
     active_minutes = _to_int(biometrics.get("active_minutes"))
 
     has_minimum_signal = any(
