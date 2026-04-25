@@ -703,20 +703,41 @@ async def scheduler_sync_all(request: Request):
         logger.error(f"[SCHEDULER] Erro geral: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/debug/sleep-raw")
 async def debug_sleep_raw(request: Request):
     """Debug: retorna JSON bruto do Google Fit para sono."""
+    import httpx
+    from datetime import datetime, timezone
     try:
-        from services.google_fit_service import get_google_fit_raw_sleep
         user = request.state.user
-        data = await get_google_fit_raw_sleep(user["google_access_token"])
-        return data
+        access_token = user.get("google_access_token")
+        if not access_token:
+            return {"error": "sem google_access_token"}
+        now = datetime.now(timezone.utc)
+        now_ms = int(now.timestamp() * 1000)
+        day_ms = 86400000
+        headers = {"Authorization": f"Bearer {access_token}"}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate",
+                headers=headers,
+                json={
+                    "aggregateBy": [
+                        {"dataTypeName": "com.google.sleep.segment"},
+                        {"dataTypeName": "com.google.activity.segment"},
+                    ],
+                    "bucketByTime": {"durationMillis": day_ms},
+                    "startTimeMillis": now_ms - (day_ms * 2),
+                    "endTimeMillis": now_ms,
+                }
+            )
+        return {"status": resp.status_code, "data": resp.json()}
     except Exception as e:
         return {"error": str(e)}
 
 @router.get("/debug/sleep-raw")
 async def debug_sleep_raw(request: Request):
-    """Debug: retorna JSON bruto do Google Fit para sono."""
     import httpx
     from datetime import datetime, timezone
     try:
