@@ -740,8 +740,12 @@ async def debug_sleep_raw(request: Request):
 async def debug_sleep_raw(request: Request):
     import httpx
     from datetime import datetime, timezone
+    from database import db
     try:
-        user = request.state.user
+        # Pega o token do primeiro usuário com google_access_token
+        user = await db.users.find_one({"google_access_token": {"$exists": True}})
+        if not user:
+            return {"error": "nenhum usuario com google_access_token"}
         access_token = user.get("google_access_token")
         if not access_token:
             return {"error": "sem google_access_token"}
