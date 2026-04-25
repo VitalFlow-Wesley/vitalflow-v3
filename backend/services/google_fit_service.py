@@ -382,7 +382,7 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                         for point in dataset.get("point", []):
                             for val in point.get("value", []):
                                 if "fpVal" in val and val["fpVal"] > 0:
-                                    all_spo2.append(round(val["fpVal"] * 100, 1))
+                                    all_spo2.append(round(val["fpVal"] if val["fpVal"] > 1 else val["fpVal"] * 100, 1))
                 if all_spo2:
                     # Usa a ultima leitura disponivel
                     result["spo2"] = all_spo2[-1]
