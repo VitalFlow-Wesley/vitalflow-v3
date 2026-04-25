@@ -207,55 +207,42 @@ export default function RoutineExecutionModal({
   };
 
   const closeAndComplete = async () => {
-    // --- LÓGICA DE CRÉDITO DE PONTOS REVISADA ---
-    const creditPoints = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        const response = await fetch('https://api.vitalflow.ia.br/api/gamification/follow-nudge', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ analysis_id: "routine_" + Date.now() })
-        });
-        
-        if (response.ok) {
-           console.log("Pontos creditados com sucesso!");
-        }
-      } catch (err) {
-        console.error("Erro na API de pontos:", err);
-      }
-    };
-    
-    await creditPoints();
-
-    // --- ENVIO DOS PONTOS PARA O BACKEND ---
     try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await fetch('/api/gamification/follow-nudge', {
-          method: 'POST',
+      const backendUrl =
+        process.env.REACT_APP_BACKEND_URL || "https://api.vitalflow.ia.br";
+
+      const analysisId =
+        routine?.analysis_id ||
+        routine?.id ||
+        `routine_${Date.now()}`;
+
+      const response = await fetch(
+        `${backendUrl}/api/gamification/follow-nudge`,
+        {
+          method: "POST",
+          credentials: "include",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ 
-            analysis_id: routine.id || "manual_" + Date.now() 
-          })
-        });
+          body: JSON.stringify({
+            analysis_id: analysisId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Erro ao creditar pontos:", errorData);
+      } else {
+        const result = await response.json().catch(() => null);
+        console.log("Pontos creditados com sucesso:", result);
       }
     } catch (err) {
-      console.error("Erro ao creditar pontos:", err);
+      console.error("Erro na API de pontos:", err);
     }
 
-    onComplete?.(routine);
+    await onComplete?.(routine);
     onClose?.();
-    
-    // Força a atualização da página para garantir que a barra de energia suba
-    setTimeout(() => window.location.reload(), 500);
   };
 
   if (!open || !routine) return null;
