@@ -207,14 +207,13 @@ export default function RoutineExecutionModal({
   };
 
   const closeAndComplete = async () => {
+    let pointsCredited = false;
+
     try {
       const backendUrl =
         process.env.REACT_APP_BACKEND_URL || "https://api.vitalflow.ia.br";
 
-      const analysisId =
-        routine?.analysis_id ||
-        routine?.id ||
-        `routine_${Date.now()}`;
+      const analysisId = `routine_completion_${routine?.id || "generic"}_${Date.now()}`;
 
       const response = await fetch(
         `${backendUrl}/api/gamification/follow-nudge`,
@@ -236,12 +235,13 @@ export default function RoutineExecutionModal({
       } else {
         const result = await response.json().catch(() => null);
         console.log("Pontos creditados com sucesso:", result);
+        pointsCredited = true;
       }
     } catch (err) {
       console.error("Erro na API de pontos:", err);
     }
 
-    await onComplete?.(routine);
+    await onComplete?.(routine, { pointsCredited });
     onClose?.();
   };
 
