@@ -41,11 +41,12 @@ const MetricBars = ({ analysis }) => {
     },
     {
       label: "Sono",
-      value: input.sleep_hours ?? 7,
+      value: input.sleep_hours || null,
       max: 12,
       unit: "h",
       ideal: "7-9h",
       warn: (v) => v < 6,
+      noData: !input.sleep_hours,
     },
     {
       label: "Carga Cognitiva",
@@ -93,9 +94,9 @@ const MetricBars = ({ analysis }) => {
                       transition: "color 1s ease",
                     }}
                   >
-                    {m.value}
+                    {m.noData ? "--" : m.value}
                   </span>
-                  <span className="text-xs text-neutral-600">{m.unit}</span>
+                  <span className="text-xs text-neutral-600">{m.noData ? "" : m.unit}</span>
                 </div>
               </div>
               <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">

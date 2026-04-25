@@ -43,6 +43,11 @@ def calculate_recovery_score(hrv, baseline):
         return 50.0
 
     score = (hrv / baseline_hrv) * 100
+    # Âncora absoluta: HRV < 20 nunca pode ser recovery 100
+    if hrv < 20:
+        score = min(score, 45.0)
+    elif hrv < 30:
+        score = min(score, 70.0)
     return max(0, min(100, round(score, 1)))
 
 
