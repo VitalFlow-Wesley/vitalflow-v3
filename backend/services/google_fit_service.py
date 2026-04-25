@@ -317,7 +317,10 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                                 if "fpVal" in val:
                                     total_dist += val["fpVal"]
                 if total_dist > 0:
-                    result["distance_km"] = round(total_dist / 1000, 2)
+                    distance_km = round(total_dist / 1000, 2)
+                    result["distance_km"] = distance_km
+                    result["distance"] = distance_km
+                    result["has_real_data"] = True
                     result["has_real_data"] = True
 
             # ── Parse Minutos Ativos ──
