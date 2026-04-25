@@ -249,6 +249,9 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
     sleep_hours = _to_float(biometrics.get("sleep_hours"))
     steps = _to_int(biometrics.get("steps"))
     spo2 = _to_float(biometrics.get("spo2"))
+    calories = _to_float(biometrics.get("calories"))
+    distance = _to_float(biometrics.get("distance"))
+    active_minutes = _to_int(biometrics.get("active_minutes"))
 
     has_minimum_signal = any(
         [
@@ -257,7 +260,10 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
             hrv > 0,
             sleep_hours > 0,
             steps > 0,
-            spo2 > 0, 
+            spo2 > 0,
+            calories > 0,
+            distance > 0,
+            active_minutes > 0, 
         ]
     )
 
@@ -449,7 +455,10 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
     doc["updated_at"] = _now_iso()
     
     doc["input_data"] = input_data.model_dump()
-    doc["input_data"]["spo2"] = spo2 
+    doc["input_data"]["spo2"] = spo2
+    doc["input_data"]["calories"] = calories
+    doc["input_data"]["distance"] = distance
+    doc["input_data"]["active_minutes"] = active_minutes
 
     doc["source"] = biometrics.get("source", "google_fit_auto")
     doc["scenario"] = biometrics.get("scenario", "real")
@@ -465,7 +474,10 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
     doc["hrv"] = hrv
     doc["sleep_hours"] = sleep_hours
     doc["steps"] = steps
-    doc["spo2"] = spo2 
+    doc["spo2"] = spo2
+    doc["calories"] = calories
+    doc["distance"] = distance
+    doc["active_minutes"] = active_minutes 
     
     doc["real_data"] = {
         "bpm": bpm,
@@ -473,7 +485,13 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
         "hrv": hrv,
         "sleep_hours": sleep_hours,
         "steps": steps,
-        "spo2": spo2, 
+        "spo2": spo2,
+        "calories": calories,
+        "distance": distance,
+        "active_minutes": active_minutes,
+        "calories": calories,
+        "distance": distance,
+        "active_minutes": active_minutes, 
         "sleep_quality": biometrics.get("sleep_quality"),
         "exercise_detected": exercise_detected,
         "exercise_hours": total_exercise_hours,
