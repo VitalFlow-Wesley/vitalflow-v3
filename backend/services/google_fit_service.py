@@ -241,10 +241,13 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                         }
 
                 if all_bpm:
-                    # Usa o batimento com timestamp mais recente
-                    latest_bpm = max(all_bpm, key=lambda x: x[0])[1]
                     all_bpm_vals = [v for _, v in all_bpm]
-                    result["bpm"] = latest_bpm
+                    # Usa a média do último bucket (mais estável que leitura pontual)
+                    last_hour = max(hourly_bpm.keys()) if hourly_bpm else None
+                    if last_hour and hourly_bpm[last_hour]["count"] >= 2:
+                        result["bpm"] = hourly_bpm[last_hour]["avg"]
+                    else:
+                        result["bpm"] = max(all_bpm, key=lambda x: x[0])[1]
                     result["bpm_average"] = round(sum(all_bpm_vals) / len(all_bpm_vals))
                     result["bpm_max"] = max(all_bpm_vals)
                     result["bpm_min"] = min(all_bpm_vals)
