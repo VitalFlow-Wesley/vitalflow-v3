@@ -329,6 +329,27 @@ function getMetricTheme(metricLabel, metricValue, analysis) {
   };
 }
 
+
+const hasRealMetric = (value) =>
+  value !== null &&
+  value !== undefined &&
+  value !== "" &&
+  !(typeof value === "number" && Number.isNaN(value));
+
+const formatSleepMetric = (value) => {
+  const num = Number(value);
+  if (!hasRealMetric(value) || !Number.isFinite(num) || num <= 0) return "--";
+  const normalized = Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, "");
+  return `${normalized}h`;
+};
+
+const formatOptionalMetric = (value, suffix = "") => {
+  const num = Number(value);
+  if (!hasRealMetric(value) || !Number.isFinite(num) || num <= 0) return "--";
+  const normalized = Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, "");
+  return `${normalized}${suffix}`;
+};
+
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
 const [dashboardLoading, setDashboardLoading] = useState(true);
