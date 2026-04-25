@@ -350,6 +350,20 @@ const formatOptionalMetric = (value, suffix = "") => {
   return `${normalized}${suffix}`;
 };
 
+
+const formatMetricValue = (value, suffix = "") => {
+  const num = Number(value);
+  if (value === null || value === undefined || value === "" || !Number.isFinite(num) || num <= 0) {
+    return "--";
+  }
+  const normalized = Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, "");
+  return `${normalized}${suffix}`;
+};
+
+const formatSleepValue = (value) => formatMetricValue(value, "h");
+const formatCaloriesValue = (value) => formatMetricValue(value, " kcal");
+const formatMinutesValue = (value) => formatMetricValue(value, " min");
+
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
 const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -736,10 +750,10 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
     {
       label: "Sono",
       value:
-        inputData.sleep_hours !== undefined
-          ? `${inputData.sleep_hours}h`
-          : realData.sleep_hours !== undefined
-          ? `${realData.sleep_hours}h`
+        Number(inputData.sleep_hours) > 0
+          ? formatSleepValue(inputData.sleep_hours)
+          : Number(realData.sleep_hours) > 0
+          ? formatSleepValue(realData.sleep_hours)
           : "--",
       icon: BedDouble,
     },
@@ -776,17 +790,17 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
     },
     {
       label: "Calorias",
-      value: realData.calories !== undefined ? `${Math.round(realData.calories)} kcal` : "--",
+      value: formatCaloriesValue(realData.calories),
       icon: Flame,
     },
     {
       label: "Distância",
-      value: realData.distance_km !== undefined ? `${realData.distance_km} km` : "--",
+      value: formatOptionalMetric(realData.distance ?? realData.distance_km, " km"),
       icon: Footprints,
     },
     {
       label: "Min. Ativos",
-      value: realData.active_minutes !== undefined ? `${realData.active_minutes} min` : "--",
+      value: formatMinutesValue(realData.active_minutes),
       icon: TrendingUp,
     },
   ];
