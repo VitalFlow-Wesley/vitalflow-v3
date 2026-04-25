@@ -118,7 +118,10 @@ async def fetch_biometrics(access_token: str) -> dict | None:
         start_ms = now_ms - day_ms  
 
         # Referencia da meia-noite de hoje para contar os passos corretos
-        start_of_day = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+        from zoneinfo import ZoneInfo
+        tz_fortaleza = ZoneInfo("America/Fortaleza")
+        now_local = now.astimezone(tz_fortaleza)
+        start_of_day = datetime(now_local.year, now_local.month, now_local.day, tzinfo=tz_fortaleza)
         start_of_day_ms = int(start_of_day.timestamp() * 1000)
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -219,7 +222,7 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 hr_data = hr_response.json()
                 for bucket in hr_data.get("bucket", []):
                     bucket_start = int(bucket.get("startTimeMillis", 0))
-                    hour_key = datetime.fromtimestamp(bucket_start / 1000, tz=timezone.utc).strftime("%H:00")
+                    hour_key = datetime.fromtimestamp(bucket_start / 1000, tz=ZoneInfo("America/Fortaleza")).strftime("%H:00")
                     bucket_bpm = []
                     for dataset in bucket.get("dataset", []):
                         for point in dataset.get("point", []):
@@ -259,7 +262,7 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 steps_data = steps_response.json()
                 for bucket in steps_data.get("bucket", []):
                     bucket_start = int(bucket.get("startTimeMillis", 0))
-                    hour_key = datetime.fromtimestamp(bucket_start / 1000, tz=timezone.utc).strftime("%H:00")
+                    hour_key = datetime.fromtimestamp(bucket_start / 1000, tz=ZoneInfo("America/Fortaleza")).strftime("%H:00")
                     bucket_steps = 0
                     for dataset in bucket.get("dataset", []):
                         for point in dataset.get("point", []):
