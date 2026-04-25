@@ -226,10 +226,11 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                     bucket_bpm = []
                     for dataset in bucket.get("dataset", []):
                         for point in dataset.get("point", []):
+                            point_end_ns = int(point.get("endTimeNanos", 0))
                             for val in point.get("value", []):
                                 if "fpVal" in val:
                                     bpm_val = round(val["fpVal"])
-                                    all_bpm.append(bpm_val)
+                                    all_bpm.append((point_end_ns, bpm_val))
                                     bucket_bpm.append(bpm_val)
                     if bucket_bpm:
                         hourly_bpm[hour_key] = {
@@ -240,11 +241,13 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                         }
 
                 if all_bpm:
-                    # Usa o ultimo batimento registrado para a tela inicial
-                    result["bpm"] = all_bpm[-1]
-                    result["bpm_average"] = round(sum(all_bpm) / len(all_bpm))
-                    result["bpm_max"] = max(all_bpm)
-                    result["bpm_min"] = min(all_bpm)
+                    # Usa o batimento com timestamp mais recente
+                    latest_bpm = max(all_bpm, key=lambda x: x[0])[1]
+                    all_bpm_vals = [v for _, v in all_bpm]
+                    result["bpm"] = latest_bpm
+                    result["bpm_average"] = round(sum(all_bpm_vals) / len(all_bpm_vals))
+                    result["bpm_max"] = max(all_bpm_vals)
+                    result["bpm_min"] = min(all_bpm_vals)
                     
                     # HRV estimado via BPM de repouso
                     bpm_repouso = result["bpm_average"]
