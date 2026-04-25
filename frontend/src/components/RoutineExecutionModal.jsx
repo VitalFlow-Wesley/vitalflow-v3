@@ -267,7 +267,7 @@ export default function RoutineExecutionModal({
       : {
           recovery: "+5%",
           stress: "-3%",
-          points: "+10 energia",
+          points: "+50 energia",
           message: "Você reforçou sua consistência e manteve um bom estado geral.",
         };
 
