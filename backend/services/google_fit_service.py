@@ -285,59 +285,10 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 if total_steps > 0:
                     result["has_real_data"] = True
 
-            # ── Parse Sleep (sessão mais recente) ──
-            raw_sleep_points = []
-            if sleep_response.status_code == 200:
-                sleep_data = sleep_response.json()
-                import json as _json; print("🛌 SLEEP RAW:", _json.dumps(sleep_data)[:5000])
-                for bucket in sleep_data.get("bucket", []):
-                    for dataset in bucket.get("dataset", []):
-                        data_source = dataset.get("dataSourceId", "")
-                        for point in dataset.get("point", []):
-                            start_ns = int(point.get("startTimeNanos", 0))
-                            end_ns = int(point.get("endTimeNanos", 0))
-                            if end_ns <= start_ns:
-                                continue
-                            if "activity.segment" in data_source:
-                                activity_type = point.get("value", [{}])[0].get("intVal", -1)
-                                if activity_type == 72:
-                                    raw_sleep_points.append((start_ns, end_ns, "sleep"))
-                                continue
-                            segment_type = 2
-                            for val in point.get("value", []):
-                                if "intVal" in val:
-                                    segment_type = val["intVal"]
-                            type_name = SLEEP_TYPES.get(segment_type, "sleep")
-                            if type_name in ("sleep", "light_sleep", "deep_sleep", "rem"):
-                                raw_sleep_points.append((start_ns, end_ns, type_name))
-
-            if raw_sleep_points:
-                raw_sleep_points.sort(key=lambda x: x[0])
-                sessions = []
-                current_session = [raw_sleep_points[0]]
-                for pt in raw_sleep_points[1:]:
-                    gap_ms = (pt[0] - current_session[-1][1]) / 1e6
-                    if gap_ms > 3600000:
-                        sessions.append(current_session)
-                        current_session = [pt]
-                    else:
-                        current_session.append(pt)
-                sessions.append(current_session)
-                last_session = sessions[-1]
-                total_sleep_ms = sum((e - s) / 1e6 for s, e, _ in last_session)
-                deep_sleep_ms = sum((e - s) / 1e6 for s, e, t in last_session if t == "deep_sleep")
-                light_sleep_ms = sum((e - s) / 1e6 for s, e, t in last_session if t in ("light_sleep", "sleep"))
-                rem_sleep_ms = sum((e - s) / 1e6 for s, e, t in last_session if t == "rem")
-                sleep_segments = [{"type": t, "duration_min": round((e - s) / 1e6 / 60000, 1)} for s, e, t in last_session]
-                if total_sleep_ms > 0:
-                    result["sleep_hours"] = round(total_sleep_ms / 3600000, 1)
-                    result["sleep_quality"] = {
-                        "deep_hours": round(deep_sleep_ms / 3600000, 1),
-                        "light_hours": round(light_sleep_ms / 3600000, 1),
-                        "rem_hours": round(rem_sleep_ms / 3600000, 1),
-                        "segments": sleep_segments[:20],
-                    }
-                    result["has_real_data"] = True
+            # ── Parse Sleep ──
+            # Sleep via Google Fit API não retorna dados do GloryFit/Health Connect
+            # Integração Health Connect REST API planejada para próximo sprint
+            # result["sleep_hours"] permanece ausente → frontend exibe "--"
             # ── Parse Calorias ──
             if calories_response.status_code == 200:
                 cal_data = calories_response.json()
