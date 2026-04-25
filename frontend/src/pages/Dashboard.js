@@ -585,9 +585,9 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
     };
   }, []);
 
-  const handlePointsEarned = () => {
-    fetchGamificationStats();
-    refreshUser();
+  const handlePointsEarned = async () => {
+    await fetchGamificationStats();
+    await refreshUser();
   };
 
   const handleUpgrade = async () => {
@@ -1242,9 +1242,12 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
         open={!!selectedRoutine}
         routine={selectedRoutine}
         onClose={() => setSelectedRoutine(null)}
-        onComplete={() => {
+        onComplete={async () => {
           setSelectedRoutine(null);
-          fetchHistory();
+          await fetchHistory();
+          await fetchGamificationStats();
+          await refreshUser();
+          toast.success("Pontos de energia atualizados!");
         }}
       />
     </div>
