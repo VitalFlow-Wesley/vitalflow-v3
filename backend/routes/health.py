@@ -777,10 +777,10 @@ async def debug_sleep_raw():
     from datetime import datetime, timezone
     from database import db
     try:
-        user = await db.users.find_one({"google_access_token": {"$exists": True, "$ne": None}})
-        if not user:
-            return {"error": "nenhum usuario com google_access_token"}
-        access_token = user.get("google_access_token")
+        token_doc = await db.wearable_tokens.find_one({"access_token": {"$exists": True, "$ne": None}})
+        if not token_doc:
+            return {"error": "nenhum token em wearable_tokens"}
+        access_token = token_doc.get("access_token")
         now = datetime.now(timezone.utc)
         now_ms = int(now.timestamp() * 1000)
         day_ms = 86400000
