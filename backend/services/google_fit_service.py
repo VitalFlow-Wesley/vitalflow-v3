@@ -289,6 +289,7 @@ async def fetch_biometrics(access_token: str) -> dict | None:
             raw_sleep_points = []
             if sleep_response.status_code == 200:
                 sleep_data = sleep_response.json()
+                import json as _json; print("🛌 SLEEP RAW:", _json.dumps(sleep_data)[:5000])
                 for bucket in sleep_data.get("bucket", []):
                     for dataset in bucket.get("dataset", []):
                         data_source = dataset.get("dataSourceId", "")

@@ -702,3 +702,14 @@ async def scheduler_sync_all(request: Request):
     except Exception as e:
         logger.error(f"[SCHEDULER] Erro geral: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/debug/sleep-raw")
+async def debug_sleep_raw(request: Request):
+    """Debug: retorna JSON bruto do Google Fit para sono."""
+    try:
+        from services.google_fit_service import get_google_fit_raw_sleep
+        user = request.state.user
+        data = await get_google_fit_raw_sleep(user["google_access_token"])
+        return data
+    except Exception as e:
+        return {"error": str(e)}
