@@ -279,16 +279,6 @@ const StatusOrb = ({
         </div>
       )}
 
-      {tag && (
-        <p
-          className="text-sm text-neutral-500 text-center mt-auto relative z-10"
-          data-testid="orb-tag"
-        >
-          {tag}
-        </p>
-      )}
-
-
     </div>
   );
 };
