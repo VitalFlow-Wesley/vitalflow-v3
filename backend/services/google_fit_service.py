@@ -216,6 +216,21 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 "has_real_data": False,
             }
 
+            try:
+                logger.warning("GOOGLE_FIT_DEBUG calories_response=%s", calories_response.text[:4000])
+            except Exception:
+                pass
+
+            try:
+                logger.warning("GOOGLE_FIT_DEBUG distance_response=%s", distance_response.text[:4000])
+            except Exception:
+                pass
+
+            try:
+                logger.warning("GOOGLE_FIT_DEBUG sleep_response=%s", sleep_response.text[:4000])
+            except Exception:
+                pass
+
             # ── Parse Heart Rate (hourly) ──
             all_bpm = []
             hourly_bpm = {}
