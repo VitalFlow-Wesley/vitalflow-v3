@@ -772,7 +772,10 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
     },
     {
       label: "Recovery",
-      value: engine.recovery_score ?? "--",
+      value:
+        recovery?.label === "no_sleep_data"
+          ? "--"
+          : engine.recovery_score ?? "--",
       icon: Shield,
     },
     {
