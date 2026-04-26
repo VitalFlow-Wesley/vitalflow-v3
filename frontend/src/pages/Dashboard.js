@@ -784,6 +784,8 @@ export default function Dashboard() {
   }, [connectedDevices]);
 
   const hasConnectedWearables = connectedDevicesCount > 0;
+  const shouldShowEnergyBar =
+    Number(gamStats?.energy_points ?? 0) > 0 || hasConnectedWearables || hasData;
 
   const lastSyncTime = useMemo(() => {
     if (!Array.isArray(connectedDevices)) return null;
@@ -1018,7 +1020,7 @@ export default function Dashboard() {
             transition={{ duration: 0.45 }}
             className="space-y-6"
           >
-            {gamStats && (
+            {gamStats && shouldShowEnergyBar && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1298,7 +1300,7 @@ export default function Dashboard() {
             animate={{ opacity: 1 }}
             className="space-y-6"
           >
-            {gamStats && (
+            {gamStats && shouldShowEnergyBar && (
               <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-2xl p-4 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-400" />
                 <span className="text-sm text-neutral-400">
