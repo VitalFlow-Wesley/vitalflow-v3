@@ -140,29 +140,29 @@ const AIAnalysis = ({ analysis }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15 }}
       data-testid="ai-analysis-card"
-      className={`border ${visual.border} ${visual.bg} backdrop-blur-xl rounded-[28px] p-6`}
+      className={`border ${visual.border} ${visual.bg} backdrop-blur-xl rounded-[28px] p-5`}
     >
-      <div className="flex items-center gap-2 mb-5">
+      <div className="flex items-center gap-2 mb-4">
         <HeaderIcon className={`w-5 h-5 ${visual.iconColor}`} />
         <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">
           {visual.title}
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-5">
-        <div className="space-y-4">
-          <div className={`rounded-2xl border ${visual.border} ${visual.soft} p-5`}>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.35fr_0.65fr] gap-4 items-start">
+        <div className="space-y-3">
+          <div className={`rounded-2xl border ${visual.border} ${visual.soft} px-5 py-4`}>
             <p
-              className={`text-xl font-black leading-tight ${visual.text}`}
+              className={`text-[1.85rem] font-black leading-tight ${visual.text}`}
               data-testid="analysis-tag"
             >
               {tag}
             </p>
           </div>
 
-          <div className={`rounded-2xl border ${visual.border} bg-neutral-950/35 p-5`}>
+          <div className={`rounded-2xl border ${visual.border} bg-neutral-950/35 px-5 py-4`}>
             <p
-              className="text-sm sm:text-[15px] text-white leading-7"
+              className="text-sm sm:text-[15px] text-white leading-7 max-w-3xl"
               data-testid="analysis-cause"
             >
               {cause}
@@ -170,9 +170,9 @@ const AIAnalysis = ({ analysis }) => {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-neutral-950/35 p-5">
-            <div className="flex items-center gap-2 mb-3">
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-white/10 bg-neutral-950/35 px-5 py-4">
+            <div className="flex items-center gap-2 mb-2">
               <TrendMetaIcon className={`w-4 h-4 ${trend.color}`} />
               <p className={`text-sm font-bold ${trend.color}`}>
                 {trend.label}
