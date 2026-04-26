@@ -294,14 +294,21 @@ async def _create_real_analysis_from_biometrics(colaborador: Dict[str, Any], bio
     except Exception:
         activity_ctx = {"label": "unknown"}
 
-    try:
-        recovery_raw = calculate_sleep_recovery(
-            sleep_hours if sleep_hours > 0 else 7,
-            biometrics.get("sleep_quality"),
-        )
-        recovery = recovery_raw if isinstance(recovery_raw, dict) else {"label": str(recovery_raw), "score": 0}
-    except Exception:
-        recovery = {"label": "unknown", "score": 0}
+    if sleep_hours > 0:
+        try:
+            recovery_raw = calculate_sleep_recovery(
+                sleep_hours,
+                biometrics.get("sleep_quality"),
+            )
+            recovery = recovery_raw if isinstance(recovery_raw, dict) else {"label": str(recovery_raw), "score": 0}
+        except Exception:
+            recovery = {"label": "unknown", "score": 0}
+    else:
+        recovery = {
+            "label": "no_sleep_data",
+            "score": 0,
+            "has_real_sleep": False,
+        }
 
     history = await db.analyses.find(
         {
