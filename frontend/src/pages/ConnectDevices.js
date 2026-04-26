@@ -709,10 +709,14 @@ const ConnectDevices = () => {
               color="text-rose-300"
             />
             <MetricBox
-              label="Recovery"
-              value={syncResult.auto_analysis.recovery_score}
-              color="text-emerald-300"
-            />
+            label="Recovery"
+            value={
+              syncResult.auto_analysis?.recovery?.label === "no_sleep_data"
+                ? "--"
+                : syncResult.auto_analysis.recovery_score
+            }
+            color="text-emerald-300"
+          />
             <MetricBox
               label="Risk Score"
               value={syncResult.auto_analysis.risk_score}
