@@ -596,7 +596,7 @@ export default function Dashboard() {
     }
   };
 
-  const backgroundSync = useCallback(async () => {
+  const backgroundSync = useCallback(async ({ silent = false } = {}) => {
     try {
       const { data } = await axios.post(
         `${API}/wearables/sync`,
@@ -624,30 +624,38 @@ export default function Dashboard() {
           });
           lastAnalysisKeyRef.current = getAnalysisKey(a);
 
-          toast.success(
-            `Sync: V-Score ${a.v_score} (${a.status_visual}) - ${a.recovery_label}${exerciseMsg}`,
-            { duration: 5000 }
-          );
+          if (!silent) {
+            toast.success(
+              `Sync: V-Score ${a.v_score} (${a.status_visual}) - ${a.recovery_label}${exerciseMsg}`,
+              { duration: 5000 }
+            );
+          }
         } else {
-          toast.success("Dados do wearable sincronizados!", {
-            duration: 3000,
-          });
+          if (!silent) {
+            toast.success("Dados do wearable sincronizados!", {
+              duration: 3000,
+            });
+          }
         }
 
         fetchHistory();
         fetchConnectedDevices();
         fetchMorningReport();
       } else if (data.status === "no_real_data") {
-        toast.info(
-          data.message ||
-            "Conecte um wearable real para carregar dados verdadeiros.",
-          { duration: 4000 }
-        );
+        if (!silent) {
+          toast.info(
+            data.message ||
+              "Conecte um wearable real para carregar dados verdadeiros.",
+            { duration: 4000 }
+          );
+        }
       } else if (data.status === "no_data") {
-        toast.info(
-          data.message || "Nenhum dado novo real disponível no momento.",
-          { duration: 4000 }
-        );
+        if (!silent) {
+          toast.info(
+            data.message || "Nenhum dado novo real disponível no momento.",
+            { duration: 4000 }
+          );
+        }
       }
     } catch {
       queueOfflineData("wearables/sync", {});
@@ -677,11 +685,13 @@ export default function Dashboard() {
     fetchGamificationStats();
     fetchHealthTrend();
     fetchMorningReport();
-    backgroundSync();
+    backgroundSync({ silent: true });
   }, [backgroundSync]);
 
   useEffect(() => {
-    bgSyncRef.current = setInterval(backgroundSync, BACKGROUND_SYNC_INTERVAL);
+    bgSyncRef.current = setInterval(() => {
+      backgroundSync({ silent: true });
+    }, BACKGROUND_SYNC_INTERVAL);
 
     return () => {
       if (bgSyncRef.current) clearInterval(bgSyncRef.current);
@@ -1068,7 +1078,7 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <button
-                  onClick={backgroundSync}
+                  onClick={() => backgroundSync()}
                   className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
                 >
                   Atualizar agora
@@ -1345,7 +1355,7 @@ export default function Dashboard() {
                     Carregar última análise
                   </button>
                   <button
-                    onClick={backgroundSync}
+                    onClick={() => backgroundSync()}
                     className="px-4 py-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-all text-sm font-semibold"
                   >
                     Sincronizar agora
