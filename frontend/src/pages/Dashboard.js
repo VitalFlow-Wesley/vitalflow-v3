@@ -811,7 +811,7 @@ export default function Dashboard() {
       icon: HeartPulse,
     },
     {
-      label: "HRV",
+      label: "HRV estimado",
       value: inputData.hrv ?? "--",
       icon: Activity,
     },
