@@ -880,6 +880,88 @@ export default function Dashboard() {
     };
   }, [currentAnalysis, history]);
 
+  const renderPremiumBanner = () => {
+    if (shouldShowTrialBanner) {
+      return (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="border border-cyan-500/30 bg-cyan-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-3">
+            <Zap className="w-5 h-5 text-cyan-400" />
+            <div>
+              <p className="text-sm font-semibold text-cyan-400">
+                Teste gratuito Premium
+              </p>
+              <p className="text-xs text-neutral-400">
+                Ative 30 dias grátis para liberar os recursos Premium.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleStartPremiumTrial}
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-bold rounded-xl transition-all"
+          >
+            Ativar teste grátis
+          </button>
+        </motion.div>
+      );
+    }
+
+    if (isTrialActive) {
+      return (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-3">
+            <Shield className="w-5 h-5 text-emerald-400" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-400">
+                Premium em teste gratuito
+              </p>
+              <p className="text-xs text-neutral-400">
+                Seu acesso Premium está ativo por mais {trialDaysLeft} dia(s).
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (shouldShowUpgradeBanner) {
+      return (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-3">
+            <Lock className="w-5 h-5 text-amber-400" />
+            <div>
+              <p className="text-sm font-semibold text-amber-400">
+                Seu teste Premium terminou
+              </p>
+              <p className="text-xs text-neutral-400">
+                Faça upgrade para Premium e continue com acesso completo.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleUpgrade}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-xl transition-all"
+          >
+            Ativar Premium
+          </button>
+        </motion.div>
+      );
+    }
+
+    return null;
+  };
+
   const metrics = [
     {
       label: "BPM",
@@ -1197,77 +1279,7 @@ export default function Dashboard() {
               </motion.div>
             )}
 
-            {shouldShowTrialBanner && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="border border-cyan-500/30 bg-cyan-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
-              >
-                <div className="flex items-center gap-3">
-                  <Zap className="w-5 h-5 text-cyan-400" />
-                  <div>
-                    <p className="text-sm font-semibold text-cyan-400">
-                      Teste gratuito Premium
-                    </p>
-                    <p className="text-xs text-neutral-400">
-                      Ative 30 dias grátis para liberar os recursos Premium.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleStartPremiumTrial}
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-bold rounded-xl transition-all"
-                >
-                  Ativar teste grátis
-                </button>
-              </motion.div>
-            )}
-
-            {isTrialActive && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
-              >
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-emerald-400" />
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-400">
-                      Premium em teste gratuito
-                    </p>
-                    <p className="text-xs text-neutral-400">
-                      Seu acesso Premium está ativo por mais {trialDaysLeft} dia(s).
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {shouldShowUpgradeBanner && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
-              >
-                <div className="flex items-center gap-3">
-                  <Lock className="w-5 h-5 text-amber-400" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-400">
-                      Seu teste Premium terminou
-                    </p>
-                    <p className="text-xs text-neutral-400">
-                      Faça upgrade para Premium e continue com acesso completo.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleUpgrade}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-xl transition-all"
-                >
-                  Ativar Premium
-                </button>
-              </motion.div>
-            )}
+            {renderPremiumBanner()}
 
             {healthTrend?.requires_intervention && (
               <motion.div
@@ -1396,6 +1408,7 @@ export default function Dashboard() {
             animate={{ opacity: 1 }}
             className="space-y-6"
           >
+            {renderPremiumBanner()}
             {gamStats && shouldShowEnergyBar && (
               <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-2xl p-4 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-400" />
