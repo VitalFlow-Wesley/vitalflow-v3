@@ -1061,7 +1061,7 @@ export default function Dashboard() {
               </motion.div>
             )}
 
-            {lastSyncTime && (
+            {hasConnectedWearables && lastSyncTime && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
