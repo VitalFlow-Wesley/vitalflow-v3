@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ReferenceLine, Scatter
 } from "recharts";
 import {
   FileText, Download, Calendar, TrendingUp, Activity, Lock,
@@ -38,6 +38,35 @@ const readReportCache = () => {
   }
 };
 
+
+const ReportTrendTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const point = payload[0]?.payload;
+  const value = Number(point?.avg_v_score ?? 0);
+
+  const tone =
+    value >= 80 ? "text-emerald-400" : value >= 50 ? "text-amber-400" : "text-rose-400";
+
+  const statusLabel =
+    value >= 80 ? "Estável" : value >= 50 ? "Atenção" : "Crítico";
+
+  return (
+    <div className="bg-neutral-950/95 border border-white/10 rounded-xl p-3 shadow-xl min-w-[180px]">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-2">
+        {label}
+      </p>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-neutral-400">V-Score</span>
+        <span className={`text-sm font-bold ${tone}`}>{value}</span>
+      </div>
+      <div className="flex items-center justify-between gap-3 mt-1">
+        <span className="text-xs text-neutral-400">Leitura</span>
+        <span className={`text-xs font-semibold ${tone}`}>{statusLabel}</span>
+      </div>
+    </div>
+  );
+};
 
 const MeuRelatorio = () => {
   const { user } = useAuth();
@@ -183,6 +212,28 @@ const MeuRelatorio = () => {
     trendStart !== null && trendEnd !== null
       ? Number((trendEnd - trendStart).toFixed(1))
       : null;
+
+  const avgReferenceValue = Number(report?.avg_v_score ?? 0);
+
+  const bestTrendPoint = report?.trend?.length
+    ? report.trend.reduce((best, item) =>
+        Number(item.avg_v_score ?? 0) > Number(best.avg_v_score ?? 0) ? item : best
+      )
+    : null;
+
+  const worstTrendPoint = report?.trend?.length
+    ? report.trend.reduce((worst, item) =>
+        Number(item.avg_v_score ?? 0) < Number(worst.avg_v_score ?? 0) ? item : worst
+      )
+    : null;
+
+  const bestTrendData = bestTrendPoint
+    ? [{ date: bestTrendPoint.date, avg_v_score: bestTrendPoint.avg_v_score }]
+    : [];
+
+  const worstTrendData = worstTrendPoint
+    ? [{ date: worstTrendPoint.date, avg_v_score: worstTrendPoint.avg_v_score }]
+    : [];
 
   const trendDirectionLabel =
     trendDelta === null
@@ -428,12 +479,21 @@ const MeuRelatorio = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="date" stroke="rgba(255,255,255,0.3)" style={{ fontSize: "11px" }} />
                       <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" style={{ fontSize: "11px" }} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: "#171717", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }}
-                        labelStyle={{ color: "#999" }}
-                        itemStyle={{ color: "#22d3ee" }}
+                      <Tooltip content={<ReportTrendTooltip />} />
+                      <ReferenceLine
+                        y={avgReferenceValue}
+                        stroke="rgba(255,255,255,0.18)"
+                        strokeDasharray="4 4"
+                        label={{
+                          value: "Média",
+                          position: "insideTopRight",
+                          fill: "rgba(255,255,255,0.45)",
+                          fontSize: 11,
+                        }}
                       />
-                      <Area type="monotone" dataKey="avg_v_score" stroke="#22d3ee" strokeWidth={2} fill="url(#trendGrad)" name="V-Score" />
+                      <Area type="monotone" dataKey="avg_v_score" stroke="#22d3ee" strokeWidth={3} fill="url(#trendGrad)" name="V-Score" />
+                      <Scatter data={bestTrendData} fill="#34d399" shape="circle" />
+                      <Scatter data={worstTrendData} fill="#f43f5e" shape="circle" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
