@@ -133,6 +133,12 @@ const MeuRelatorio = () => {
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          {refreshing && (
+            <div className="sm:order-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-xs font-semibold">
+              <div className="w-3 h-3 border border-cyan-300 border-t-transparent rounded-full animate-spin" />
+              Atualizando relatório...
+            </div>
+          )}
           <div>
             <button
               onClick={() => navigate("/")}
@@ -195,7 +201,7 @@ const MeuRelatorio = () => {
           </div>
         </div>
 
-        {loading ? (
+        {loading && !report ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
           </div>
