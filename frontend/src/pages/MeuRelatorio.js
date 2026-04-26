@@ -26,6 +26,8 @@ const PIE_COLORS = ["#34d399", "#fbbf24", "#f43f5e"];
 
 
 const REPORT_CACHE_KEY = "vitalflow_personal_report_cache_v1";
+const PREMIUM_TRIAL_KEY_PREFIX = "vitalflow_premium_trial_v1";
+const PREMIUM_TRIAL_DAYS = 30;
 
 const readReportCache = () => {
   try {
@@ -47,8 +49,47 @@ const MeuRelatorio = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [hasDevices, setHasDevices] = useState(reportCache.hasDevices ?? false);
+  const [trialStartedAt, setTrialStartedAt] = useState(null);
 
-  const canExportPdf = user?.account_type === "corporate" || user?.is_premium;
+  const normalizedAccountType = String(user?.account_type || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const isB2BUser =
+    Boolean(user?.is_b2b) ||
+    normalizedAccountType.includes("b2b") ||
+    normalizedAccountType.includes("business") ||
+    normalizedAccountType.includes("empresa") ||
+    normalizedAccountType.includes("empresarial") ||
+    normalizedAccountType.includes("corporate") ||
+    normalizedAccountType.includes("rh");
+
+  const isPremiumUser = Boolean(user?.is_premium);
+  const userPlan = String(
+    user?.plan || (isPremiumUser ? "premium" : "free")
+  ).toLowerCase();
+
+  const isAdmin = String(user?.nivel_acesso || user?.role || "")
+    .toLowerCase()
+    .includes("ceo") ||
+    String(user?.nivel_acesso || user?.role || "")
+      .toLowerCase()
+      .includes("admin");
+
+  const trialEndsAt = (() => {
+    if (!trialStartedAt) return null;
+    const started = new Date(trialStartedAt);
+    if (Number.isNaN(started.getTime())) return null;
+    const ends = new Date(started);
+    ends.setDate(ends.getDate() + PREMIUM_TRIAL_DAYS);
+    return ends;
+  })();
+
+  const isTrialActive = Boolean(trialEndsAt && trialEndsAt.getTime() > Date.now());
+
+  const canExportPdf =
+    userPlan === "premium" || isPremiumUser || isB2BUser || isAdmin || isTrialActive;
 
   useEffect(() => {
     fetchReport({ silent: !!report });
@@ -56,6 +97,16 @@ const MeuRelatorio = () => {
       .then(r => setHasDevices(r.data.some(d => d.is_connected)))
       .catch(() => {});
   }, [period]);
+
+  useEffect(() => {
+    try {
+      const identity = user?.id || user?.email || "guest";
+      const raw = localStorage.getItem(`${PREMIUM_TRIAL_KEY_PREFIX}:${identity}`);
+      setTrialStartedAt(raw || null);
+    } catch {
+      setTrialStartedAt(null);
+    }
+  }, [user]);
 
   const fetchReport = async ({ silent = false } = {}) => {
     if (silent) {
