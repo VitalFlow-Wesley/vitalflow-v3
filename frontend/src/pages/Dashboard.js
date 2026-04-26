@@ -38,7 +38,7 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
 const API = `${BACKEND_URL}/api`;
 const POLLING_INTERVAL = 10000;
-const BACKGROUND_SYNC_INTERVAL = 30 * 60 * 1000;
+const BACKGROUND_SYNC_INTERVAL = 5 * 60 * 1000;
 
 function normalizeState(statusValue, tagValue, scoreValue) {
   const status = String(statusValue || "")
@@ -672,7 +672,8 @@ export default function Dashboard() {
     fetchGamificationStats();
     fetchHealthTrend();
     fetchMorningReport();
-  }, []);
+    backgroundSync();
+  }, [backgroundSync]);
 
   useEffect(() => {
     bgSyncRef.current = setInterval(backgroundSync, BACKGROUND_SYNC_INTERVAL);
@@ -783,8 +784,16 @@ export default function Dashboard() {
     const diff = Math.floor((now - date) / 60000);
     if (diff < 1) return "agora mesmo";
     if (diff < 60) return `há ${diff} min`;
-    if (diff < 1440) return `há ${Math.floor(diff/60)}h`;
-    return `há ${Math.floor(diff/1440)}d`;
+    if (diff < 1440) return `há ${Math.floor(diff / 60)}h`;
+    return `há ${Math.floor(diff / 1440)}d`;
+  };
+
+  const formatExactSyncTime = (date) => {
+    if (!date) return null;
+    return date.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const engine = currentAnalysis?.engine || {};
@@ -1045,7 +1054,13 @@ export default function Dashboard() {
               >
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Dados sincronizados <span className="text-neutral-400 font-medium">{formatSyncTime(lastSyncTime)}</span></span>
+                  <span>
+                    Último dado do Google às{" "}
+                    <span className="text-neutral-300 font-medium">
+                      {formatExactSyncTime(lastSyncTime)}
+                    </span>
+                    <span className="text-neutral-500"> ({formatSyncTime(lastSyncTime)})</span>
+                  </span>
                 </div>
                 <button
                   onClick={backgroundSync}
