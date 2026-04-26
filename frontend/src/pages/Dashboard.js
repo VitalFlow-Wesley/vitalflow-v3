@@ -424,6 +424,19 @@ export default function Dashboard() {
     return Array.isArray(items) ? items : [];
   };
 
+  const getAnalysisMoment = (analysis) => {
+    const raw =
+      analysis?.timestamp ||
+      analysis?.created_at ||
+      analysis?.updated_at ||
+      null;
+
+    if (!raw) return 0;
+
+    const ms = new Date(raw).getTime();
+    return Number.isFinite(ms) ? ms : 0;
+  };
+
   const fetchHistory = async () => {
     try {
       const response = await axios.get(`${API}/history?limit=30`, {
@@ -433,13 +446,30 @@ export default function Dashboard() {
       const realHistory = filterRealAnalyses(response.data);
       const orderedHistory = sortHistoryDesc(realHistory);
 
-      setHistory(orderedHistory);
+      setHistory((prev) => {
+        const prevList = Array.isArray(prev) ? prev : [];
+        const merged = [...orderedHistory];
+
+        for (const item of prevList) {
+          const key = item?.id || item?.timestamp;
+          if (!merged.some((candidate) => (candidate?.id || candidate?.timestamp) === key)) {
+            merged.push(item);
+          }
+        }
+
+        return sortHistoryDesc(merged);
+      });
 
       if (orderedHistory.length > 0) {
         const latest = orderedHistory[0];
-        setCurrentAnalysis(latest);
-        lastAnalysisKeyRef.current = getAnalysisKey(latest);
-      } else {
+        const latestMoment = getAnalysisMoment(latest);
+        const currentMoment = getAnalysisMoment(currentAnalysis);
+
+        if (!currentAnalysis || latestMoment >= currentMoment) {
+          setCurrentAnalysis(latest);
+          lastAnalysisKeyRef.current = getAnalysisKey(latest);
+        }
+      } else if (!currentAnalysis) {
         setCurrentAnalysis(null);
         lastAnalysisKeyRef.current = null;
       }
