@@ -66,6 +66,7 @@ const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentStatus, setCurrentStatus] = useState("Normal");
   const [hasConnectedWearables, setHasConnectedWearables] = useState(false);
+  const [hasAnalysisData, setHasAnalysisData] = useState(false);
 
   const dropdownRef = useRef(null);
 
@@ -89,13 +90,16 @@ const Navbar = () => {
 
         if (Array.isArray(data) && data.length > 0) {
           setCurrentStatus(normalizeNavbarStatus(data[0]));
+          setHasAnalysisData(true);
           return;
         }
 
         setCurrentStatus("Normal");
+        setHasAnalysisData(false);
       } catch (error) {
         console.error("Erro ao buscar status do navbar:", error);
         setCurrentStatus("Normal");
+        setHasAnalysisData(false);
       }
     };
 
@@ -197,21 +201,23 @@ const Navbar = () => {
             </div>
           </div>
 
-          <div className="hidden lg:flex items-center gap-4">
-            <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-full border ${currentStyle.wrapper}`}
-            >
-              <span className={`w-3 h-3 rounded-full ${currentStyle.dot}`} />
-              <span className={`font-semibold text-sm ${currentStyle.text}`}>
-                {currentStatus}
-              </span>
-            </div>
+          {hasAnalysisData && (
+            <div className="hidden lg:flex items-center gap-4">
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-full border ${currentStyle.wrapper}`}
+              >
+                <span className={`w-3 h-3 rounded-full ${currentStyle.dot}`} />
+                <span className={`font-semibold text-sm ${currentStyle.text}`}>
+                  {currentStatus}
+                </span>
+              </div>
 
-            <GamificationBar
-              energyPoints={user?.energy_points}
-              currentStreak={user?.current_streak}
-            />
-          </div>
+              <GamificationBar
+                energyPoints={user?.energy_points}
+                currentStreak={user?.current_streak}
+              />
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             {hasConnectedWearables && (
