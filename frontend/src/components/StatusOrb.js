@@ -100,9 +100,6 @@ const StatusOrb = ({
           {config.title}
         </h2>
 
-        <p className="text-sm text-neutral-400 leading-6 mb-6">
-          {config.subtitle}
-        </p>
       </div>
 
       <div className="relative z-10 flex items-center justify-center mb-6">

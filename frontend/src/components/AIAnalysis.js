@@ -152,9 +152,6 @@ const AIAnalysis = ({ analysis }) => {
       <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-5">
         <div className="space-y-4">
           <div className={`rounded-2xl border ${visual.border} ${visual.soft} p-5`}>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-2">
-              Leitura atual
-            </p>
             <p
               className={`text-xl font-black leading-tight ${visual.text}`}
               data-testid="analysis-tag"
@@ -164,9 +161,6 @@ const AIAnalysis = ({ analysis }) => {
           </div>
 
           <div className={`rounded-2xl border ${visual.border} bg-neutral-950/35 p-5`}>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-3">
-              Interpretação
-            </p>
             <p
               className="text-sm sm:text-[15px] text-white leading-7"
               data-testid="analysis-cause"
