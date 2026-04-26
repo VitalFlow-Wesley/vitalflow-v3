@@ -366,10 +366,17 @@ const formatMinutesValue = (value) => formatMetricValue(value, " min");
 
 
 const DASHBOARD_CACHE_KEY_PREFIX = "vitalflow_dashboard_cache_v2";
+const PREMIUM_TRIAL_KEY_PREFIX = "vitalflow_premium_trial_v1";
+const PREMIUM_TRIAL_DAYS = 30;
 
 const getDashboardCacheKey = (user) => {
   const identity = user?.id || user?.email || "guest";
   return `${DASHBOARD_CACHE_KEY_PREFIX}:${identity}`;
+};
+
+const getPremiumTrialKey = (user) => {
+  const identity = user?.id || user?.email || "guest";
+  return `${PREMIUM_TRIAL_KEY_PREFIX}:${identity}`;
 };
 
 const readDashboardCache = (user) => {
@@ -405,6 +412,7 @@ export default function Dashboard() {
   const [medicalAlertData, setMedicalAlertData] = useState(null);
   const [morningReport, setMorningReport] = useState(null);
   const [lastSyncData, setLastSyncData] = useState(dashboardCache.lastSyncData ?? null);
+  const [trialStartedAt, setTrialStartedAt] = useState(null);
 
   const pollingIntervalRef = useRef(null);
   const bgSyncRef = useRef(null);
@@ -679,6 +687,26 @@ export default function Dashboard() {
   }, [user, currentAnalysis, history, connectedDevices, lastSyncData]);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(getPremiumTrialKey(user));
+      setTrialStartedAt(raw || null);
+    } catch {
+      setTrialStartedAt(null);
+    }
+  }, [user]);
+
+  const handleStartPremiumTrial = () => {
+    try {
+      const startedAt = new Date().toISOString();
+      localStorage.setItem(getPremiumTrialKey(user), startedAt);
+      setTrialStartedAt(startedAt);
+      toast.success("Teste gratuito Premium ativado por 30 dias!");
+    } catch {
+      toast.error("Não foi possível ativar o teste gratuito agora.");
+    }
+  };
+
+  useEffect(() => {
     fetchHistory();
     fetchConnectedDevices();
     fetchPredictiveAlert();
@@ -775,6 +803,28 @@ export default function Dashboard() {
     isFreeLocked,
     user,
   });
+
+  const trialEndsAt = useMemo(() => {
+    if (!trialStartedAt) return null;
+    const started = new Date(trialStartedAt);
+    if (Number.isNaN(started.getTime())) return null;
+    const ends = new Date(started);
+    ends.setDate(ends.getDate() + PREMIUM_TRIAL_DAYS);
+    return ends;
+  }, [trialStartedAt]);
+
+  const trialDaysLeft = useMemo(() => {
+    if (!trialEndsAt) return 0;
+    const now = new Date();
+    const diffMs = trialEndsAt.getTime() - now.getTime();
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  }, [trialEndsAt]);
+
+  const isTrialActive = Boolean(trialEndsAt && trialDaysLeft > 0);
+  const hasTrialStarted = Boolean(trialStartedAt);
+  const shouldShowTrialBanner = isFreeLocked && !hasTrialStarted;
+  const shouldShowUpgradeBanner = isFreeLocked && !isTrialActive && hasTrialStarted;
 
   const hasData = !dashboardLoading && currentAnalysis !== null;
 
@@ -1147,7 +1197,53 @@ export default function Dashboard() {
               </motion.div>
             )}
 
-            {isFreeLocked && (
+            {shouldShowTrialBanner && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="border border-cyan-500/30 bg-cyan-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Zap className="w-5 h-5 text-cyan-400" />
+                  <div>
+                    <p className="text-sm font-semibold text-cyan-400">
+                      Teste gratuito Premium
+                    </p>
+                    <p className="text-xs text-neutral-400">
+                      Ative 30 dias grátis para liberar os recursos Premium.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleStartPremiumTrial}
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-bold rounded-xl transition-all"
+                >
+                  Ativar teste grátis
+                </button>
+              </motion.div>
+            )}
+
+            {isTrialActive && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="w-5 h-5 text-emerald-400" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-400">
+                      Premium em teste gratuito
+                    </p>
+                    <p className="text-xs text-neutral-400">
+                      Seu acesso Premium está ativo por mais {trialDaysLeft} dia(s).
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {shouldShowUpgradeBanner && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1157,10 +1253,10 @@ export default function Dashboard() {
                   <Lock className="w-5 h-5 text-amber-400" />
                   <div>
                     <p className="text-sm font-semibold text-amber-400">
-                      IA Preditiva bloqueada
+                      Seu teste Premium terminou
                     </p>
                     <p className="text-xs text-neutral-400">
-                      Faça upgrade para Premium e acesse predições de estresse
+                      Faça upgrade para Premium e continue com acesso completo.
                     </p>
                   </div>
                 </div>
@@ -1168,7 +1264,7 @@ export default function Dashboard() {
                   onClick={handleUpgrade}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-xl transition-all"
                 >
-                  Upgrade Premium
+                  Ativar Premium
                 </button>
               </motion.div>
             )}
