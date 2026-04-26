@@ -177,6 +177,41 @@ const MeuRelatorio = () => {
 
   const hasData = report && report.total_analyses > 0;
 
+  const trendStart = report?.trend?.length ? Number(report.trend[0]?.avg_v_score ?? 0) : null;
+  const trendEnd = report?.trend?.length ? Number(report.trend[report.trend.length - 1]?.avg_v_score ?? 0) : null;
+  const trendDelta =
+    trendStart !== null && trendEnd !== null
+      ? Number((trendEnd - trendStart).toFixed(1))
+      : null;
+
+  const trendDirectionLabel =
+    trendDelta === null
+      ? "Sem comparação"
+      : trendDelta > 1
+      ? "Melhora no período"
+      : trendDelta < -1
+      ? "Queda no período"
+      : "Estabilidade no período";
+
+  const trendDirectionTone =
+    trendDelta === null
+      ? "text-neutral-400"
+      : trendDelta > 1
+      ? "text-emerald-400"
+      : trendDelta < -1
+      ? "text-rose-400"
+      : "text-amber-400";
+
+  const topAreasSummary = report?.top_areas?.slice(0, 2).map((item) => item.area).join(" e ") || "sem destaques";
+  const coverageLabel =
+    report?.trend?.length && period === "7d"
+      ? `${report.trend.length}/7 dias monitorados`
+      : report?.trend?.length && period === "30d"
+      ? `${report.trend.length}/30 dias monitorados`
+      : report?.trend?.length
+      ? `${report.trend.length} dias monitorados`
+      : "Sem cobertura suficiente";
+
   return (
     <div className="min-h-screen bg-neutral-950">
       <Navbar />
@@ -289,6 +324,25 @@ const MeuRelatorio = () => {
         ) : (
           /* Report Content */
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <div className="border border-cyan-500/20 bg-cyan-500/5 rounded-xl p-5" data-testid="report-summary">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-300 font-bold mb-2">
+                    Resumo Executivo
+                  </p>
+                  <p className="text-white text-base sm:text-lg font-semibold leading-relaxed">
+                    Seu período mostra <span className={trendDirectionTone}>{trendDirectionLabel.toLowerCase()}</span>,
+                    com V-Score médio de <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto em <span className="text-white">{topAreasSummary}</span>.
+                  </p>
+                  <p className="text-sm text-neutral-400 mt-2">
+                    Cobertura do período: {coverageLabel}.
+                  </p>
+                </div>
+              </div>
+            </div>
             {/* Premium upsell banner for free users */}
             {!canExportPdf && (
               <div className="border border-amber-500/30 bg-amber-500/5 rounded-md p-4 flex items-center justify-between" data-testid="pdf-premium-banner">
@@ -303,12 +357,39 @@ const MeuRelatorio = () => {
             )}
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               {[
-                { label: "Analises", value: report.total_analyses, icon: FileText, color: "text-cyan-400" },
-                { label: "V-Score Medio", value: report.avg_v_score, icon: Activity, color: report.avg_v_score >= 80 ? "text-emerald-400" : report.avg_v_score >= 50 ? "text-amber-400" : "text-rose-400" },
-                { label: "Dias com Dados", value: report.trend.length, icon: Calendar, color: "text-purple-400" },
-                { label: "Tendencia", value: report.trend.length >= 2 ? (report.trend[report.trend.length-1].avg_v_score > report.trend[0].avg_v_score ? "Subindo" : report.trend[report.trend.length-1].avg_v_score < report.trend[0].avg_v_score ? "Caindo" : "Estavel") : "-", icon: TrendingUp, color: "text-blue-400" },
+                {
+                  label: "Analises",
+                  value: report.total_analyses,
+                  icon: FileText,
+                  color: "text-cyan-400",
+                  helper: "leituras validas no periodo",
+                },
+                {
+                  label: "V-Score Medio",
+                  value: report.avg_v_score,
+                  icon: Activity,
+                  color: report.avg_v_score >= 80 ? "text-emerald-400" : report.avg_v_score >= 50 ? "text-amber-400" : "text-rose-400",
+                  helper:
+                    trendDelta === null
+                      ? "sem base comparativa"
+                      : `${trendDelta > 0 ? "+" : ""}${trendDelta} vs inicio do periodo`,
+                },
+                {
+                  label: "Dias com Dados",
+                  value: report.trend.length,
+                  icon: Calendar,
+                  color: "text-purple-400",
+                  helper: coverageLabel,
+                },
+                {
+                  label: "Tendencia",
+                  value: report.trend.length >= 2 ? (report.trend[report.trend.length-1].avg_v_score > report.trend[0].avg_v_score ? "Subindo" : report.trend[report.trend.length-1].avg_v_score < report.trend[0].avg_v_score ? "Caindo" : "Estavel") : "-",
+                  icon: TrendingUp,
+                  color: trendDelta !== null && trendDelta < 0 ? "text-blue-400" : trendDelta !== null && trendDelta > 0 ? "text-emerald-400" : "text-amber-400",
+                  helper: trendDirectionLabel,
+                },
               ].map((kpi) => (
                 <motion.div
                   key={kpi.label}
@@ -322,6 +403,7 @@ const MeuRelatorio = () => {
                     <span className="text-xs text-neutral-500 uppercase tracking-wider">{kpi.label}</span>
                   </div>
                   <p className={`text-2xl font-mono font-black ${kpi.color}`}>{kpi.value}</p>
+                  <p className="text-xs text-neutral-500 mt-2">{kpi.helper}</p>
                 </motion.div>
               ))}
             </div>
