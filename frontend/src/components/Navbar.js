@@ -66,7 +66,6 @@ const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentStatus, setCurrentStatus] = useState("Normal");
   const [hasConnectedWearables, setHasConnectedWearables] = useState(false);
-  const [hasConnectedWearables, setHasConnectedWearables] = useState(false);
 
   const dropdownRef = useRef(null);
 
