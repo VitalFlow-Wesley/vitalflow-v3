@@ -826,6 +826,22 @@ export default function Dashboard() {
   const shouldShowTrialBanner = isFreeLocked && !hasTrialStarted;
   const shouldShowUpgradeBanner = isFreeLocked && !isTrialActive && hasTrialStarted;
 
+  const trialProgressPercent = useMemo(() => {
+    if (!trialStartedAt || !trialEndsAt) return 0;
+
+    const started = new Date(trialStartedAt).getTime();
+    const ends = trialEndsAt.getTime();
+    const now = Date.now();
+
+    if (!Number.isFinite(started) || !Number.isFinite(ends) || ends <= started) {
+      return 0;
+    }
+
+    const total = ends - started;
+    const elapsed = Math.min(Math.max(now - started, 0), total);
+    return Math.round((elapsed / total) * 100);
+  }, [trialStartedAt, trialEndsAt]);
+
   const hasData = !dashboardLoading && currentAnalysis !== null;
 
   const connectedDevicesCount = useMemo(() => {
@@ -914,18 +930,33 @@ export default function Dashboard() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
+          className="border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4"
         >
-          <div className="flex items-center gap-3">
-            <Shield className="w-5 h-5 text-emerald-400" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-400">
-                Premium em teste gratuito
-              </p>
-              <p className="text-xs text-neutral-400">
-                Seu acesso Premium está ativo por mais {trialDaysLeft} dia(s).
-              </p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <Shield className="w-5 h-5 text-emerald-400 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-emerald-400">
+                  Premium em teste gratuito
+                </p>
+                <p className="text-xs text-neutral-300 mt-1">
+                  Expira em {trialDaysLeft} dia(s).
+                </p>
+              </div>
             </div>
+
+            <div className="text-right shrink-0">
+              <span className="text-[11px] uppercase tracking-wide text-emerald-300/80">
+                {trialProgressPercent}% usado
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-3 h-2 rounded-full bg-neutral-900/70 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-500"
+              style={{ width: `${trialProgressPercent}%` }}
+            />
           </div>
         </motion.div>
       );
