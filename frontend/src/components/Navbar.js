@@ -65,6 +65,7 @@ const Navbar = () => {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentStatus, setCurrentStatus] = useState("Normal");
+  const [hasConnectedWearables, setHasConnectedWearables] = useState(false);
 
   const dropdownRef = useRef(null);
 
@@ -98,9 +99,33 @@ const Navbar = () => {
       }
     };
 
-    fetchLatestStatus();
+    const fetchWearableState = async () => {
+      try {
+        const { data } = await axios.get(`${API}/wearables`, {
+          withCredentials: true,
+        });
 
-    const interval = setInterval(fetchLatestStatus, 15000);
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.devices)
+          ? data.devices
+          : [];
+
+        setHasConnectedWearables(list.some((device) => device?.is_connected));
+      } catch (error) {
+        console.error("Erro ao buscar wearables do navbar:", error);
+        setHasConnectedWearables(false);
+      }
+    };
+
+    fetchLatestStatus();
+    fetchWearableState();
+
+    const interval = setInterval(() => {
+      fetchLatestStatus();
+      fetchWearableState();
+    }, 15000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -189,12 +214,14 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800/50 border border-white/10">
-              <Radio className="w-3 h-3 text-emerald-400" />
-              <span className="text-[11px] text-neutral-300">
-                Sincronizado com wearables
-              </span>
-            </div>
+            {hasConnectedWearables && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800/50 border border-white/10">
+                <Radio className="w-3 h-3 text-emerald-400" />
+                <span className="text-[11px] text-neutral-300">
+                  Sincronizado com wearables
+                </span>
+              </div>
+            )}
 
             {isGestor &&
               (isGestorPage ? (
