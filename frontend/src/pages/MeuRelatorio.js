@@ -24,26 +24,45 @@ const PERIOD_OPTIONS = [
 
 const PIE_COLORS = ["#34d399", "#fbbf24", "#f43f5e"];
 
+
+const REPORT_CACHE_KEY = "vitalflow_personal_report_cache_v1";
+
+const readReportCache = () => {
+  try {
+    const raw = sessionStorage.getItem(REPORT_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+
 const MeuRelatorio = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [period, setPeriod] = useState("7d");
-  const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const reportCache = readReportCache();
+  const [period, setPeriod] = useState(reportCache.period || "7d");
+  const [report, setReport] = useState(reportCache.report ?? null);
+  const [loading, setLoading] = useState(!reportCache.report);
+  const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [hasDevices, setHasDevices] = useState(false);
+  const [hasDevices, setHasDevices] = useState(reportCache.hasDevices ?? false);
 
   const canExportPdf = user?.account_type === "corporate" || user?.is_premium;
 
   useEffect(() => {
-    fetchReport();
+    fetchReport({ silent: !!report });
     axios.get(API.replace('/api','') + '/api/wearables', { withCredentials: true })
       .then(r => setHasDevices(r.data.some(d => d.is_connected)))
       .catch(() => {});
   }, [period]);
 
-  const fetchReport = async () => {
-    setLoading(true);
+  const fetchReport = async ({ silent = false } = {}) => {
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const { data } = await axios.get(`${API}/report/personal?period=${period}`, { withCredentials: true });
       setReport(data);
@@ -51,8 +70,23 @@ const MeuRelatorio = () => {
       toast.error("Erro ao carregar relatorio.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        REPORT_CACHE_KEY,
+        JSON.stringify({
+          period,
+          report,
+          hasDevices,
+        })
+      );
+    } catch {}
+  }, [period, report, hasDevices]);
 
   const handleExportPdf = async () => {
     if (!canExportPdf) {

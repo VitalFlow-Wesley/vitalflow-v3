@@ -34,6 +34,19 @@ const OAUTH_STEPS = [
   "Sincronizando dados...",
 ];
 
+
+const DEVICES_CACHE_KEY = "vitalflow_devices_cache_v1";
+
+const readDevicesCache = () => {
+  try {
+    const raw = sessionStorage.getItem(DEVICES_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+
 const TEST_SCENARIOS = [
   {
     value: "random",
@@ -74,11 +87,14 @@ const TEST_SCENARIOS = [
 
 const ConnectDevices = () => {
   const navigate = useNavigate();
-  const [devices, setDevices] = useState([]);
+  const devicesCache = readDevicesCache();
+  const [devices, setDevices] = useState(devicesCache.devices ?? []);
   const [loading, setLoading] = useState(false);
   const [oauthFlow, setOauthFlow] = useState(null);
-  const [syncResult, setSyncResult] = useState(null);
-  const [selectedScenario, setSelectedScenario] = useState("random");
+  const [syncResult, setSyncResult] = useState(devicesCache.syncResult ?? null);
+  const [selectedScenario, setSelectedScenario] = useState(
+    devicesCache.selectedScenario || "random"
+  );
 
   const wearableProviders = [
     {
@@ -143,6 +159,20 @@ const ConnectDevices = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
+
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        DEVICES_CACHE_KEY,
+        JSON.stringify({
+          devices,
+          syncResult,
+          selectedScenario,
+        })
+      );
+    } catch {}
+  }, [devices, syncResult, selectedScenario]);
 
   const fetchConnectedDevices = async () => {
     try {
