@@ -364,12 +364,31 @@ const formatSleepValue = (value) => formatMetricValue(value, "h");
 const formatCaloriesValue = (value) => formatMetricValue(value, " kcal");
 const formatMinutesValue = (value) => formatMetricValue(value, " min");
 
+
+const DASHBOARD_CACHE_KEY = "vitalflow_dashboard_cache_v1";
+
+const readDashboardCache = () => {
+  try {
+    const raw = sessionStorage.getItem(DASHBOARD_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
-const [dashboardLoading, setDashboardLoading] = useState(true);
-  const [currentAnalysis, setCurrentAnalysis] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [connectedDevices, setConnectedDevices] = useState([]);
+  const dashboardCache = readDashboardCache();
+  const [dashboardLoading, setDashboardLoading] = useState(
+    !dashboardCache.currentAnalysis && !(dashboardCache.history || []).length
+  );
+  const [currentAnalysis, setCurrentAnalysis] = useState(
+    dashboardCache.currentAnalysis ?? null
+  );
+  const [history, setHistory] = useState(dashboardCache.history ?? []);
+  const [connectedDevices, setConnectedDevices] = useState(
+    dashboardCache.connectedDevices ?? []
+  );
   const [devicesLoading, setDevicesLoading] = useState(true);
   const [selectedRoutine, setSelectedRoutine] = useState(null);
   const [predictiveAlert, setPredictiveAlert] = useState(null);
@@ -380,7 +399,7 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
   const [showMedicalAlert, setShowMedicalAlert] = useState(false);
   const [medicalAlertData, setMedicalAlertData] = useState(null);
   const [morningReport, setMorningReport] = useState(null);
-  const [lastSyncData, setLastSyncData] = useState(null);
+  const [lastSyncData, setLastSyncData] = useState(dashboardCache.lastSyncData ?? null);
 
   const pollingIntervalRef = useRef(null);
   const bgSyncRef = useRef(null);
@@ -569,11 +588,9 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
           });
         }
 
-        setDashboardLoading(true);
         await fetchHistory();
         await fetchConnectedDevices();
         await fetchMorningReport();
-        setDashboardLoading(false);
       } else if (data.status === "no_real_data") {
         toast.info(
           data.message ||
@@ -591,6 +608,21 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
       setDashboardLoading(false);
     }
   }, []);
+
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        DASHBOARD_CACHE_KEY,
+        JSON.stringify({
+          currentAnalysis,
+          history,
+          connectedDevices,
+          lastSyncData,
+        })
+      );
+    } catch {}
+  }, [currentAnalysis, history, connectedDevices, lastSyncData]);
 
   useEffect(() => {
     fetchHistory();
@@ -1245,7 +1277,6 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
                 <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     onClick={async () => {
-                      setDashboardLoading(true);
                       await fetchHistory();
                     }}
                     className="px-4 py-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all text-sm font-semibold"
