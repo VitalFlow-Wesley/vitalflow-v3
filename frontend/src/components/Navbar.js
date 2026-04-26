@@ -248,15 +248,7 @@ const Navbar = () => {
                 </button>
               ))}
 
-            {isRelatorio ? (
-              <button
-                onClick={() => navigate("/")}
-                className={navButtonClass(false)}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>Meus Dados</span>
-              </button>
-            ) : (
+            {!isRelatorio && (
               <button
                 onClick={() => navigate("/relatorio")}
                 className={navButtonClass(isRelatorio)}
