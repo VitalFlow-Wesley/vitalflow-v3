@@ -365,11 +365,16 @@ const formatCaloriesValue = (value) => formatMetricValue(value, " kcal");
 const formatMinutesValue = (value) => formatMetricValue(value, " min");
 
 
-const DASHBOARD_CACHE_KEY = "vitalflow_dashboard_cache_v1";
+const DASHBOARD_CACHE_KEY_PREFIX = "vitalflow_dashboard_cache_v2";
 
-const readDashboardCache = () => {
+const getDashboardCacheKey = (user) => {
+  const identity = user?.id || user?.email || "guest";
+  return `${DASHBOARD_CACHE_KEY_PREFIX}:${identity}`;
+};
+
+const readDashboardCache = (user) => {
   try {
-    const raw = sessionStorage.getItem(DASHBOARD_CACHE_KEY);
+    const raw = sessionStorage.getItem(getDashboardCacheKey(user));
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -378,7 +383,7 @@ const readDashboardCache = () => {
 
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
-  const dashboardCache = readDashboardCache();
+  const dashboardCache = readDashboardCache(user);
   const [dashboardLoading, setDashboardLoading] = useState(
     !dashboardCache.currentAnalysis && !(dashboardCache.history || []).length
   );
@@ -654,7 +659,7 @@ export default function Dashboard() {
   useEffect(() => {
     try {
       sessionStorage.setItem(
-        DASHBOARD_CACHE_KEY,
+        getDashboardCacheKey(user),
         JSON.stringify({
           currentAnalysis,
           history,
@@ -663,7 +668,7 @@ export default function Dashboard() {
         })
       );
     } catch {}
-  }, [currentAnalysis, history, connectedDevices, lastSyncData]);
+  }, [user, currentAnalysis, history, connectedDevices, lastSyncData]);
 
   useEffect(() => {
     fetchHistory();
