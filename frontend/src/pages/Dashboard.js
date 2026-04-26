@@ -773,7 +773,7 @@ const [dashboardLoading, setDashboardLoading] = useState(true);
     {
       label: "Recovery",
       value:
-        recovery?.label === "no_sleep_data"
+        currentAnalysis?.recovery?.label === "no_sleep_data"
           ? "--"
           : engine.recovery_score ?? "--",
       icon: Shield,
