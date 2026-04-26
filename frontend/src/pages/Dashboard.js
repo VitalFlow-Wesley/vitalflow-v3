@@ -578,6 +578,17 @@ export default function Dashboard() {
             ? " | Exercício detectado!"
             : "";
 
+          setCurrentAnalysis(a);
+          setHistory((prev) => {
+            const prevList = Array.isArray(prev) ? prev : [];
+            const filtered = prevList.filter(
+              (item) =>
+                (item?.id || item?.timestamp) !== (a?.id || a?.timestamp)
+            );
+            return [a, ...filtered];
+          });
+          lastAnalysisKeyRef.current = getAnalysisKey(a);
+
           toast.success(
             `Sync: V-Score ${a.v_score} (${a.status_visual}) - ${a.recovery_label}${exerciseMsg}`,
             { duration: 5000 }
@@ -588,9 +599,9 @@ export default function Dashboard() {
           });
         }
 
-        await fetchHistory();
-        await fetchConnectedDevices();
-        await fetchMorningReport();
+        fetchHistory();
+        fetchConnectedDevices();
+        fetchMorningReport();
       } else if (data.status === "no_real_data") {
         toast.info(
           data.message ||
