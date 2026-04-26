@@ -214,6 +214,15 @@ async def fetch_biometrics(access_token: str) -> dict | None:
                 "source": "google_fit",
                 "synced_at": now.isoformat(),
                 "has_real_data": False,
+                "debug_google_fit": {
+                    "calories_status": calories_response.status_code,
+                    "distance_status": distance_response.status_code,
+                    "sleep_status": sleep_response.status_code,
+                    "active_status": active_response.status_code,
+                    "calories_preview": calories_response.text[:1200],
+                    "distance_preview": distance_response.text[:1200],
+                    "sleep_preview": sleep_response.text[:1200],
+                },
             }
 
             try:
