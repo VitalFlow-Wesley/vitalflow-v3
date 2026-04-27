@@ -230,14 +230,18 @@ const MeuRelatorio = () => {
 
   const avgReferenceValue = Number(report?.avg_v_score ?? 0);
 
-  const bestTrendPoint = report?.trend?.length
-    ? report.trend.reduce((best, item) =>
+  const orderedTrend = report?.trend?.length
+    ? [...report.trend].sort((a, b) => new Date(a.date) - new Date(b.date))
+    : [];
+
+  const bestTrendPoint = orderedTrend.length
+    ? orderedTrend.reduce((best, item) =>
         Number(item.avg_v_score ?? 0) > Number(best.avg_v_score ?? 0) ? item : best
       )
     : null;
 
-  const worstTrendPoint = report?.trend?.length
-    ? report.trend.reduce((worst, item) =>
+  const worstTrendPoint = orderedTrend.length
+    ? orderedTrend.reduce((worst, item) =>
         Number(item.avg_v_score ?? 0) < Number(worst.avg_v_score ?? 0) ? item : worst
       )
     : null;
@@ -374,7 +378,7 @@ const MeuRelatorio = () => {
               <div className="flex items-center gap-2">
                 <Calendar className="w-3.5 h-3.5 text-neutral-400" />
                 <span>
-                  Periodo analisado: {report?.trend?.[0]?.date || "--"} a {report?.trend?.[report?.trend?.length - 1]?.date || "--"} ({report?.trend?.length || 0} dias)
+                  Periodo analisado: {orderedTrend?.[0]?.date || "--"} a {orderedTrend?.[orderedTrend?.length - 1]?.date || "--"} ({orderedTrend?.length || 0} dias)
                 </span>
               </div>
               <span className="hidden sm:inline text-neutral-700">|</span>
@@ -616,7 +620,7 @@ const MeuRelatorio = () => {
                 </h3>
                 <div className="w-full h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={report.trend}>
+                    <AreaChart data={orderedTrend}>
                       <defs>
                         <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
@@ -728,7 +732,13 @@ const MeuRelatorio = () => {
                       <Tooltip
                         contentStyle={{ backgroundColor: "#171717", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }}
                       />
-                      <Bar dataKey="count" fill="#a78bfa" radius={[0, 4, 4, 0]} name="Ocorrencias">
+                      <Bar
+                        dataKey="count"
+                        fill="#a78bfa"
+                        radius={[0, 4, 4, 0]}
+                        name="Ocorrencias"
+                        label={{ position: "right", fill: "rgba(255,255,255,0.72)", fontSize: 11 }}
+                      >
                         {report.top_areas.map((entry, index) => (
                           <Cell key={`area-${index}`} fill={index === 0 ? "#a78bfa" : index === 1 ? "#9575e8" : "#7c5fd6"} />
                         ))}
