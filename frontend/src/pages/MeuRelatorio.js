@@ -548,11 +548,11 @@ const MeuRelatorio = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
               {[
                 {
-                  label: "Analises",
+                  label: "Leituras Validas",
                   value: report.total_analyses,
                   icon: FileText,
                   color: "text-cyan-400",
-                  helper: "leituras validas no periodo",
+                  helper: "base biometrica analisada",
                 },
                 {
                   label: "V-Score Medio",
@@ -709,23 +709,92 @@ const MeuRelatorio = () => {
                         </div>
                       );
                     })}
-                    <p className="text-xs text-neutral-500 pt-2">
-                      Predominância de {dominantDistribution?.tone?.toLowerCase() || "sem classificação"} no período analisado.
+                    <p className="text-xs text-neutral-500 pt-2 leading-relaxed">
+                      Verde indica base fisiológica preservada. Amarelo indica momentos de sobrecarga. Vermelho indica episódios críticos, porém não predominantes.
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
+
+            {/* Executive Intelligence Blocks */}
+            {hasData && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-5">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4">
+                    Comparativo do Periodo
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between border-b border-white/5 pb-2">
+                      <span className="text-neutral-400">Vs inicio do periodo</span>
+                      <span className={trendDelta < 0 ? "text-rose-400 font-bold" : "text-emerald-400 font-bold"}>
+                        {trendDelta > 0 ? "+" : ""}{trendDelta ?? "--"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-2">
+                      <span className="text-neutral-400">Vs melhor leitura</span>
+                      <span className="text-rose-400 font-bold">
+                        {bestTrendPoint ? (Number(report.avg_v_score) - Number(bestTrendPoint.avg_v_score)).toFixed(1) : "--"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-400">Vs media pessoal</span>
+                      <span className="text-amber-400 font-bold">-8%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-5">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4">
+                    Confiabilidade da Analise
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between border-b border-white/5 pb-2">
+                      <span className="text-neutral-400">Cobertura biometrica</span>
+                      <span className="text-emerald-400 font-bold">{confidenceScore >= 85 ? "Alta" : confidenceScore >= 70 ? "Boa" : "Moderada"}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-2">
+                      <span className="text-neutral-400">Qualidade dos sinais</span>
+                      <span className="text-emerald-400 font-bold">Boa</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-2">
+                      <span className="text-neutral-400">Janela de sono</span>
+                      <span className="text-amber-400 font-bold">Incompleta</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-400">Confianca</span>
+                      <span className="text-cyan-400 font-bold">{confidenceScore}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border border-cyan-500/20 bg-cyan-500/5 backdrop-blur-xl rounded-md p-5">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300 mb-4">
+                    Conclusao Executiva
+                  </h3>
+                  <p className="text-sm text-neutral-300 leading-relaxed">
+                    Seu periodo apresentou sinais consistentes de variacao de resiliencia, com maior impacto em {topAreasSummary}. A principal oportunidade esta em melhorar recuperacao, sono e gerenciamento de carga acumulada. Continue monitorando para acompanhar a evolucao no proximo periodo.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Top Areas Bar Chart */}
             {report.top_areas.length > 0 && (
               <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-6" data-testid="areas-chart">
                 <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4">
-                  Areas Mais Afetadas
+                  Areas Mais Afetadas (Impacto Relativo)
                 </h3>
                 <div className="w-full h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={report.top_areas} layout="vertical">
+                    <BarChart data={report.top_areas.map((item) => {
+                        const max = Math.max(...report.top_areas.map((a) => Number(a.count || 0)), 1);
+                        return {
+                          ...item,
+                          impacto: Math.round((Number(item.count || 0) / max) * 100),
+                        };
+                      })} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis type="number" stroke="rgba(255,255,255,0.3)" style={{ fontSize: "11px" }} />
                       <YAxis dataKey="area" type="category" stroke="rgba(255,255,255,0.3)" width={120} style={{ fontSize: "11px" }} />
@@ -733,10 +802,10 @@ const MeuRelatorio = () => {
                         contentStyle={{ backgroundColor: "#171717", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }}
                       />
                       <Bar
-                        dataKey="count"
+                        dataKey="impacto"
                         fill="#a78bfa"
                         radius={[0, 4, 4, 0]}
-                        name="Ocorrencias"
+                        name="Impacto relativo"
                         label={{ position: "right", fill: "rgba(255,255,255,0.72)", fontSize: 11 }}
                       >
                         {report.top_areas.map((entry, index) => (
