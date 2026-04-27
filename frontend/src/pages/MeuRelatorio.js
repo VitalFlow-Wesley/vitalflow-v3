@@ -205,10 +205,19 @@ const MeuRelatorio = () => {
   };
 
   const pieData = report ? [
-    { name: "Verde", value: report.distribution.verde },
-    { name: "Amarelo", value: report.distribution.amarelo },
-    { name: "Vermelho", value: report.distribution.vermelho },
+    { name: "Verde", value: report.distribution.verde, tone: "Estável" },
+    { name: "Amarelo", value: report.distribution.amarelo, tone: "Atenção" },
+    { name: "Vermelho", value: report.distribution.vermelho, tone: "Crítico" },
   ].filter(d => d.value > 0) : [];
+
+  const totalDistribution = pieData.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  const dominantDistribution = pieData.length
+    ? pieData.reduce((best, item) => (item.value > best.value ? item : best))
+    : null;
+  const dominantDistributionPercent =
+    dominantDistribution && totalDistribution > 0
+      ? Math.round((dominantDistribution.value / totalDistribution) * 100)
+      : 0;
 
   const hasData = report && report.total_analyses > 0;
 
@@ -641,39 +650,65 @@ const MeuRelatorio = () => {
               <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-6" data-testid="distribution-chart">
                 <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-cyan-400" />
-                  Distribuicao
+                  Distribuicao do Periodo
                 </h3>
-                <div className="w-full h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        innerRadius={50}
-                        outerRadius={80}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {pieData.map((_, i) => (
-                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: "#171717", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex justify-center gap-4 mt-2">
-                  {[
-                    { color: "bg-emerald-400", label: `Verde (${report.distribution.verde})` },
-                    { color: "bg-amber-400", label: `Amarelo (${report.distribution.amarelo})` },
-                    { color: "bg-rose-400", label: `Vermelho (${report.distribution.vermelho})` },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-1.5">
-                      <div className={`w-2 h-2 rounded-full ${item.color}`} />
-                      <span className="text-[10px] text-neutral-400">{item.label}</span>
+                <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 items-center">
+                  <div className="w-full h-52 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          innerRadius={56}
+                          outerRadius={86}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {pieData.map((_, i) => (
+                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: "#171717", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-2xl font-black text-white">{dominantDistributionPercent}%</span>
+                      <span className="text-xs text-neutral-400 mt-1">
+                        {dominantDistribution?.tone || "Sem dados"}
+                      </span>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    {pieData.map((item, index) => {
+                      const percent = totalDistribution > 0
+                        ? Math.round((Number(item.value || 0) / totalDistribution) * 100)
+                        : 0;
+
+                      const toneClass =
+                        index === 0 ? "text-emerald-400" :
+                        index === 1 ? "text-amber-400" :
+                        "text-rose-400";
+
+                      return (
+                        <div key={item.name} className="flex items-start gap-3">
+                          <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${index === 0 ? "bg-emerald-400" : index === 1 ? "bg-amber-400" : "bg-rose-400"}`} />
+                          <div>
+                            <p className={`text-sm font-semibold ${toneClass}`}>
+                              {percent}% {item.tone}
+                            </p>
+                            <p className="text-xs text-neutral-500">
+                              {item.name} ({item.value}) no período
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <p className="text-xs text-neutral-500 pt-2">
+                      Predominância de {dominantDistribution?.tone?.toLowerCase() || "sem classificação"} no período analisado.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -693,7 +728,11 @@ const MeuRelatorio = () => {
                       <Tooltip
                         contentStyle={{ backgroundColor: "#171717", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }}
                       />
-                      <Bar dataKey="count" fill="#a78bfa" radius={[0, 4, 4, 0]} name="Ocorrencias" />
+                      <Bar dataKey="count" fill="#a78bfa" radius={[0, 4, 4, 0]} name="Ocorrencias">
+                        {report.top_areas.map((entry, index) => (
+                          <Cell key={`area-${index}`} fill={index === 0 ? "#a78bfa" : index === 1 ? "#9575e8" : "#7c5fd6"} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
