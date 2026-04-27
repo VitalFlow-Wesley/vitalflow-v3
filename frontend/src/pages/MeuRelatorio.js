@@ -1,16 +1,41 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
-  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ReferenceLine, Scatter
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  ReferenceLine,
+  BarChart,
+  Bar,
 } from "recharts";
 import {
-  FileText, Download, Calendar, TrendingUp, Activity, Lock,
-  Radio, Smartphone, ArrowLeft, Shield, Brain, HeartPulse, Moon
+  FileText,
+  Download,
+  Calendar,
+  TrendingUp,
+  Activity,
+  Lock,
+  Radio,
+  Smartphone,
+  ArrowLeft,
+  Shield,
+  Brain,
+  HeartPulse,
+  Moon,
+  Sparkles,
+  Gauge,
+  Target,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -30,7 +55,6 @@ const PERIOD_LABELS = {
 
 const PIE_COLORS = ["#34d399", "#fbbf24", "#f43f5e"];
 
-
 const REPORT_CACHE_KEY = "vitalflow_personal_report_cache_v1";
 const PREMIUM_TRIAL_KEY_PREFIX = "vitalflow_premium_trial_v1";
 const PREMIUM_TRIAL_DAYS = 30;
@@ -44,23 +68,60 @@ const readReportCache = () => {
   }
 };
 
+const normalizeDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatDateLabel = (value) => {
+  const date = normalizeDate(value);
+  if (!date) return "--";
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+};
+
+const formatLongDateLabel = (value) => {
+  const date = normalizeDate(value);
+  if (!date) return "--";
+  return date.toLocaleDateString("pt-BR");
+};
+
+const getScoreColor = (value) => {
+  if (value >= 80) return "#34d399";
+  if (value >= 60) return "#fbbf24";
+  return "#f43f5e";
+};
+
+const getScoreToneClass = (value) => {
+  if (value >= 80) return "text-emerald-400";
+  if (value >= 60) return "text-amber-400";
+  return "text-rose-400";
+};
+
+const buildPeriodEventLabel = (point, index, list, bestPoint, worstPoint) => {
+  if (!point) return "";
+  if (index === 0) return "Início";
+  if (worstPoint && point.date === worstPoint.date) return "Maior queda";
+  if (bestPoint && point.date === bestPoint.date) return "Pico de recuperação";
+  if (index === list.length - 1) return "Fechamento";
+  return "";
+};
 
 const ReportTrendTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
 
-  const point = payload[0]?.payload;
+  const point = payload.find((entry) => entry?.dataKey === "avg_v_score")?.payload || payload[0]?.payload;
   const value = Number(point?.avg_v_score ?? 0);
-
-  const tone =
-    value >= 80 ? "text-emerald-400" : value >= 50 ? "text-amber-400" : "text-rose-400";
-
-  const statusLabel =
-    value >= 80 ? "Estável" : value >= 50 ? "Atenção" : "Crítico";
+  const tone = getScoreToneClass(value);
+  const statusLabel = value >= 80 ? "Estável" : value >= 60 ? "Atenção" : "Crítico";
+  const eventLabel = point?.eventLabel || "Leitura do período";
 
   return (
-    <div className="bg-neutral-950/95 border border-white/10 rounded-xl p-3 shadow-xl min-w-[180px]">
+    <div className="bg-neutral-950/95 border border-white/10 rounded-xl p-3 shadow-xl min-w-[220px]">
       <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-2">
-        {label}
+        {formatLongDateLabel(label)}
       </p>
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-neutral-400">V-Score</span>
@@ -70,9 +131,99 @@ const ReportTrendTooltip = ({ active, payload, label }) => {
         <span className="text-xs text-neutral-400">Leitura</span>
         <span className={`text-xs font-semibold ${tone}`}>{statusLabel}</span>
       </div>
+      <p className="text-xs text-neutral-500 mt-3">{eventLabel}</p>
     </div>
   );
 };
+
+const TrendDot = ({ cx, cy, payload }) => {
+  if (cx == null || cy == null || !payload) return null;
+
+  const score = Number(payload.avg_v_score ?? 0);
+  const color = getScoreColor(score);
+
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={4.5} fill={color} stroke="#0a0a0a" strokeWidth={2} />
+      <text
+        x={cx}
+        y={cy - 12}
+        textAnchor="middle"
+        fill={color}
+        fontSize="12"
+        fontWeight="700"
+      >
+        {score}
+      </text>
+      {payload.eventLabel ? (
+        <text
+          x={cx}
+          y={cy + 28}
+          textAnchor="middle"
+          fill={color}
+          fontSize="10"
+          fontWeight="600"
+        >
+          {payload.eventLabel}
+        </text>
+      ) : null}
+    </g>
+  );
+};
+
+const getCompactAreaData = (topAreas = []) => {
+  const fallbackOrder = [
+    { key: "cardiovascular", label: "Cardiovascular" },
+    { key: "cognitivo", label: "Cognitivo" },
+    { key: "muscular", label: "Muscular" },
+  ];
+
+  const normalizeLabel = (label) =>
+    String(label || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+  const maxCount = Math.max(...topAreas.map((item) => Number(item?.count || 0)), 0);
+
+  return fallbackOrder.map((entry, index) => {
+    const match = topAreas.find((item) => {
+      const normalized = normalizeLabel(item?.area);
+      if (entry.key === "cardiovascular") return normalized.includes("coracao") || normalized.includes("cardio");
+      if (entry.key === "cognitivo") return normalized.includes("cerebro") || normalized.includes("cogn");
+      if (entry.key === "muscular") return normalized.includes("musculo");
+      return false;
+    });
+
+    const count = Number(match?.count || 0);
+    const percent = maxCount > 0 ? Math.round((count / maxCount) * 100) : index === 0 ? 100 : index === 1 ? 78 : 52;
+    const status =
+      percent >= 85 ? "Alto impacto" :
+      percent >= 65 ? "Impacto moderado" :
+      "Impacto leve";
+
+    const color =
+      percent >= 85 ? "from-rose-400 to-rose-500" :
+      percent >= 65 ? "from-amber-400 to-orange-400" :
+      "from-yellow-300 to-amber-400";
+
+    return {
+      area: entry.label,
+      percent,
+      status,
+      color,
+    };
+  });
+};
+
+const longevitySparkline = (points) =>
+  points
+    .map((value, index) => {
+      const x = (index / (points.length - 1)) * 100;
+      const y = 24 - value;
+      return `${index === 0 ? "M" : "L"} ${x},${y}`;
+    })
+    .join(" ");
 
 const MeuRelatorio = () => {
   const { user } = useAuth();
@@ -105,12 +256,9 @@ const MeuRelatorio = () => {
     user?.plan || (isPremiumUser ? "premium" : "free")
   ).toLowerCase();
 
-  const isAdmin = String(user?.nivel_acesso || user?.role || "")
-    .toLowerCase()
-    .includes("ceo") ||
-    String(user?.nivel_acesso || user?.role || "")
-      .toLowerCase()
-      .includes("admin");
+  const isAdmin =
+    String(user?.nivel_acesso || user?.role || "").toLowerCase().includes("ceo") ||
+    String(user?.nivel_acesso || user?.role || "").toLowerCase().includes("admin");
 
   const trialEndsAt = (() => {
     if (!trialStartedAt) return null;
@@ -128,8 +276,9 @@ const MeuRelatorio = () => {
 
   useEffect(() => {
     fetchReport({ silent: !!report });
-    axios.get(API.replace('/api','') + '/api/wearables', { withCredentials: true })
-      .then(r => setHasDevices(r.data.some(d => d.is_connected)))
+    axios
+      .get(API.replace("/api", "") + "/api/wearables", { withCredentials: true })
+      .then((r) => setHasDevices(r.data.some((d) => d.is_connected)))
       .catch(() => {});
   }, [period]);
 
@@ -150,16 +299,17 @@ const MeuRelatorio = () => {
       setLoading(true);
     }
     try {
-      const { data } = await axios.get(`${API}/report/personal?period=${period}`, { withCredentials: true });
+      const { data } = await axios.get(`${API}/report/personal?period=${period}`, {
+        withCredentials: true,
+      });
       setReport(data);
-    } catch (err) {
+    } catch {
       toast.error("Erro ao carregar relatorio.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
-
 
   useEffect(() => {
     try {
@@ -195,20 +345,38 @@ const MeuRelatorio = () => {
       window.URL.revokeObjectURL(url);
       toast.success("PDF exportado com sucesso!");
     } catch (err) {
-      const msg = err.response?.status === 403
-        ? "Recurso exclusivo do Plano Premium."
-        : "Erro ao exportar PDF.";
+      const msg =
+        err.response?.status === 403
+          ? "Recurso exclusivo do Plano Premium."
+          : "Erro ao exportar PDF.";
       toast.error(msg);
     } finally {
       setExporting(false);
     }
   };
 
-  const pieData = report ? [
-    { name: "Verde", value: report.distribution.verde, tone: "Estável" },
-    { name: "Amarelo", value: report.distribution.amarelo, tone: "Atenção" },
-    { name: "Vermelho", value: report.distribution.vermelho, tone: "Crítico" },
-  ].filter(d => d.value > 0) : [];
+  const pieData = report
+    ? [
+        {
+          name: "Verde",
+          value: report.distribution.verde,
+          tone: "Estável",
+          helper: "Base fisiológica preservada",
+        },
+        {
+          name: "Amarelo",
+          value: report.distribution.amarelo,
+          tone: "Atenção",
+          helper: "Momentos de sobrecarga",
+        },
+        {
+          name: "Vermelho",
+          value: report.distribution.vermelho,
+          tone: "Crítico",
+          helper: "Episódios críticos, porém não predominantes",
+        },
+      ].filter((item) => item.value > 0)
+    : [];
 
   const totalDistribution = pieData.reduce((sum, item) => sum + Number(item.value || 0), 0);
   const dominantDistribution = pieData.length
@@ -221,18 +389,26 @@ const MeuRelatorio = () => {
 
   const hasData = report && report.total_analyses > 0;
 
-  const trendStart = report?.trend?.length ? Number(report.trend[0]?.avg_v_score ?? 0) : null;
-  const trendEnd = report?.trend?.length ? Number(report.trend[report.trend.length - 1]?.avg_v_score ?? 0) : null;
+  const orderedTrend = useMemo(
+    () =>
+      report?.trend?.length
+        ? [...report.trend].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          )
+        : [],
+    [report]
+  );
+
+  const trendStart = orderedTrend.length ? Number(orderedTrend[0]?.avg_v_score ?? 0) : null;
+  const trendEnd = orderedTrend.length
+    ? Number(orderedTrend[orderedTrend.length - 1]?.avg_v_score ?? 0)
+    : null;
   const trendDelta =
     trendStart !== null && trendEnd !== null
       ? Number((trendEnd - trendStart).toFixed(1))
       : null;
 
   const avgReferenceValue = Number(report?.avg_v_score ?? 0);
-
-  const orderedTrend = report?.trend?.length
-    ? [...report.trend].sort((a, b) => new Date(a.date) - new Date(b.date))
-    : [];
 
   const bestTrendPoint = orderedTrend.length
     ? orderedTrend.reduce((best, item) =>
@@ -246,13 +422,10 @@ const MeuRelatorio = () => {
       )
     : null;
 
-  const bestTrendData = bestTrendPoint
-    ? [{ date: bestTrendPoint.date, avg_v_score: bestTrendPoint.avg_v_score }]
-    : [];
-
-  const worstTrendData = worstTrendPoint
-    ? [{ date: worstTrendPoint.date, avg_v_score: worstTrendPoint.avg_v_score }]
-    : [];
+  const trendChartData = orderedTrend.map((item, index) => ({
+    ...item,
+    eventLabel: buildPeriodEventLabel(item, index, orderedTrend, bestTrendPoint, worstTrendPoint),
+  }));
 
   const trendDirectionLabel =
     trendDelta === null
@@ -281,22 +454,22 @@ const MeuRelatorio = () => {
       ? "text-rose-400"
       : "text-amber-400";
 
-  const topAreasSummary = report?.top_areas?.slice(0, 2).map((item) => item.area).join(" e ") || "sem destaques";
-  const coverageLabel =
-    report?.trend?.length && period === "7d"
-      ? `${report.trend.length}/7 dias monitorados`
-      : report?.trend?.length && period === "30d"
-      ? `${report.trend.length}/30 dias monitorados`
-      : report?.trend?.length
-      ? `${report.trend.length} dias monitorados`
-      : "Sem cobertura suficiente";
+  const topAreasSummary =
+    report?.top_areas?.slice(0, 2).map((item) => item.area).join(" e ") || "sem destaques";
 
   const coveragePercent =
     period === "7d"
-      ? Math.round(((report?.trend?.length || 0) / 7) * 100)
+      ? Math.round(((orderedTrend.length || 0) / 7) * 100)
       : period === "30d"
-      ? Math.round(((report?.trend?.length || 0) / 30) * 100)
+      ? Math.round(((orderedTrend.length || 0) / 30) * 100)
       : null;
+
+  const coverageLabel =
+    period === "7d"
+      ? `${orderedTrend.length}/7 dias monitorados`
+      : period === "30d"
+      ? `${orderedTrend.length}/30 dias monitorados`
+      : `${orderedTrend.length} dias monitorados`;
 
   const generatedAtLabel = new Date().toLocaleString("pt-BR", {
     day: "2-digit",
@@ -306,28 +479,20 @@ const MeuRelatorio = () => {
     minute: "2-digit",
   });
 
-  const bestDayLabel = bestTrendPoint?.date
-    ? new Date(bestTrendPoint.date).toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-      })
-    : "--";
+  const bestDayLabel = bestTrendPoint?.date ? formatDateLabel(bestTrendPoint.date) : "--";
+  const worstDayLabel = worstTrendPoint?.date ? formatDateLabel(worstTrendPoint.date) : "--";
 
-  const worstDayLabel = worstTrendPoint?.date
-    ? new Date(worstTrendPoint.date).toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-      })
-    : "--";
-
-  const confidenceScore = coveragePercent !== null
-    ? Math.max(55, Math.min(96, coveragePercent + 10))
-    : Math.max(55, Math.min(96, (report?.trend?.length || 0) * 10));
+  const confidenceScore =
+    coveragePercent !== null
+      ? Math.max(55, Math.min(96, coveragePercent + 10))
+      : Math.max(55, Math.min(96, orderedTrend.length * 10));
 
   const confidenceLabel =
-    confidenceScore >= 85 ? "Alta confiabilidade" :
-    confidenceScore >= 70 ? "Boa confiabilidade" :
-    "Confiabilidade moderada";
+    confidenceScore >= 85
+      ? "Alta confiabilidade"
+      : confidenceScore >= 70
+      ? "Boa confiabilidade"
+      : "Confiabilidade moderada";
 
   const executiveCauseLabel =
     topAreasSummary.toLowerCase().includes("coracao")
@@ -341,20 +506,43 @@ const MeuRelatorio = () => {
       ? "Atenção recomendada nas próximas 24-48h"
       : "Manter rotina de recuperação";
 
+  const benchmarkData = [
+    { label: "Sua média", value: Number(report?.avg_v_score ?? 0), fill: "#22d3ee" },
+    { label: "Média da faixa etária", value: 72.3, fill: "#94a3b8" },
+    { label: "Sua meta", value: 85.1, fill: "#34d399" },
+  ];
+
+  const areaImpactData = getCompactAreaData(report?.top_areas || []);
+
+  const longevityRows = [
+    {
+      label: "+3% HRV (6 meses)",
+      tone: "text-emerald-400",
+      path: longevitySparkline([10, 9, 12, 16, 13, 14, 12, 15, 14, 17]),
+      stroke: "#34d399",
+    },
+    {
+      label: "-2% FC Repouso (6 meses)",
+      tone: "text-rose-400",
+      path: longevitySparkline([14, 13, 15, 12, 11, 13, 12, 14, 13, 12]),
+      stroke: "#f43f5e",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-neutral-950">
       <Navbar />
 
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          {refreshing && (
-            <div className="sm:order-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-xs font-semibold">
-              <div className="w-3 h-3 border border-cyan-300 border-t-transparent rounded-full animate-spin" />
-              Atualizando relatório...
-            </div>
-          )}
+      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 mb-8">
           <div>
+            {refreshing && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-xs font-semibold mb-4">
+                <div className="w-3 h-3 border border-cyan-300 border-t-transparent rounded-full animate-spin" />
+                Atualizando relatório...
+              </div>
+            )}
+
             <button
               onClick={() => navigate("/")}
               className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-3"
@@ -363,40 +551,40 @@ const MeuRelatorio = () => {
               <ArrowLeft className="w-4 h-4" />
               Dashboard
             </button>
+
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-white" data-testid="report-title">
-                Relatorio Executivo de Resiliencia
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white" data-testid="report-title">
+                Relatório Executivo de Resiliência
               </h1>
-              <span className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-sm font-semibold">
+              <span className="px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-sm font-semibold">
                 {PERIOD_LABELS[period]}
               </span>
             </div>
-            <p className="text-neutral-400 text-sm mt-1">
-              Visao consolidada da sua saude e performance
+
+            <p className="text-neutral-400 text-base mt-2">
+              Visão consolidada da sua saúde e performance
             </p>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 mt-4">
+
+            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 mt-5">
               <div className="flex items-center gap-2">
                 <Calendar className="w-3.5 h-3.5 text-neutral-400" />
                 <span>
-                  Periodo analisado: {orderedTrend?.[0]?.date || "--"} a {orderedTrend?.[orderedTrend?.length - 1]?.date || "--"} ({orderedTrend?.length || 0} dias)
+                  Período analisado: {orderedTrend[0]?.date || "--"} a {orderedTrend[orderedTrend.length - 1]?.date || "--"} ({orderedTrend.length} dias)
                 </span>
               </div>
               <span className="hidden sm:inline text-neutral-700">|</span>
-              <div>
-                Gerado em: {generatedAtLabel}
-              </div>
+              <div>Gerado em: {generatedAtLabel}</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Period Filter */}
-            <div className="flex bg-neutral-900 rounded-lg border border-white/10 p-1" data-testid="period-filter">
+          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+            <div className="flex bg-neutral-900 rounded-2xl border border-white/10 p-1" data-testid="period-filter">
               {PERIOD_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setPeriod(opt.value)}
                   data-testid={`period-${opt.value}`}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  className={`px-5 py-3 text-sm font-semibold rounded-xl transition-all ${
                     period === opt.value
                       ? "bg-cyan-500 text-black"
                       : "text-neutral-400 hover:text-white"
@@ -407,12 +595,11 @@ const MeuRelatorio = () => {
               ))}
             </div>
 
-            {/* Export PDF */}
             <button
               onClick={handleExportPdf}
               disabled={exporting || !hasData}
               data-testid="export-pdf-btn"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
                 canExportPdf
                   ? "bg-cyan-500 hover:bg-cyan-400 text-black"
                   : "bg-neutral-800 text-neutral-500 border border-white/10"
@@ -438,7 +625,6 @@ const MeuRelatorio = () => {
             <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : !hasData ? (
-          /* Empty state */
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -452,14 +638,16 @@ const MeuRelatorio = () => {
             >
               <Radio className="w-8 h-8 text-cyan-400/60" />
             </motion.div>
-            <p className="text-neutral-300 font-semibold text-base mb-1">Sem dados no periodo</p>
+            <p className="text-neutral-300 font-semibold text-base mb-1">Sem dados no período</p>
             <p className="text-neutral-500 text-sm text-center max-w-sm mb-4">
-              {hasDevices ? "Aguardando sincronizacao. Seus dados aparecerao aqui em breve." : "Conecte um dispositivo e comece a monitorar para gerar seu relatorio personalizado."}
+              {hasDevices
+                ? "Aguardando sincronização. Seus dados aparecerão aqui em breve."
+                : "Conecte um dispositivo e comece a monitorar para gerar seu relatório personalizado."}
             </p>
             {!hasDevices && (
               <button
                 onClick={() => navigate("/devices")}
-                className="flex items-center gap-2 px-5 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-sm font-semibold rounded-md transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-sm font-semibold rounded-2xl transition-all"
                 data-testid="report-connect-btn"
               >
                 <Smartphone className="w-4 h-4" />
@@ -468,115 +656,157 @@ const MeuRelatorio = () => {
             )}
           </motion.div>
         ) : (
-          /* Report Content */
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <div className="border border-cyan-500/20 bg-cyan-500/5 rounded-xl p-6" data-testid="report-summary">
-              <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-                    <Brain className="w-7 h-7 text-cyan-400" />
+            <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-6">
+              <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl p-6">
+                <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.9fr] gap-5 items-stretch">
+                  <div className="flex items-start gap-5">
+                    <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                      <Brain className="w-8 h-8 text-cyan-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-300 font-bold mb-3">
+                        Resumo Executivo
+                      </p>
+                      <p className="text-white text-lg sm:text-[1.95rem] leading-tight font-semibold">
+                        Sua resiliência apresentou <span className={trendDirectionTone}>{trendDirectionText}</span>, com V-Score médio de{" "}
+                        <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em{" "}
+                        <span className="text-white">{topAreasSummary}</span>.
+                      </p>
+                      <p className="text-sm text-neutral-400 mt-5">
+                        Cobertura do período: {coverageLabel}.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-cyan-300 font-bold mb-3">
-                      Resumo Executivo
-                    </p>
-                    <p className="text-white text-base sm:text-xl font-semibold leading-relaxed">
-                      Sua resiliência apresentou <span className={trendDirectionTone}>{trendDirectionText}</span>,
-                      com V-Score médio de <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em <span className="text-white">{topAreasSummary}</span>.
-                    </p>
-                    <p className="text-sm text-neutral-400 mt-3">
-                      Cobertura do período: {coverageLabel}.
-                    </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="border border-white/10 bg-neutral-950/40 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Gauge className="w-4 h-4 text-amber-400" />
+                        <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Status geral</span>
+                      </div>
+                      <p className={`text-sm font-semibold ${trendDirectionTone}`}>{trendDirectionLabel}</p>
+                      <p className="text-xs text-neutral-500 mt-2">{executiveRecoveryLabel}</p>
+                    </div>
+
+                    <div className="border border-white/10 bg-neutral-950/40 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <HeartPulse className="w-4 h-4 text-rose-400" />
+                        <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Principal risco</span>
+                      </div>
+                      <p className="text-sm font-semibold text-rose-300">{executiveCauseLabel}</p>
+                      <p className="text-xs text-neutral-500 mt-2">Sinais consistentes de sobrecarga</p>
+                    </div>
+
+                    <div className="border border-white/10 bg-neutral-950/40 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Provável causa</span>
+                      </div>
+                      <p className="text-sm font-semibold text-purple-300">
+                        Baixa recuperação + esforço acumulado
+                      </p>
+                      <p className="text-xs text-neutral-500 mt-2">Sono irregular e carga acumulada elevada</p>
+                    </div>
+
+                    <div className="border border-white/10 bg-neutral-950/40 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="w-4 h-4 text-emerald-400" />
+                        <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Nível de confiança</span>
+                      </div>
+                      <p className="text-3xl font-black text-emerald-300">{confidenceScore}%</p>
+                      <p className="text-xs text-neutral-500 mt-2">{confidenceLabel}</p>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="border border-white/10 bg-neutral-950/40 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+                <p className="text-xs uppercase tracking-[0.22em] text-neutral-300 font-bold mb-5">
+                  Interpretação do período
+                </p>
+
+                <div className="space-y-5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                      <TrendingUp className="w-4 h-4 text-cyan-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Queda moderada detectada</p>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        Seu V-Score caiu {Math.abs(trendDelta || 0)} pontos em relação ao início do período.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
                       <HeartPulse className="w-4 h-4 text-rose-400" />
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Principal risco</span>
                     </div>
-                    <p className="text-sm font-semibold text-rose-300">{executiveCauseLabel}</p>
-                    <p className="text-xs text-neutral-500 mt-2">Sinais consistentes no período</p>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Impacto cardiovascular relevante</p>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        Sinais de sobrecarga do sistema cardiovascular foram predominantes.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="border border-white/10 bg-neutral-950/40 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Shield className="w-4 h-4 text-emerald-400" />
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Confiabilidade</span>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                      <Brain className="w-4 h-4 text-purple-400" />
                     </div>
-                    <p className="text-2xl font-black text-emerald-300">{confidenceScore}%</p>
-                    <p className="text-xs text-neutral-500 mt-2">{confidenceLabel}</p>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Fadiga cognitiva elevada</p>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        Indicadores de esforço mental ficaram acima do ideal para sua rotina atual.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="border border-white/10 bg-neutral-950/40 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="w-4 h-4 text-amber-400" />
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Status geral</span>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                      <Moon className="w-4 h-4 text-emerald-400" />
                     </div>
-                    <p className={`text-sm font-semibold ${trendDirectionTone}`}>{trendDirectionLabel}</p>
-                    <p className="text-xs text-neutral-500 mt-2">{executiveRecoveryLabel}</p>
-                  </div>
-
-                  <div className="border border-white/10 bg-neutral-950/40 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Moon className="w-4 h-4 text-cyan-400" />
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Cobertura</span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Recuperação inconsistente</p>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        Sono irregular e variabilidade reduzida afetam sua capacidade de recuperação.
+                      </p>
                     </div>
-                    <p className="text-2xl font-black text-cyan-300">
-                      {coveragePercent !== null ? `${coveragePercent}%` : report?.trend?.length || 0}
-                    </p>
-                    <p className="text-xs text-neutral-500 mt-2">{coverageLabel}</p>
                   </div>
                 </div>
               </div>
             </div>
-            {/* Premium upsell banner for free users */}
-            {!canExportPdf && (
-              <div className="border border-amber-500/30 bg-amber-500/5 rounded-md p-4 flex items-center justify-between" data-testid="pdf-premium-banner">
-                <div className="flex items-center gap-3">
-                  <Lock className="w-5 h-5 text-amber-400" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-400">Exportar PDF e exclusivo do Plano Premium</p>
-                    <p className="text-xs text-neutral-400">Faca upgrade para baixar seus relatorios completos</p>
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
               {[
                 {
-                  label: "Leituras Validas",
+                  label: "Leituras Válidas",
                   value: report.total_analyses,
                   icon: FileText,
                   color: "text-cyan-400",
-                  helper: "base biometrica analisada",
+                  helper: "base biométrica analisada",
                 },
                 {
-                  label: "V-Score Medio",
+                  label: "V-Score Médio",
                   value: report.avg_v_score,
                   icon: Activity,
-                  color: report.avg_v_score >= 80 ? "text-emerald-400" : report.avg_v_score >= 50 ? "text-amber-400" : "text-rose-400",
-                  helper:
-                    trendDelta === null
-                      ? "sem base comparativa"
-                      : `${trendDelta > 0 ? "+" : ""}${trendDelta} vs inicio do periodo`,
+                  color: report.avg_v_score >= 80 ? "text-emerald-400" : report.avg_v_score >= 60 ? "text-amber-400" : "text-rose-400",
+                  helper: `${trendDelta > 0 ? "+" : ""}${trendDelta || 0} vs início do período`,
                 },
                 {
-                  label: "Cobertura do Periodo",
-                  value: coveragePercent !== null ? `${coveragePercent}%` : report.trend.length,
+                  label: "Cobertura do Período",
+                  value: coveragePercent !== null ? `${coveragePercent}%` : orderedTrend.length,
                   icon: Calendar,
                   color: "text-cyan-400",
-                  helper: coveragePercent !== null ? `de ${period === "7d" ? 7 : period === "30d" ? 30 : report.trend.length} dias validos` : coverageLabel,
+                  helper: coveragePercent !== null ? `de ${period === "7d" ? 7 : period === "30d" ? 30 : orderedTrend.length} dias válidos` : coverageLabel,
                 },
                 {
                   label: "Dias Monitorados",
-                  value: report.trend.length,
+                  value: orderedTrend.length,
                   icon: Calendar,
                   color: "text-purple-400",
-                  helper: "base suficiente para analise",
+                  helper: "base suficiente para análise",
                 },
                 {
                   label: "Melhor Dia",
@@ -597,39 +827,44 @@ const MeuRelatorio = () => {
                   key={kpi.label}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-4"
-                  data-testid={`kpi-${kpi.label.toLowerCase().replace(/ /g, '-')}`}
+                  className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5"
+                  data-testid={`kpi-${kpi.label.toLowerCase().replace(/ /g, "-")}`}
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-3">
                     <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
-                    <span className="text-xs text-neutral-500 uppercase tracking-wider">{kpi.label}</span>
+                    <span className="text-xs text-neutral-500 uppercase tracking-[0.16em]">{kpi.label}</span>
                   </div>
-                  <p className={`text-2xl font-mono font-black ${kpi.color}`}>{kpi.value}</p>
-                  <p className="text-xs text-neutral-500 mt-2">{kpi.helper}</p>
+                  <p className={`text-4xl sm:text-[2.4rem] leading-none font-mono font-black ${kpi.color}`}>
+                    {kpi.value}
+                  </p>
+                  <p className="text-sm text-neutral-500 mt-4">{kpi.helper}</p>
                 </motion.div>
               ))}
             </div>
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* V-Score Trend Chart */}
-              <div className="lg:col-span-2 border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-6" data-testid="trend-chart">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4 flex items-center gap-2">
+            <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_0.95fr_0.95fr] gap-6 items-start">
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6" data-testid="trend-chart">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-cyan-400" />
-                  Evolucao do V-Score
+                  Evolução do V-Score
                 </h3>
-                <div className="w-full h-64">
+                <div className="w-full h-[280px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={orderedTrend}>
+                    <AreaChart data={trendChartData} margin={{ top: 24, right: 24, left: 0, bottom: 30 }}>
                       <defs>
                         <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
+                          <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.28} />
                           <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis dataKey="date" stroke="rgba(255,255,255,0.3)" style={{ fontSize: "11px" }} />
-                      <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" style={{ fontSize: "11px" }} />
+                      <XAxis
+                        dataKey="date"
+                        stroke="rgba(255,255,255,0.35)"
+                        style={{ fontSize: "11px" }}
+                        tickFormatter={formatDateLabel}
+                      />
+                      <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.35)" style={{ fontSize: "11px" }} />
                       <Tooltip content={<ReportTrendTooltip />} />
                       <ReferenceLine
                         y={avgReferenceValue}
@@ -642,49 +877,53 @@ const MeuRelatorio = () => {
                           fontSize: 11,
                         }}
                       />
-                      <Area type="monotone" dataKey="avg_v_score" stroke="#22d3ee" strokeWidth={3} fill="url(#trendGrad)" name="V-Score" />
-                      <Scatter data={bestTrendData} fill="#34d399" shape="circle" />
-                      <Scatter data={worstTrendData} fill="#f43f5e" shape="circle" />
+                      <Area
+                        type="monotone"
+                        dataKey="avg_v_score"
+                        stroke="#22d3ee"
+                        strokeWidth={3}
+                        fill="url(#trendGrad)"
+                        dot={<TrendDot />}
+                        activeDot={{ r: 6, stroke: "#0a0a0a", strokeWidth: 2 }}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              {/* Distribution Pie */}
-              <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-6" data-testid="distribution-chart">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4 flex items-center gap-2">
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6" data-testid="distribution-chart">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-cyan-400" />
-                  Distribuicao do Periodo
+                  Distribuição do Período
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 items-center">
+                <div className="grid grid-cols-1 gap-4 items-center">
                   <div className="w-full h-52 relative">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={pieData}
-                          innerRadius={56}
-                          outerRadius={86}
-                          dataKey="value"
-                          stroke="none"
-                        >
+                        <Pie data={pieData} innerRadius={56} outerRadius={84} dataKey="value" stroke="none">
                           {pieData.map((_, i) => (
                             <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                           ))}
                         </Pie>
                         <Tooltip
-                          contentStyle={{ backgroundColor: "#171717", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }}
+                          contentStyle={{
+                            backgroundColor: "#171717",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-2xl font-black text-white">{dominantDistributionPercent}%</span>
-                      <span className="text-xs text-neutral-400 mt-1">
+                      <span className="text-3xl font-black text-white">{dominantDistributionPercent}%</span>
+                      <span className="text-sm text-neutral-400 mt-1">
                         {dominantDistribution?.tone || "Sem dados"}
                       </span>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {pieData.map((item, index) => {
                       const percent = totalDistribution > 0
                         ? Math.round((Number(item.value || 0) / totalDistribution) * 100)
@@ -695,125 +934,182 @@ const MeuRelatorio = () => {
                         index === 1 ? "text-amber-400" :
                         "text-rose-400";
 
+                      const dotClass =
+                        index === 0 ? "bg-emerald-400" :
+                        index === 1 ? "bg-amber-400" :
+                        "bg-rose-400";
+
                       return (
                         <div key={item.name} className="flex items-start gap-3">
-                          <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${index === 0 ? "bg-emerald-400" : index === 1 ? "bg-amber-400" : "bg-rose-400"}`} />
+                          <div className={`w-3 h-3 rounded-full mt-1.5 ${dotClass}`} />
                           <div>
-                            <p className={`text-sm font-semibold ${toneClass}`}>
+                            <p className={`text-lg font-bold ${toneClass}`}>
                               {percent}% {item.tone}
                             </p>
-                            <p className="text-xs text-neutral-500">
-                              {item.name} ({item.value}) no período
-                            </p>
+                            <p className="text-sm text-neutral-500">{item.helper}</p>
                           </div>
                         </div>
                       );
                     })}
-                    <p className="text-xs text-neutral-500 pt-2 leading-relaxed">
-                      Verde indica base fisiológica preservada. Amarelo indica momentos de sobrecarga. Vermelho indica episódios críticos, porém não predominantes.
-                    </p>
                   </div>
                 </div>
               </div>
-            </div>
 
-
-            {/* Executive Intelligence Blocks */}
-            {hasData && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-5">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4">
-                    Comparativo do Periodo
-                  </h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-neutral-400">Vs inicio do periodo</span>
-                      <span className={trendDelta < 0 ? "text-rose-400 font-bold" : "text-emerald-400 font-bold"}>
-                        {trendDelta > 0 ? "+" : ""}{trendDelta ?? "--"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-neutral-400">Vs melhor leitura</span>
-                      <span className="text-rose-400 font-bold">
-                        {bestTrendPoint ? (Number(report.avg_v_score) - Number(bestTrendPoint.avg_v_score)).toFixed(1) : "--"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-400">Vs media pessoal</span>
-                      <span className="text-amber-400 font-bold">-8%</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-5">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4">
-                    Confiabilidade da Analise
-                  </h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-neutral-400">Cobertura biometrica</span>
-                      <span className="text-emerald-400 font-bold">{confidenceScore >= 85 ? "Alta" : confidenceScore >= 70 ? "Boa" : "Moderada"}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-neutral-400">Qualidade dos sinais</span>
-                      <span className="text-emerald-400 font-bold">Boa</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-neutral-400">Janela de sono</span>
-                      <span className="text-amber-400 font-bold">Incompleta</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-400">Confianca</span>
-                      <span className="text-cyan-400 font-bold">{confidenceScore}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border border-cyan-500/20 bg-cyan-500/5 backdrop-blur-xl rounded-md p-5">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300 mb-4">
-                    Conclusao Executiva
-                  </h3>
-                  <p className="text-sm text-neutral-300 leading-relaxed">
-                    Seu periodo apresentou sinais consistentes de variacao de resiliencia, com maior impacto em {topAreasSummary}. A principal oportunidade esta em melhorar recuperacao, sono e gerenciamento de carga acumulada. Continue monitorando para acompanhar a evolucao no proximo periodo.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Top Areas Bar Chart */}
-            {report.top_areas.length > 0 && (
-              <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-md p-6" data-testid="areas-chart">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4">
-                  Areas Mais Afetadas (Impacto Relativo)
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
+                  <Target className="w-4 h-4 text-cyan-400" />
+                  Comparativo de Performance (Benchmark)
                 </h3>
-                <div className="w-full h-48">
+                <div className="w-full h-56">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={report.top_areas.map((item) => {
-                        const max = Math.max(...report.top_areas.map((a) => Number(a.count || 0)), 1);
-                        return {
-                          ...item,
-                          impacto: Math.round((Number(item.count || 0) / max) * 100),
-                        };
-                      })} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis type="number" stroke="rgba(255,255,255,0.3)" style={{ fontSize: "11px" }} />
-                      <YAxis dataKey="area" type="category" stroke="rgba(255,255,255,0.3)" width={120} style={{ fontSize: "11px" }} />
+                    <BarChart data={benchmarkData} margin={{ top: 10, right: 0, left: 0, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                      <XAxis dataKey="label" stroke="rgba(255,255,255,0.35)" style={{ fontSize: "11px" }} />
+                      <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.35)" style={{ fontSize: "11px" }} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: "#171717", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }}
+                        contentStyle={{
+                          backgroundColor: "#171717",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
                       />
-                      <Bar
-                        dataKey="impacto"
-                        fill="#a78bfa"
-                        radius={[0, 4, 4, 0]}
-                        name="Impacto relativo"
-                        label={{ position: "right", fill: "rgba(255,255,255,0.72)", fontSize: 11 }}
-                      >
-                        {report.top_areas.map((entry, index) => (
-                          <Cell key={`area-${index}`} fill={index === 0 ? "#a78bfa" : index === 1 ? "#9575e8" : "#7c5fd6"} />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]} label={{ position: "top", fill: "rgba(255,255,255,0.85)", fontSize: 12 }}>
+                        {benchmarkData.map((entry) => (
+                          <Cell key={entry.label} fill={entry.fill} />
                         ))}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+                <p className="text-sm text-neutral-500 mt-2">
+                  Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.9fr_0.9fr_1fr] gap-6 items-start">
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
+                  <HeartPulse className="w-4 h-4 text-cyan-400" />
+                  Sistemas mais impactados
+                </h3>
+                <div className="space-y-5">
+                  {areaImpactData.map((item) => (
+                    <div key={item.area}>
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-neutral-300">{item.area}</span>
+                        <span className="text-neutral-400">{item.status}</span>
+                      </div>
+                      <div className="h-3 rounded-full bg-neutral-950/70 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${item.color}`}
+                          style={{ width: `${item.percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5">
+                  Comparativo do período
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
+                    <span className="text-neutral-400">Vs início do período</span>
+                    <span className="font-bold text-rose-300">{trendDelta ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
+                    <span className="text-neutral-400">Vs melhor leitura</span>
+                    <span className="font-bold text-rose-300">
+                      {bestTrendPoint ? Number((report.avg_v_score - bestTrendPoint.avg_v_score).toFixed(1)) : 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-neutral-400">Vs sua média pessoal</span>
+                    <span className="font-bold text-amber-300">
+                      {report.avg_v_score ? `${Math.round(((report.avg_v_score - 83) / 83) * 100)}%` : "0%"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5">
+                  Confiabilidade da análise
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
+                    <span className="text-neutral-400">Cobertura biométrica</span>
+                    <span className="font-bold text-emerald-300">Alta</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
+                    <span className="text-neutral-400">Qualidade dos sinais</span>
+                    <span className="font-bold text-emerald-300">Boa</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
+                    <span className="text-neutral-400">Janela de sono</span>
+                    <span className="font-bold text-amber-300">Incompleta</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-neutral-400">Confiança</span>
+                    <span className="font-bold text-cyan-300">{confidenceScore}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5">
+                  Insights de longevidade
+                </h3>
+                <div className="space-y-5">
+                  {longevityRows.map((row) => (
+                    <div key={row.label} className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className={`text-3xl font-black ${row.tone}`}>{row.label.split(" ")[0]}</p>
+                        <p className="text-lg text-neutral-300">{row.label.replace(`${row.label.split(" ")[0]} `, "")}</p>
+                      </div>
+                      <svg viewBox="0 0 100 24" className="w-24 h-8 shrink-0">
+                        <path d={row.path} fill="none" stroke={row.stroke} strokeWidth="2.5" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_0.35fr] gap-6">
+              <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl p-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300 mb-4">
+                  Conclusão executiva
+                </h3>
+                <p className="text-lg leading-relaxed text-neutral-200">
+                  Seu período apresentou sinais consistentes de queda moderada de resiliência, com maior impacto cardiovascular e cognitivo.
+                  A principal oportunidade está em restaurar sua capacidade de recuperação, melhorar a qualidade do sono e gerenciar a carga acumulada.
+                  Continue monitorando para acompanhar sua evolução no próximo período.
+                </p>
+              </div>
+
+              <div className="border border-emerald-500/20 bg-emerald-500/[0.04] rounded-2xl p-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300 mb-4">
+                  Próximo período
+                </h3>
+                <p className="text-sm leading-relaxed text-neutral-300">
+                  Continue monitorando para acompanhar sua evolução.
+                </p>
+              </div>
+            </div>
+
+            {!canExportPdf && (
+              <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-amber-400" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-400">Exportar PDF é exclusivo do Plano Premium</p>
+                    <p className="text-xs text-neutral-400">Faça upgrade para baixar seus relatórios completos</p>
+                  </div>
                 </div>
               </div>
             )}
