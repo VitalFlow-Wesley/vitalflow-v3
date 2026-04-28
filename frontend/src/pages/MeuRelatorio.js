@@ -1,4 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo } from "react";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
 import Navbar from "../components/Navbar";
@@ -18,8 +21,7 @@ import {
   ReferenceLine,
   BarChart,
   Bar,
-  LabelList,
-  ReferenceLine,
+  LabelList
 } from "recharts";
 import {
   FileText,
