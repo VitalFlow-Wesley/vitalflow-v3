@@ -848,43 +848,53 @@ const MeuRelatorio = () => {
                   <TrendingUp className="w-4 h-4 text-cyan-400" />
                   Evolução do V-Score
                 </h3>
-                <div className="w-full h-[280px]">
+                <div className="w-full h-[320px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trendChartData} margin={{ top: 24, right: 24, left: 0, bottom: 30 }}>
+                    <AreaChart data={trendChartData} margin={{ top: 28, right: 28, left: -8, bottom: 40 }}>
                       <defs>
                         <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.28} />
                           <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.045)" vertical={false} />
                       <XAxis
                         dataKey="date"
-                        stroke="rgba(255,255,255,0.35)"
+                        stroke="rgba(255,255,255,0.28)"
+                        tickLine={false}
+                        axisLine={{ stroke: "rgba(255,255,255,0.14)" }}
                         style={{ fontSize: "11px" }}
+                        tickMargin={10}
                         tickFormatter={formatDateLabel}
                       />
-                      <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.35)" style={{ fontSize: "11px" }} />
+                      <YAxis
+                        domain={[0, 100]}
+                        stroke="rgba(255,255,255,0.28)"
+                        tickLine={false}
+                        axisLine={false}
+                        style={{ fontSize: "11px" }}
+                        tickMargin={10}
+                      />
                       <Tooltip content={<ReportTrendTooltip />} />
                       <ReferenceLine
                         y={avgReferenceValue}
-                        stroke="rgba(255,255,255,0.18)"
-                        strokeDasharray="4 4"
+                        stroke="rgba(255,255,255,0.16)"
+                        strokeDasharray="5 5"
                         label={{
                           value: "Média",
                           position: "insideTopRight",
-                          fill: "rgba(255,255,255,0.45)",
+                          fill: "rgba(255,255,255,0.42)",
                           fontSize: 11,
                         }}
                       />
                       <Area
                         type="monotone"
                         dataKey="avg_v_score"
-                        stroke="#22d3ee"
-                        strokeWidth={3}
+                        stroke="#2dd4f0"
+                        strokeWidth={3.5}
                         fill="url(#trendGrad)"
                         dot={<TrendDot />}
-                        activeDot={{ r: 6, stroke: "#0a0a0a", strokeWidth: 2 }}
+                        activeDot={{ r: 7, stroke: "#0a0a0a", strokeWidth: 2 }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -897,10 +907,10 @@ const MeuRelatorio = () => {
                   Distribuição do Período
                 </h3>
                 <div className="grid grid-cols-1 gap-4 items-center">
-                  <div className="w-full h-52 relative">
+                  <div className="w-full h-48 relative flex items-center justify-center">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={pieData} innerRadius={56} outerRadius={84} dataKey="value" stroke="none">
+                        <Pie data={pieData} innerRadius={54} outerRadius={76} dataKey="value" stroke="none">
                           {pieData.map((_, i) => (
                             <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                           ))}
@@ -916,7 +926,7 @@ const MeuRelatorio = () => {
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-3xl font-black text-white">{dominantDistributionPercent}%</span>
+                      <span className="text-4xl font-black text-white">{dominantDistributionPercent}%</span>
                       <span className="text-sm text-neutral-400 mt-1">
                         {dominantDistribution?.tone || "Sem dados"}
                       </span>
