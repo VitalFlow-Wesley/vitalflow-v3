@@ -586,8 +586,8 @@ const MeuRelatorio = () => {
     <div className="min-h-screen bg-neutral-950">
       <Navbar />
 
-      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 mb-8">
+      <div className="w-full max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-8">
+        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 mb-7">
           <div>
             {refreshing && (
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-xs font-semibold mb-4">
@@ -605,7 +605,7 @@ const MeuRelatorio = () => {
               Dashboard
             </button>
 
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap max-w-5xl">
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white" data-testid="report-title">
                 Relatório Executivo de Resiliência
               </h1>
@@ -614,11 +614,11 @@ const MeuRelatorio = () => {
               </span>
             </div>
 
-            <p className="text-neutral-400 text-base mt-2">
+            <p className="text-neutral-400 text-base sm:text-lg mt-2">
               Visão consolidada da sua saúde e performance
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 mt-5">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 mt-4">
               <div className="flex items-center gap-2">
                 <Calendar className="w-3.5 h-3.5 text-neutral-400" />
                 <span>
@@ -710,9 +710,9 @@ const MeuRelatorio = () => {
           </motion.div>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-6">
-              <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl p-6">
-                <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.9fr] gap-5 items-stretch">
+            <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-5">
+              <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl p-5 sm:p-6">
+                <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.9fr] gap-4 items-stretch h-full">
                   <div className="flex items-start gap-5">
                     <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
                       <Brain className="w-8 h-8 text-cyan-400" />
@@ -774,12 +774,12 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 sm:p-6">
                 <p className="text-xs uppercase tracking-[0.22em] text-neutral-300 font-bold mb-5">
                   Interpretação do período
                 </p>
 
-                <div className="space-y-5">
+                <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
                       <TrendingUp className="w-4 h-4 text-cyan-400" />
@@ -880,23 +880,23 @@ const MeuRelatorio = () => {
                   key={kpi.label}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5"
+                  className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 min-h-[220px] flex flex-col"
                   data-testid={`kpi-${kpi.label.toLowerCase().replace(/ /g, "-")}`}
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
                     <span className="text-xs text-neutral-500 uppercase tracking-[0.16em]">{kpi.label}</span>
                   </div>
-                  <p className={`text-4xl sm:text-[2.4rem] leading-none font-mono font-black ${kpi.color}`}>
+                  <p className={`text-4xl sm:text-[2.45rem] leading-none font-mono font-black ${kpi.color}`}>
                     {kpi.value}
                   </p>
-                  <p className="text-sm text-neutral-500 mt-4">{kpi.helper}</p>
+                  <p className="text-sm text-neutral-500 mt-4 leading-relaxed">{kpi.helper}</p>
                 </motion.div>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_0.95fr_0.95fr] gap-6 items-start">
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6" data-testid="trend-chart">
+            <div className="grid grid-cols-1 xl:grid-cols-[1.65fr_0.95fr_0.9fr] gap-5 items-stretch">
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 sm:p-6" data-testid="trend-chart">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-cyan-400" />
                   Evolução do V-Score
@@ -954,7 +954,7 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6" data-testid="distribution-chart">
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 sm:p-6" data-testid="distribution-chart">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-cyan-400" />
                   Distribuição do Período
@@ -1018,7 +1018,7 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 sm:p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <Target className="w-4 h-4 text-cyan-400" />
                   Comparativo de Performance (Benchmark)
@@ -1075,7 +1075,7 @@ const MeuRelatorio = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.9fr_0.9fr_1fr] gap-6 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr_0.9fr_1fr] gap-5 items-stretch">
               <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <HeartPulse className="w-4 h-4 text-cyan-400" />
@@ -1167,17 +1167,17 @@ const MeuRelatorio = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_0.35fr] gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-[1.45fr_0.4fr] gap-5">
               <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300 mb-4">
                   Conclusão executiva
                 </h3>
-                <p className="text-lg leading-relaxed text-neutral-200">
+                <p className="text-lg leading-[1.7] text-neutral-200 max-w-5xl">
                   {executiveConclusionText}
                 </p>
               </div>
 
-              <div className="border border-emerald-500/20 bg-emerald-500/[0.04] rounded-2xl p-6">
+              <div className="border border-emerald-500/20 bg-emerald-500/[0.04] rounded-2xl p-5 sm:p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300 mb-4">
                   Próximo período
                 </h3>
@@ -1187,7 +1187,7 @@ const MeuRelatorio = () => {
               </div>
             </div>
 
-            <div className="border border-white/10 bg-neutral-900/30 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="border border-white/10 bg-neutral-900/30 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-1">
               <p className="text-xs text-neutral-500">
                 Este relatório foi gerado com base em dados biométricos coletados pelos seus dispositivos e algoritmos proprietários da VitalFlow.
               </p>
