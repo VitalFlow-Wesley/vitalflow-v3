@@ -37,84 +37,53 @@ import {
   Target,
   CheckCircle2,
   Star,
+  Zap,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 
 const bg = "#050505";
-const card = "#0d0f10";
+const card = "#0f1113";
 const cardSoft = "#0b0b0c";
 const border = "rgba(255,255,255,0.08)";
 const borderSoft = "rgba(255,255,255,0.06)";
-const teal = "#27e1b3";
-const tealSoft = "rgba(39,225,179,0.12)";
-const tealGlow = "rgba(39,225,179,0.14)";
 const textSoft = "#9aa1a6";
 const textMuted = "#6f757b";
 
-const dayModeBlocks = [
-  {
-    label: "Modo do dia",
-    value: "Manutenção",
-    sub: "Condição ideal para manter consistência e foco nas suas atividades.",
-    icon: Gauge,
-    color: "text-[#33dbb1]",
-  },
-  {
-    label: "Prioridade",
-    value: "Baixa",
-    sub: "Momento favorável",
-    icon: ShieldCheck,
-    color: "text-[#58e6c0]",
-  },
-  {
-    label: "Janela ideal",
-    value: "Agora",
-    sub: "Próximas 2-3 horas",
-    icon: TimerReset,
-    color: "text-[#35d9b0]",
-  },
-  {
-    label: "Foco do dia",
-    value: "Manutenção leve",
-    sub: "Evite excessos",
-    icon: Focus,
-    color: "text-[#d7b35a]",
-  },
-  {
-    label: "Próxima reavaliação",
-    value: "Em 3h 12m",
-    sub: "16:30",
-    icon: Clock3,
-    color: "text-white",
-  },
+const topSummary = [
+  { label: "Status", value: "Normal", sub: "Equilíbrio preservado", icon: ShieldCheck, color: "text-[#31d9b0]" },
+  { label: "Pontos", value: "300", sub: "Energia do dia", icon: Zap, color: "text-[#d7b35a]" },
+  { label: "Streak", value: "1 dia", sub: "Consistência ativa", icon: Flame, color: "text-[#d79b57]" },
+  { label: "Sync", value: "Wearables", sub: "Sincronizado agora", icon: Activity, color: "text-[#39d9be]" },
+  { label: "Janela", value: "Agora", sub: "Melhor momento", icon: TimerReset, color: "text-[#35d9b0]" },
+  { label: "Reavaliação", value: "3h 12m", sub: "Próxima leitura", icon: Clock3, color: "text-white" },
 ];
 
 const quickReadItems = [
   {
     icon: Activity,
     title: "Estável nas últimas 6h",
-    sub: "Variação mínima detectada",
+    sub: "Variação mínima",
     tone: "text-[#27e1b3]",
     bgTone: "bg-[#27e1b3]/10",
   },
   {
     icon: Brain,
     title: "Stress controlado",
-    sub: "Carga mental dentro do ideal",
+    sub: "Carga ideal",
     tone: "text-[#d7b35a]",
     bgTone: "bg-[#d7b35a]/10",
   },
   {
     icon: HeartPulse,
     title: "HRV preservada",
-    sub: "Bom sinal de recuperação",
+    sub: "Boa recuperação",
     tone: "text-[#39e8bf]",
     bgTone: "bg-[#39e8bf]/10",
   },
   {
     icon: ShieldCheck,
-    title: "Boa janela para manutenção",
-    sub: "Aproveite para manter consistência",
+    title: "Janela favorável",
+    sub: "Boa manutenção",
     tone: "text-[#27e1b3]",
     bgTone: "bg-[#27e1b3]/10",
   },
@@ -142,38 +111,36 @@ const metricCards = [
   { icon: Activity, title: "HRV", value: "45", sub: "Excelente", color: "text-[#4ae6be]" },
   { icon: Droplets, title: "SpO2", value: "98%", sub: "Normal", color: "text-[#39d9be]" },
   { icon: Moon, title: "Sono", value: "7h 32m", sub: "Bom", color: "text-[#ad9eff]" },
-  { icon: Footprints, title: "Passos", value: "947", sub: "Meta: 8.000", color: "text-[#e2bc62]", footer: 12 },
-  { icon: Flame, title: "Calorias", value: "240", sub: "Atividade leve", color: "text-[#d79b57]" },
-  { icon: Route, title: "Distância", value: "2,2", unit: "km", sub: "Baixo impacto", color: "text-[#ad9eff]" },
-  { icon: Timer, title: "Min. Ativos", value: "59", unit: "min", sub: "Meta: 60 min", color: "text-[#ad9eff]", footer: 98 },
+  { icon: Footprints, title: "Passos", value: "947", sub: "Meta 8k", color: "text-[#e2bc62]" },
+  { icon: Timer, title: "Ativos", value: "59 min", sub: "Meta 60", color: "text-[#ad9eff]" },
 ];
 
 const insights = [
   {
     icon: CheckCircle2,
     title: "Excelente recuperação",
-    sub: "Seu corpo está se recuperando muito bem. Continue assim!",
+    sub: "Recuperação muito boa",
     tone: "text-[#27e1b3]",
     bgTone: "bg-[#27e1b3]/10",
   },
   {
     icon: Star,
     title: "Consistência é chave",
-    sub: "7 dias seguidos monitorando. Mantenha o ritmo!",
+    sub: "Mantenha o ritmo",
     tone: "text-[#d7b35a]",
     bgTone: "bg-[#d7b35a]/10",
   },
   {
     icon: Droplets,
     title: "Atenção à hidratação",
-    sub: "Sua ingestão de água está um pouco abaixo do ideal.",
+    sub: "Ajuste ingestão de água",
     tone: "text-[#aa9dff]",
     bgTone: "bg-[#aa9dff]/10",
   },
   {
     icon: Target,
     title: "Próximo objetivo",
-    sub: "Mantenha 7+ horas de sono para otimizar ainda mais.",
+    sub: "Preserve 7h+ de sono",
     tone: "text-[#ff718b]",
     bgTone: "bg-[#ff718b]/10",
   },
@@ -233,7 +200,13 @@ function TrendDot(props) {
             width={88}
             height={22}
             rx={8}
-            fill={fill === "#27e1b3" ? "rgba(39,225,179,0.12)" : fill === "#d7b35a" ? "rgba(215,179,90,0.12)" : "rgba(255,95,122,0.12)"}
+            fill={
+              fill === "#27e1b3"
+                ? "rgba(39,225,179,0.12)"
+                : fill === "#d7b35a"
+                ? "rgba(215,179,90,0.12)"
+                : "rgba(255,95,122,0.12)"
+            }
             stroke={fill}
             strokeOpacity={0.28}
           />
@@ -257,7 +230,7 @@ export default function Dashboard() {
       <Navbar />
 
       <div className="mx-auto max-w-[1540px] px-4 pb-5 pt-4 sm:px-5 lg:px-6">
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
           <motion.aside
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
@@ -265,7 +238,10 @@ export default function Dashboard() {
             style={{ background: cardSoft, borderColor: borderSoft }}
           >
             <div className="mb-4 flex items-center gap-3 border-b border-white/[0.05] pb-4">
-              <div className="rounded-2xl border p-3 shadow-[0_0_18px_rgba(39,225,179,0.04)]" style={{ borderColor: borderSoft, background: "#0a0b0c" }}>
+              <div
+                className="rounded-2xl border p-3 shadow-[0_0_18px_rgba(39,225,179,0.04)]"
+                style={{ borderColor: borderSoft, background: "#0a0b0c" }}
+              >
                 <LayoutDashboard className="h-5 w-5 text-[#27e1b3]" />
               </div>
               <div>
@@ -286,9 +262,7 @@ export default function Dashboard() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.03 * index }}
                     className={`group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
-                      item.active
-                        ? "shadow-[inset_3px_0_0_0_#27e1b3,0_0_16px_rgba(39,225,179,0.05)]"
-                        : "hover:bg-white/[0.02]"
+                      item.active ? "shadow-[inset_3px_0_0_0_#27e1b3,0_0_16px_rgba(39,225,179,0.05)]" : "hover:bg-white/[0.02]"
                     }`}
                     style={{
                       background: item.active ? "rgba(39,225,179,0.06)" : "transparent",
@@ -304,94 +278,70 @@ export default function Dashboard() {
                 );
               })}
             </nav>
-
-            <div className="mt-auto pt-5">
-              <div
-                className="rounded-2xl border p-4 shadow-[0_0_22px_rgba(39,225,179,0.03)]"
-                style={{ background: "#0d0f10", borderColor: borderSoft }}
-              >
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="rounded-xl bg-[#27e1b3]/10 p-2">
-                    <Crown className="h-4 w-4 text-[#27e1b3]" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Plano Premium</p>
-                    <p className="text-sm text-[#27e1b3]">Ativo</p>
-                  </div>
-                </div>
-                <p className="text-sm leading-relaxed" style={{ color: textSoft }}>
-                  Acesso completo a insights e recomendações avançadas.
-                </p>
-              </div>
-            </div>
           </motion.aside>
 
-          <main className="space-y-5">
+          <main className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="inline-flex items-center gap-2 rounded-full border px-4 py-2"
+                style={{
+                  background: "rgba(39,225,179,0.05)",
+                  borderColor: "rgba(39,225,179,0.16)",
+                }}
+              >
+                <Crown className="h-4 w-4 text-[#27e1b3]" />
+                <span className="text-sm font-semibold text-white">Plano Premium Ativo</span>
+              </div>
+            </div>
+
             <motion.section
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 overflow-hidden rounded-2xl border xl:grid-cols-5"
+              className="grid grid-cols-2 gap-3 rounded-2xl border p-3 md:grid-cols-3 xl:grid-cols-6"
               style={{ background: card, borderColor: borderSoft }}
             >
-              {dayModeBlocks.map((item, index) => {
+              {topSummary.map((item) => {
                 const Icon = item.icon;
                 return (
                   <div
                     key={item.label}
-                    className={`relative flex min-h-[128px] gap-4 px-5 py-4 ${index !== dayModeBlocks.length - 1 ? "border-b xl:border-b-0 xl:border-r" : ""}`}
-                    style={{ borderColor: "rgba(255,255,255,0.045)" }}
+                    className="rounded-2xl border px-4 py-3"
+                    style={{ background: "#101214", borderColor: "rgba(255,255,255,0.05)" }}
                   >
-                    {index === 0 ? (
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#27e1b3]/10">
-                        <Icon className="h-6 w-6 text-[#27e1b3]" />
-                      </div>
-                    ) : (
-                      <div className="mt-1 shrink-0">
-                        <Icon className="h-4.5 w-4.5 text-white/45" />
-                      </div>
-                    )}
-
-                    <div className="min-w-0">
-                      <p className="mb-1 text-[10px] uppercase tracking-[0.24em]" style={{ color: textMuted }}>
+                    <div className="mb-2 flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-white/55" />
+                      <p className="text-[10px] uppercase tracking-[0.22em]" style={{ color: textMuted }}>
                         {item.label}
                       </p>
-                      <p className={`text-[17px] font-bold ${item.color}`}>{item.value}</p>
-                      <p className="mt-1 max-w-[220px] text-sm leading-relaxed" style={{ color: textSoft }}>
-                        {item.sub}
-                      </p>
-                      {index === 0 ? (
-                        <button
-                          type="button"
-                          className="mt-3 rounded-xl border px-3 py-1.5 text-xs font-medium text-white/78 transition hover:bg-white/[0.04]"
-                          style={{ borderColor: "rgba(255,255,255,0.07)" }}
-                        >
-                          Saiba mais
-                        </button>
-                      ) : null}
                     </div>
+                    <p className={`text-[17px] font-bold ${item.color}`}>{item.value}</p>
+                    <p className="mt-1 truncate text-xs" style={{ color: textSoft }}>
+                      {item.sub}
+                    </p>
                   </div>
                 );
               })}
             </motion.section>
 
-            <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.05fr_1.25fr]">
+            <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border p-5"
+                className="flex h-[380px] flex-col rounded-2xl border p-5"
                 style={{ background: card, borderColor: borderSoft }}
               >
-                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">
-                  Status Vital
-                </p>
+                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Status Vital</p>
 
                 <div className="mb-3 flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-[#27e1b3]" />
                   <h3 className="text-[18px] font-bold text-white">Resiliência ótima</h3>
                 </div>
 
-                <div className="mx-auto mt-6 flex h-40 w-40 items-center justify-center rounded-full bg-[conic-gradient(#27e1b3_0deg,#33dbb1_360deg)] p-[11px] shadow-[0_0_36px_rgba(39,225,179,0.12)]">
-                  <div className="flex h-full w-full flex-col items-center justify-center rounded-full border bg-[#090b0c]" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                <div className="mx-auto mt-4 flex h-40 w-40 items-center justify-center rounded-full bg-[conic-gradient(#27e1b3_0deg,#33dbb1_360deg)] p-[11px] shadow-[0_0_36px_rgba(39,225,179,0.12)]">
+                  <div
+                    className="flex h-full w-full flex-col items-center justify-center rounded-full border bg-[#090b0c]"
+                    style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                  >
                     <span className="text-5xl font-black text-white">100</span>
                     <span className="mt-1 text-sm" style={{ color: textSoft }}>
                       de 100
@@ -399,13 +349,16 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex justify-center">
-                  <span className="rounded-full border px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.22em] text-[#27e1b3]" style={{ borderColor: "rgba(39,225,179,0.18)", background: "rgba(39,225,179,0.08)" }}>
+                <div className="mt-5 flex justify-center">
+                  <span
+                    className="rounded-full border px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.22em] text-[#27e1b3]"
+                    style={{ borderColor: "rgba(39,225,179,0.18)", background: "rgba(39,225,179,0.08)" }}
+                  >
                     NORMAL
                   </span>
                 </div>
 
-                <p className="mx-auto mt-4 max-w-[260px] text-center text-[15px] leading-relaxed" style={{ color: textSoft }}>
+                <p className="mx-auto mt-auto max-w-[250px] text-center text-[15px] leading-relaxed" style={{ color: textSoft }}>
                   Seu estado fisiológico está excelente e em equilíbrio.
                 </p>
               </motion.div>
@@ -414,12 +367,10 @@ export default function Dashboard() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.03 }}
-                className="rounded-2xl border p-5"
+                className="flex h-[380px] flex-col rounded-2xl border p-5"
                 style={{ background: card, borderColor: borderSoft }}
               >
-                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">
-                  Leitura Rápida
-                </p>
+                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Leitura Rápida</p>
 
                 <div className="space-y-3">
                   {quickReadItems.map((item) => {
@@ -427,11 +378,11 @@ export default function Dashboard() {
                     return (
                       <div
                         key={item.title}
-                        className="flex items-start gap-4 rounded-2xl border p-4"
+                        className="flex items-start gap-3 rounded-2xl border p-3.5"
                         style={{ borderColor: "rgba(255,255,255,0.045)", background: "#0f1112" }}
                       >
-                        <div className={`rounded-2xl p-3 ${item.bgTone}`}>
-                          <Icon className={`h-5 w-5 ${item.tone}`} />
+                        <div className={`rounded-2xl p-2.5 ${item.bgTone}`}>
+                          <Icon className={`h-4.5 w-4.5 ${item.tone}`} />
                         </div>
                         <div>
                           <p className="text-[15px] font-semibold text-white">{item.title}</p>
@@ -449,58 +400,54 @@ export default function Dashboard() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 }}
-                className="rounded-2xl border p-5"
+                className="flex h-[380px] flex-col rounded-2xl border p-5"
                 style={{ background: card, borderColor: borderSoft }}
               >
                 <div className="mb-4 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">
-                    Sugestão Inteligente
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Sugestão Inteligente</p>
                   <div className="flex items-center gap-2 rounded-full bg-[#27e1b3]/6 px-3 py-1.5">
                     <Sparkles className="h-4 w-4 text-[#27e1b3]" />
                     <span className="text-sm font-semibold text-white/90">VitalFlow AI</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_160px]">
+                <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[1fr_150px]">
                   <div
-                    className="rounded-2xl border p-5"
+                    className="flex flex-col rounded-2xl border p-4"
                     style={{
                       borderColor: "rgba(39,225,179,0.16)",
                       background: "linear-gradient(180deg, rgba(16,38,30,0.72), rgba(11,19,17,0.94))",
                     }}
                   >
-                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#79dfc4]">
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#79dfc4]">
                       Recomendação prioritária
                     </p>
                     <h3 className="text-[20px] font-bold text-[#35d9b0]">Manutenção positiva</h3>
-                    <p className="mt-2 max-w-[520px] text-[16px] leading-relaxed text-white/92">
+                    <p className="mt-2 text-[15px] leading-relaxed text-white/92">
                       Mantenha seu estado estável com uma respiração curta de manutenção.
                     </p>
 
-                    <div className="mt-5 border-t border-white/8 pt-4">
+                    <div className="mt-4 border-t border-white/8 pt-4">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9ed8c9]">
                         Por que esta recomendação?
                       </p>
                       <p className="mt-2 text-sm leading-relaxed" style={{ color: textSoft }}>
-                        Seu V-Score está estável, HRV preservada e stress controlado. Este é o momento ideal para manter consistência e evitar sobrecarga.
+                        Estado estável, HRV preservada e stress controlado.
                       </p>
                     </div>
 
-                    <div className="mt-4 border-t border-white/8 pt-4">
+                    <div className="mt-auto border-t border-white/8 pt-4">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9ed8c9]">
                         Base da recomendação
                       </p>
-                      <p className="mt-2 text-sm leading-relaxed text-white/90">
-                        Baseado em 122 leituras válidas hoje.
-                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-white/90">122 leituras válidas hoje.</p>
                     </div>
                   </div>
 
-                  <div className="flex flex-col justify-between gap-4">
+                  <div className="flex flex-col justify-between gap-3">
                     <div className="rounded-2xl border p-4" style={{ borderColor: "rgba(255,255,255,0.05)", background: "#0f1112" }}>
                       <p className="text-[10px] uppercase tracking-[0.24em]" style={{ color: textMuted }}>
-                        Duração sugerida
+                        Duração
                       </p>
                       <div className="mt-3 flex items-center gap-2">
                         <Clock3 className="h-4 w-4 text-[#27e1b3]" />
@@ -517,7 +464,7 @@ export default function Dashboard() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       type="button"
-                      className="flex h-13 items-center justify-center gap-3 rounded-2xl px-5 text-[17px] font-bold text-[#041018] shadow-[0_8px_24px_rgba(39,225,179,0.14)]"
+                      className="mt-auto flex h-12 items-center justify-center gap-3 rounded-2xl px-5 text-[16px] font-bold text-[#041018] shadow-[0_8px_24px_rgba(39,225,179,0.14)]"
                       style={{ background: "linear-gradient(90deg,#2ad7ac,#27e1b3)" }}
                     >
                       Iniciar agora
@@ -552,7 +499,7 @@ export default function Dashboard() {
               </div>
             </motion.section>
 
-            <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.3fr_0.9fr]">
+            <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_0.6fr]">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -561,14 +508,12 @@ export default function Dashboard() {
               >
                 <div className="mb-4 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-[#27e1b3]" />
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">
-                    Evolução do V-Score
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Evolução do V-Score</p>
                 </div>
 
-                <div className="h-[300px] w-full">
+                <div className="h-[340px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trendData} margin={{ top: 20, right: 18, left: -12, bottom: 10 }}>
+                    <AreaChart data={trendData} margin={{ top: 18, right: 18, left: -12, bottom: 8 }}>
                       <defs>
                         <linearGradient id="vscoreFill" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#27e1b3" stopOpacity={0.18} />
@@ -639,9 +584,7 @@ export default function Dashboard() {
               >
                 <div className="mb-4 flex items-center gap-2">
                   <Activity className="h-4 w-4 text-[#27e1b3]" />
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">
-                    Métricas do momento
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Métricas do momento</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -655,26 +598,17 @@ export default function Dashboard() {
                       >
                         <div className="mb-3 flex items-center gap-2">
                           <Icon className={`h-4 w-4 ${item.color}`} />
-                          <span className="text-[15px] text-white/88">{item.title}</span>
+                          <span className="text-[14px] text-white/88">{item.title}</span>
                         </div>
 
                         <div className="flex items-end gap-1">
-                          <span className={`text-[22px] font-bold ${item.color}`}>{item.value}</span>
-                          {item.unit ? <span className="pb-1 text-sm text-white/65">{item.unit}</span> : null}
+                          <span className={`text-[20px] font-bold ${item.color}`}>{item.value}</span>
+                          {item.unit ? <span className="pb-1 text-xs text-white/65">{item.unit}</span> : null}
                         </div>
 
-                        <p className="mt-2 text-sm" style={{ color: textSoft }}>
+                        <p className="mt-2 text-xs" style={{ color: textSoft }}>
                           {item.sub}
                         </p>
-
-                        {typeof item.footer === "number" ? (
-                          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">
-                            <div
-                              className={`h-full rounded-full ${item.title === "Passos" ? "bg-[#d7b35a]" : "bg-[#27e1b3]"}`}
-                              style={{ width: `${item.footer}%` }}
-                            />
-                          </div>
-                        ) : null}
                       </div>
                     );
                   })}
@@ -682,38 +616,27 @@ export default function Dashboard() {
               </motion.div>
             </section>
 
-            <motion.section
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border p-5"
-              style={{ background: card, borderColor: borderSoft }}
-            >
-              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">
-                Insights do momento
-              </p>
-
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-4">
-                {insights.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.title}
-                      className="flex items-start gap-4 rounded-2xl border p-4"
-                      style={{ background: "#101214", borderColor: "rgba(255,255,255,0.05)" }}
-                    >
-                      <div className={`rounded-2xl p-3 ${item.bgTone}`}>
-                        <Icon className={`h-5 w-5 ${item.tone}`} />
-                      </div>
-                      <div>
-                        <p className="text-[15px] font-semibold text-white">{item.title}</p>
-                        <p className="mt-1 text-sm leading-relaxed" style={{ color: textSoft }}>
-                          {item.sub}
-                        </p>
-                      </div>
+            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 gap-3 xl:grid-cols-4">
+              {insights.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className="flex items-start gap-3 rounded-2xl border p-4"
+                    style={{ background: card, borderColor: borderSoft }}
+                  >
+                    <div className={`rounded-2xl p-2.5 ${item.bgTone}`}>
+                      <Icon className={`h-4.5 w-4.5 ${item.tone}`} />
                     </div>
-                  );
-                })}
-              </div>
+                    <div>
+                      <p className="text-[15px] font-semibold text-white">{item.title}</p>
+                      <p className="mt-1 text-sm leading-relaxed" style={{ color: textSoft }}>
+                        {item.sub}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </motion.section>
           </main>
         </div>
