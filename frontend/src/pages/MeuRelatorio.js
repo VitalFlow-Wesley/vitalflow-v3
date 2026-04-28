@@ -18,6 +18,8 @@ import {
   ReferenceLine,
   BarChart,
   Bar,
+  LabelList,
+  ReferenceLine,
 } from "recharts";
 import {
   FileText,
@@ -554,10 +556,13 @@ const MeuRelatorio = () => {
       ? "Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal."
       : "Seu V-Score ainda está abaixo da média da faixa etária e da sua meta pessoal, indicando espaço relevante para evolução.";
 
+  const benchmarkTarget = 85.1;
+  const benchmarkAverage = 72.3;
+
   const benchmarkData = [
-    { label: "Sua média", value: Number(report?.avg_v_score ?? 0), fill: "#22d3ee" },
-    { label: "Média da faixa etária", value: 72.3, fill: "#94a3b8" },
-    { label: "Sua meta", value: 85.1, fill: "#34d399" },
+    { label: "Sua média", shortLabel: "Sua média", value: Number(report?.avg_v_score ?? 0), fill: "#22d3ee" },
+    { label: "Média da faixa etária", shortLabel: "Faixa etária", value: benchmarkAverage, fill: "#94a3b8" },
+    { label: "Sua meta", shortLabel: "Sua meta", value: benchmarkTarget, fill: "#34d399" },
   ];
 
   const areaImpactData = getCompactAreaData(report?.top_areas || []);
@@ -1018,12 +1023,24 @@ const MeuRelatorio = () => {
                   <Target className="w-4 h-4 text-cyan-400" />
                   Comparativo de Performance (Benchmark)
                 </h3>
-                <div className="w-full h-56">
+                <div className="w-full h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={benchmarkData} margin={{ top: 10, right: 0, left: 0, bottom: 10 }}>
+                    <BarChart data={benchmarkData} margin={{ top: 22, right: 8, left: -8, bottom: 8 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                      <XAxis dataKey="label" stroke="rgba(255,255,255,0.35)" style={{ fontSize: "11px" }} />
-                      <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.35)" style={{ fontSize: "11px" }} />
+                      <XAxis
+                        dataKey="shortLabel"
+                        stroke="rgba(255,255,255,0.32)"
+                        tickLine={false}
+                        axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+                        style={{ fontSize: "11px" }}
+                      />
+                      <YAxis
+                        domain={[0, 100]}
+                        stroke="rgba(255,255,255,0.28)"
+                        tickLine={false}
+                        axisLine={false}
+                        style={{ fontSize: "11px" }}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "#171717",
@@ -1032,10 +1049,22 @@ const MeuRelatorio = () => {
                           fontSize: "12px",
                         }}
                       />
-                      <Bar dataKey="value" radius={[6, 6, 0, 0]} label={{ position: "top", fill: "rgba(255,255,255,0.85)", fontSize: 12 }}>
+                      <ReferenceLine
+                        y={benchmarkTarget}
+                        stroke="rgba(52,211,153,0.35)"
+                        strokeDasharray="5 5"
+                        label={{
+                          value: "Meta",
+                          position: "insideTopRight",
+                          fill: "rgba(52,211,153,0.75)",
+                          fontSize: 11,
+                        }}
+                      />
+                      <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                         {benchmarkData.map((entry) => (
                           <Cell key={entry.label} fill={entry.fill} />
                         ))}
+                        <LabelList dataKey="value" position="top" fill="rgba(255,255,255,0.9)" fontSize={12} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -1156,6 +1185,15 @@ const MeuRelatorio = () => {
                   Continue monitorando para acompanhar sua evolução.
                 </p>
               </div>
+            </div>
+
+            <div className="border border-white/10 bg-neutral-900/30 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-xs text-neutral-500">
+                Este relatório foi gerado com base em dados biométricos coletados pelos seus dispositivos e algoritmos proprietários da VitalFlow.
+              </p>
+              <p className="text-xs text-neutral-600">
+                Gerado em {generatedAtLabel}
+              </p>
             </div>
 
             {!canExportPdf && (
