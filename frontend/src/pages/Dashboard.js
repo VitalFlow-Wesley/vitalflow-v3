@@ -38,16 +38,23 @@ import {
   CheckCircle2,
   Star,
   Zap,
+  Cpu,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 
 const bg = "#050505";
-const card = "#0f1113";
-const cardSoft = "#0b0b0c";
-const border = "rgba(255,255,255,0.08)";
-const borderSoft = "rgba(255,255,255,0.06)";
-const textSoft = "#9aa1a6";
-const textMuted = "#6f757b";
+const panel = "#0b0d0f";
+const surface = "#0f1114";
+const elevated = "#13171a";
+const border = "rgba(255,255,255,0.07)";
+const borderSoft = "rgba(255,255,255,0.05)";
+const textSoft = "#9ba3a8";
+const textMuted = "#6e767c";
+const emerald = "#27e1b3";
+const emerald2 = "#3ce7c0";
+const amber = "#d7b35a";
+const purple = "#aa9dff";
+const rose = "#ff6b86";
 
 const topSummary = [
   { label: "Status", value: "Normal", sub: "Equilíbrio preservado", icon: ShieldCheck, color: "text-[#31d9b0]" },
@@ -162,14 +169,15 @@ function TrendTooltip({ active, payload, label }) {
 
   return (
     <div
-      className="rounded-2xl border px-3 py-2 shadow-2xl"
+      className="rounded-2xl border px-3 py-2 shadow-2xl backdrop-blur-xl"
       style={{
-        background: "rgba(5, 5, 5, 0.96)",
-        borderColor: borderSoft,
+        background: "rgba(8, 10, 12, 0.94)",
+        borderColor: "rgba(255,255,255,0.08)",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
       }}
     >
-      <p className="text-xs text-white">{label}</p>
-      <p className="text-sm font-bold text-[#27e1b3]">{value}</p>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/70">{label}</p>
+      <p className="mt-1 text-sm font-bold text-[#27e1b3]">{value}</p>
     </div>
   );
 }
@@ -179,36 +187,29 @@ function TrendDot(props) {
   if (cx == null || cy == null || !payload) return null;
 
   const score = payload.score;
-  const fill = score >= 80 ? "#27e1b3" : score >= 60 ? "#d7b35a" : "#ff5f7a";
-
+  const fill = score >= 80 ? emerald : score >= 60 ? amber : rose;
   const labelMap = {
     "05:00": "Maior queda",
     "12:00": "Recuperação",
     "24:00": "Atual",
   };
-
   const markerLabel = labelMap[payload.time];
 
   return (
     <g>
-      <circle cx={cx} cy={cy} r="5" fill={fill} stroke="#060707" strokeWidth="2.5" />
+      <circle cx={cx} cy={cy} r="5.5" fill={fill} stroke="#060707" strokeWidth="2.5" />
+      <circle cx={cx} cy={cy} r="10" fill={fill} fillOpacity="0.1" />
       {markerLabel ? (
         <g>
           <rect
-            x={cx - 44}
+            x={cx - 46}
             y={cy + 16}
-            width={88}
+            width={92}
             height={22}
             rx={8}
-            fill={
-              fill === "#27e1b3"
-                ? "rgba(39,225,179,0.12)"
-                : fill === "#d7b35a"
-                ? "rgba(215,179,90,0.12)"
-                : "rgba(255,95,122,0.12)"
-            }
+            fill={fill === emerald ? "rgba(39,225,179,0.12)" : fill === amber ? "rgba(215,179,90,0.12)" : "rgba(255,107,134,0.12)"}
             stroke={fill}
-            strokeOpacity={0.28}
+            strokeOpacity={0.24}
           />
           <text x={cx} y={cy + 30} textAnchor="middle" fill={fill} fontSize="10.5" fontWeight="700">
             {markerLabel}
@@ -235,11 +236,15 @@ export default function Dashboard() {
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex h-full flex-col rounded-2xl border p-4"
-            style={{ background: cardSoft, borderColor: borderSoft }}
+            style={{
+              background: panel,
+              borderColor: borderSoft,
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+            }}
           >
             <div className="mb-4 flex items-center gap-3 border-b border-white/[0.05] pb-4">
               <div
-                className="rounded-2xl border p-3 shadow-[0_0_18px_rgba(39,225,179,0.04)]"
+                className="rounded-2xl border p-3 shadow-[0_0_18px_rgba(39,225,179,0.03)]"
                 style={{ borderColor: borderSoft, background: "#0a0b0c" }}
               >
                 <LayoutDashboard className="h-5 w-5 text-[#27e1b3]" />
@@ -262,15 +267,15 @@ export default function Dashboard() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.03 * index }}
                     className={`group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
-                      item.active ? "shadow-[inset_3px_0_0_0_#27e1b3,0_0_16px_rgba(39,225,179,0.05)]" : "hover:bg-white/[0.02]"
+                      item.active ? "shadow-[inset_3px_0_0_0_#27e1b3,0_0_18px_rgba(39,225,179,0.04)]" : "hover:bg-white/[0.02]"
                     }`}
                     style={{
-                      background: item.active ? "rgba(39,225,179,0.06)" : "transparent",
-                      borderColor: item.active ? "rgba(39,225,179,0.16)" : "transparent",
+                      background: item.active ? "linear-gradient(90deg, rgba(39,225,179,0.08), rgba(39,225,179,0.02))" : "transparent",
+                      borderColor: item.active ? "rgba(39,225,179,0.15)" : "transparent",
                     }}
                     type="button"
                   >
-                    <Icon className={`h-4.5 w-4.5 ${item.active ? "text-[#27e1b3]" : "text-white/40 group-hover:text-white/70"}`} />
+                    <Icon className={`h-4.5 w-4.5 ${item.active ? "text-[#27e1b3]" : "text-white/38 group-hover:text-white/70"}`} />
                     <span className={`text-[15px] ${item.active ? "font-semibold text-[#e3fbf4]" : "text-white/62"}`}>
                       {item.label}
                     </span>
@@ -285,8 +290,9 @@ export default function Dashboard() {
               <div
                 className="inline-flex items-center gap-2 rounded-full border px-4 py-2"
                 style={{
-                  background: "rgba(39,225,179,0.05)",
+                  background: "linear-gradient(180deg, rgba(39,225,179,0.08), rgba(39,225,179,0.03))",
                   borderColor: "rgba(39,225,179,0.16)",
+                  boxShadow: "0 0 24px rgba(39,225,179,0.05)",
                 }}
               >
                 <Crown className="h-4 w-4 text-[#27e1b3]" />
@@ -297,30 +303,39 @@ export default function Dashboard() {
             <motion.section
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-2 gap-3 rounded-2xl border p-3 md:grid-cols-3 xl:grid-cols-6"
-              style={{ background: card, borderColor: borderSoft }}
+              className="rounded-2xl border p-2.5"
+              style={{
+                background: "linear-gradient(180deg, rgba(13,15,16,0.98), rgba(10,12,13,0.96))",
+                borderColor: borderSoft,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+              }}
             >
-              {topSummary.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border px-4 py-3"
-                    style={{ background: "#101214", borderColor: "rgba(255,255,255,0.05)" }}
-                  >
-                    <div className="mb-2 flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-white/55" />
-                      <p className="text-[10px] uppercase tracking-[0.22em]" style={{ color: textMuted }}>
-                        {item.label}
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                {topSummary.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.label}
+                      className={`rounded-2xl px-4 py-3 ${index === 0 ? "border" : "border border-transparent"}`}
+                      style={{
+                        background: index === 0 ? "linear-gradient(180deg, rgba(39,225,179,0.08), rgba(18,28,25,0.85))" : "rgba(255,255,255,0.015)",
+                        borderColor: index === 0 ? "rgba(39,225,179,0.15)" : "rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <Icon className={`h-4 w-4 ${index === 0 ? "text-[#27e1b3]" : "text-white/55"}`} />
+                        <p className="text-[10px] uppercase tracking-[0.22em]" style={{ color: textMuted }}>
+                          {item.label}
+                        </p>
+                      </div>
+                      <p className={`text-[17px] font-bold ${item.color}`}>{item.value}</p>
+                      <p className="mt-1 truncate text-xs" style={{ color: textSoft }}>
+                        {item.sub}
                       </p>
                     </div>
-                    <p className={`text-[17px] font-bold ${item.color}`}>{item.value}</p>
-                    <p className="mt-1 truncate text-xs" style={{ color: textSoft }}>
-                      {item.sub}
-                    </p>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </motion.section>
 
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -328,7 +343,11 @@ export default function Dashboard() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex h-[380px] flex-col rounded-2xl border p-5"
-                style={{ background: card, borderColor: borderSoft }}
+                style={{
+                  background: surface,
+                  borderColor: borderSoft,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+                }}
               >
                 <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Status Vital</p>
 
@@ -337,7 +356,7 @@ export default function Dashboard() {
                   <h3 className="text-[18px] font-bold text-white">Resiliência ótima</h3>
                 </div>
 
-                <div className="mx-auto mt-4 flex h-40 w-40 items-center justify-center rounded-full bg-[conic-gradient(#27e1b3_0deg,#33dbb1_360deg)] p-[11px] shadow-[0_0_36px_rgba(39,225,179,0.12)]">
+                <div className="mx-auto mt-4 flex h-40 w-40 items-center justify-center rounded-full bg-[conic-gradient(#27e1b3_0deg,#33dbb1_360deg)] p-[11px] shadow-[0_0_42px_rgba(39,225,179,0.14)]">
                   <div
                     className="flex h-full w-full flex-col items-center justify-center rounded-full border bg-[#090b0c]"
                     style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -352,7 +371,10 @@ export default function Dashboard() {
                 <div className="mt-5 flex justify-center">
                   <span
                     className="rounded-full border px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.22em] text-[#27e1b3]"
-                    style={{ borderColor: "rgba(39,225,179,0.18)", background: "rgba(39,225,179,0.08)" }}
+                    style={{
+                      borderColor: "rgba(39,225,179,0.18)",
+                      background: "rgba(39,225,179,0.08)",
+                    }}
                   >
                     NORMAL
                   </span>
@@ -368,7 +390,11 @@ export default function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.03 }}
                 className="flex h-[380px] flex-col rounded-2xl border p-5"
-                style={{ background: card, borderColor: borderSoft }}
+                style={{
+                  background: surface,
+                  borderColor: borderSoft,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+                }}
               >
                 <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Leitura Rápida</p>
 
@@ -379,7 +405,10 @@ export default function Dashboard() {
                       <div
                         key={item.title}
                         className="flex items-start gap-3 rounded-2xl border p-3.5"
-                        style={{ borderColor: "rgba(255,255,255,0.045)", background: "#0f1112" }}
+                        style={{
+                          borderColor: "rgba(255,255,255,0.04)",
+                          background: elevated,
+                        }}
                       >
                         <div className={`rounded-2xl p-2.5 ${item.bgTone}`}>
                           <Icon className={`h-4.5 w-4.5 ${item.tone}`} />
@@ -401,12 +430,16 @@ export default function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 }}
                 className="flex h-[380px] flex-col rounded-2xl border p-5"
-                style={{ background: card, borderColor: borderSoft }}
+                style={{
+                  background: "linear-gradient(180deg, #101315, #0f1113)",
+                  borderColor: "rgba(39,225,179,0.1)",
+                  boxShadow: "0 0 30px rgba(39,225,179,0.05), inset 0 1px 0 rgba(255,255,255,0.02)",
+                }}
               >
                 <div className="mb-4 flex items-center justify-between">
                   <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Sugestão Inteligente</p>
                   <div className="flex items-center gap-2 rounded-full bg-[#27e1b3]/6 px-3 py-1.5">
-                    <Sparkles className="h-4 w-4 text-[#27e1b3]" />
+                    <Cpu className="h-4 w-4 text-[#27e1b3]" />
                     <span className="text-sm font-semibold text-white/90">VitalFlow AI</span>
                   </div>
                 </div>
@@ -415,8 +448,9 @@ export default function Dashboard() {
                   <div
                     className="flex flex-col rounded-2xl border p-4"
                     style={{
-                      borderColor: "rgba(39,225,179,0.16)",
-                      background: "linear-gradient(180deg, rgba(16,38,30,0.72), rgba(11,19,17,0.94))",
+                      borderColor: "rgba(39,225,179,0.18)",
+                      background: "linear-gradient(180deg, rgba(18,48,38,0.74), rgba(11,20,17,0.96))",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 26px rgba(39,225,179,0.04)",
                     }}
                   >
                     <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#79dfc4]">
@@ -445,7 +479,13 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex flex-col justify-between gap-3">
-                    <div className="rounded-2xl border p-4" style={{ borderColor: "rgba(255,255,255,0.05)", background: "#0f1112" }}>
+                    <div
+                      className="rounded-2xl border p-4"
+                      style={{
+                        borderColor: "rgba(255,255,255,0.05)",
+                        background: elevated,
+                      }}
+                    >
                       <p className="text-[10px] uppercase tracking-[0.24em]" style={{ color: textMuted }}>
                         Duração
                       </p>
@@ -464,8 +504,11 @@ export default function Dashboard() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       type="button"
-                      className="mt-auto flex h-12 items-center justify-center gap-3 rounded-2xl px-5 text-[16px] font-bold text-[#041018] shadow-[0_8px_24px_rgba(39,225,179,0.14)]"
-                      style={{ background: "linear-gradient(90deg,#2ad7ac,#27e1b3)" }}
+                      className="mt-auto flex h-12 items-center justify-center gap-3 rounded-2xl px-5 text-[16px] font-bold text-[#041018]"
+                      style={{
+                        background: "linear-gradient(90deg,#29d3aa,#27e1b3)",
+                        boxShadow: "0 10px 28px rgba(39,225,179,0.18)",
+                      }}
                     >
                       Iniciar agora
                       <ArrowRight className="h-5 w-5" />
@@ -479,7 +522,10 @@ export default function Dashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex flex-col gap-2 rounded-2xl border px-5 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-              style={{ background: cardSoft, borderColor: borderSoft }}
+              style={{
+                background: panel,
+                borderColor: borderSoft,
+              }}
             >
               <div className="flex items-center gap-2">
                 <div className="h-2.5 w-2.5 rounded-full bg-[#27e1b3]" />
@@ -504,23 +550,35 @@ export default function Dashboard() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-2xl border p-5"
-                style={{ background: card, borderColor: borderSoft }}
+                style={{
+                  background: surface,
+                  borderColor: borderSoft,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+                }}
               >
                 <div className="mb-4 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-[#27e1b3]" />
                   <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#bbc1c6]">Evolução do V-Score</p>
                 </div>
 
-                <div className="h-[340px] w-full">
+                <div
+                  className="h-[340px] w-full rounded-2xl border p-3"
+                  style={{
+                    background: "linear-gradient(180deg, rgba(8,12,13,0.92), rgba(10,14,15,0.96))",
+                    borderColor: "rgba(255,255,255,0.04)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.015)",
+                  }}
+                >
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={trendData} margin={{ top: 18, right: 18, left: -12, bottom: 8 }}>
                       <defs>
                         <linearGradient id="vscoreFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#27e1b3" stopOpacity={0.18} />
+                          <stop offset="0%" stopColor="#27e1b3" stopOpacity={0.28} />
+                          <stop offset="35%" stopColor="#27e1b3" stopOpacity={0.14} />
                           <stop offset="100%" stopColor="#27e1b3" stopOpacity={0.01} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.045)" strokeDasharray="3 4" />
+                      <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" strokeDasharray="3 4" />
                       <ReferenceLine
                         y={70}
                         stroke="#b99748"
@@ -543,23 +601,23 @@ export default function Dashboard() {
                           fontSize: 11,
                         }}
                       />
-                      <XAxis dataKey="time" stroke="rgba(255,255,255,0.24)" tickLine={false} axisLine={false} style={{ fontSize: "11px" }} />
-                      <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.24)" tickLine={false} axisLine={false} style={{ fontSize: "11px" }} />
+                      <XAxis dataKey="time" stroke="rgba(255,255,255,0.22)" tickLine={false} axisLine={false} style={{ fontSize: "11px" }} />
+                      <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.22)" tickLine={false} axisLine={false} style={{ fontSize: "11px" }} />
                       <Tooltip content={<TrendTooltip />} />
                       <Area
                         type="monotone"
                         dataKey="score"
-                        stroke="#31d9b0"
+                        stroke={emerald2}
                         strokeWidth={3.5}
                         fill="url(#vscoreFill)"
                         dot={<TrendDot />}
-                        activeDot={{ r: 7, fill: "#27e1b3", stroke: "#050505", strokeWidth: 3 }}
+                        activeDot={{ r: 7, fill: emerald, stroke: "#050505", strokeWidth: 3 }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
+                <div className="mt-3 flex flex-wrap items-center gap-5 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="h-[3px] w-6 rounded-full bg-[#27e1b3]" />
                     <span style={{ color: textSoft }}>V-Score</span>
@@ -580,7 +638,11 @@ export default function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.04 }}
                 className="rounded-2xl border p-5"
-                style={{ background: card, borderColor: borderSoft }}
+                style={{
+                  background: surface,
+                  borderColor: borderSoft,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+                }}
               >
                 <div className="mb-4 flex items-center gap-2">
                   <Activity className="h-4 w-4 text-[#27e1b3]" />
@@ -593,20 +655,22 @@ export default function Dashboard() {
                     return (
                       <div
                         key={item.title}
-                        className="rounded-2xl border p-4"
-                        style={{ background: "#101214", borderColor: "rgba(255,255,255,0.05)" }}
+                        className="rounded-2xl border px-4 py-3.5"
+                        style={{
+                          background: elevated,
+                          borderColor: "rgba(255,255,255,0.045)",
+                        }}
                       >
-                        <div className="mb-3 flex items-center gap-2">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-[11px] uppercase tracking-[0.18em] text-white/42">{item.title}</span>
                           <Icon className={`h-4 w-4 ${item.color}`} />
-                          <span className="text-[14px] text-white/88">{item.title}</span>
                         </div>
 
                         <div className="flex items-end gap-1">
-                          <span className={`text-[20px] font-bold ${item.color}`}>{item.value}</span>
-                          {item.unit ? <span className="pb-1 text-xs text-white/65">{item.unit}</span> : null}
+                          <span className={`text-[22px] font-bold ${item.color}`}>{item.value}</span>
                         </div>
 
-                        <p className="mt-2 text-xs" style={{ color: textSoft }}>
+                        <p className="mt-1.5 text-xs" style={{ color: textSoft }}>
                           {item.sub}
                         </p>
                       </div>
@@ -622,15 +686,18 @@ export default function Dashboard() {
                 return (
                   <div
                     key={item.title}
-                    className="flex items-start gap-3 rounded-2xl border p-4"
-                    style={{ background: card, borderColor: borderSoft }}
+                    className="flex items-center gap-3 rounded-2xl border px-4 py-3.5"
+                    style={{
+                      background: surface,
+                      borderColor: borderSoft,
+                    }}
                   >
                     <div className={`rounded-2xl p-2.5 ${item.bgTone}`}>
                       <Icon className={`h-4.5 w-4.5 ${item.tone}`} />
                     </div>
-                    <div>
-                      <p className="text-[15px] font-semibold text-white">{item.title}</p>
-                      <p className="mt-1 text-sm leading-relaxed" style={{ color: textSoft }}>
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-semibold text-white">{item.title}</p>
+                      <p className="truncate text-sm" style={{ color: textSoft }}>
                         {item.sub}
                       </p>
                     </div>
