@@ -7,6 +7,8 @@ import {
   ResponsiveContainer,
   Tooltip,
   ReferenceLine,
+  XAxis,
+  YAxis,
 } from "recharts";
 import {
   LayoutDashboard,
