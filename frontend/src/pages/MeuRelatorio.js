@@ -502,9 +502,57 @@ const MeuRelatorio = () => {
       : "sobrecarga fisiológica";
 
   const executiveRecoveryLabel =
-    trendDelta !== null && trendDelta < -1
+    trendDelta === null
+      ? "Monitoramento em andamento"
+      : trendDelta > 1
+      ? "Manter rotina de recuperação"
+      : trendDelta < -1
       ? "Atenção recomendada nas próximas 24-48h"
-      : "Manter rotina de recuperação";
+      : "Manter constância de recuperação";
+
+  const narrativeMode =
+    trendDelta === null
+      ? "stable"
+      : trendDelta > 1
+      ? "improving"
+      : trendDelta < -1
+      ? "declining"
+      : "stable";
+
+  const executiveSummaryLead =
+    narrativeMode === "improving"
+      ? "Sua resiliência apresentou tendência de melhora"
+      : narrativeMode === "declining"
+      ? "Sua resiliência apresentou tendência de queda moderada"
+      : "Sua resiliência apresentou comportamento estável";
+
+  const interpretationTitle =
+    narrativeMode === "improving"
+      ? "Melhora consistente detectada"
+      : narrativeMode === "declining"
+      ? "Queda moderada detectada"
+      : "Estabilidade detectada no período";
+
+  const interpretationDescription =
+    narrativeMode === "improving"
+      ? `Seu V-Score subiu ${Math.abs(trendDelta || 0)} pontos em relação ao início do período.`
+      : narrativeMode === "declining"
+      ? `Seu V-Score caiu ${Math.abs(trendDelta || 0)} pontos em relação ao início do período.`
+      : "Seu V-Score se manteve relativamente estável em relação ao início do período.";
+
+  const executiveConclusionText =
+    narrativeMode === "improving"
+      ? "Seu período apresentou sinais consistentes de recuperação de resiliência, com melhora progressiva do V-Score e maior impacto ainda concentrado em sistemas cardiovascular e cognitivo. A principal oportunidade agora está em sustentar sua capacidade de recuperação, manter a qualidade do sono e evitar nova sobrecarga acumulada. Continue monitorando para consolidar essa evolução no próximo período."
+      : narrativeMode === "declining"
+      ? "Seu período apresentou sinais consistentes de queda moderada de resiliência, com maior impacto cardiovascular e cognitivo. A principal oportunidade está em restaurar sua capacidade de recuperação, melhorar a qualidade do sono e gerenciar a carga acumulada. Continue monitorando para acompanhar sua evolução no próximo período."
+      : "Seu período apresentou relativa estabilidade de resiliência, com sinais ainda concentrados em sistemas cardiovascular e cognitivo. A principal oportunidade está em manter a qualidade da recuperação, preservar o sono e acompanhar possíveis oscilações antes que se tornem persistentes. Continue monitorando para validar essa consistência no próximo período.";
+
+  const benchmarkSummaryText =
+    report.avg_v_score >= 85
+      ? "Seu V-Score está acima da média da faixa etária e já dentro da sua meta pessoal."
+      : report.avg_v_score >= 72.3
+      ? "Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal."
+      : "Seu V-Score ainda está abaixo da média da faixa etária e da sua meta pessoal, indicando espaço relevante para evolução.";
 
   const benchmarkData = [
     { label: "Sua média", value: Number(report?.avg_v_score ?? 0), fill: "#22d3ee" },
@@ -669,7 +717,7 @@ const MeuRelatorio = () => {
                         Resumo Executivo
                       </p>
                       <p className="text-white text-lg sm:text-[1.95rem] leading-tight font-semibold">
-                        Sua resiliência apresentou <span className={trendDirectionTone}>{trendDirectionText}</span>, com V-Score médio de{" "}
+                        <span className={trendDirectionTone}>{executiveSummaryLead}</span>, com V-Score médio de{" "}
                         <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em{" "}
                         <span className="text-white">{topAreasSummary}</span>.
                       </p>
@@ -732,9 +780,9 @@ const MeuRelatorio = () => {
                       <TrendingUp className="w-4 h-4 text-cyan-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">Queda moderada detectada</p>
+                      <p className="text-sm font-semibold text-white">{interpretationTitle}</p>
                       <p className="text-xs text-neutral-400 mt-1">
-                        Seu V-Score caiu {Math.abs(trendDelta || 0)} pontos em relação ao início do período.
+                        {interpretationDescription}
                       </p>
                     </div>
                   </div>
@@ -993,7 +1041,7 @@ const MeuRelatorio = () => {
                   </ResponsiveContainer>
                 </div>
                 <p className="text-sm text-neutral-500 mt-2">
-                  Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal.
+                  {benchmarkSummaryText}
                 </p>
               </div>
             </div>
@@ -1096,9 +1144,7 @@ const MeuRelatorio = () => {
                   Conclusão executiva
                 </h3>
                 <p className="text-lg leading-relaxed text-neutral-200">
-                  Seu período apresentou sinais consistentes de queda moderada de resiliência, com maior impacto cardiovascular e cognitivo.
-                  A principal oportunidade está em restaurar sua capacidade de recuperação, melhorar a qualidade do sono e gerenciar a carga acumulada.
-                  Continue monitorando para acompanhar sua evolução no próximo período.
+                  {executiveConclusionText}
                 </p>
               </div>
 
