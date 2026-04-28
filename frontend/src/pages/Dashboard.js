@@ -1,1568 +1,592 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import axios from "axios";
-import Navbar from "../components/Navbar";
-import StatusOrb from "../components/StatusOrb";
-import AIAnalysis from "../components/AIAnalysis";
-import RoutineSuggestionCard from "../components/RoutineSuggestionCard";
-import RoutineExecutionModal from "../components/RoutineExecutionModal";
-import NudgeCard from "../components/NudgeCard";
-import HistoryChart from "../components/HistoryChart";
-import OnboardingTour from "../components/OnboardingTour";
-import FirstAccessFlow from "../components/FirstAccessFlow";
-import { queueOfflineData } from "../components/ConnectionStatus";
-import { useAuth } from "../contexts/AuthContext";
-import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useMemo } from "react";
+import { motion } from "framer-motion";
 import {
-  Lock,
-  Zap,
-  Flame,
-  Trophy,
-  Shield,
-  Smartphone,
-  Radio,
-  Stethoscope,
-  X,
-  Moon,
-  Sun,
-  Wifi,
-  AlertTriangle,
+  AreaChart,
+  Area,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  ReferenceLine,
+} from "recharts";
+import {
+  LayoutDashboard,
   Activity,
-  HeartPulse,
-  Footprints,
   TrendingUp,
-  BedDouble,
+  Repeat,
+  Smartphone,
+  FileText,
+  Settings,
+  Crown,
+  Gauge,
+  ShieldCheck,
+  TimerReset,
+  Focus,
+  Clock3,
+  HeartPulse,
+  Brain,
+  Sparkles,
+  ArrowRight,
+  Zap,
+  Footprints,
+  Flame,
+  Route,
+  Timer,
+  Moon,
+  Droplets,
+  Target,
+  CheckCircle2,
+  Star,
 } from "lucide-react";
-
-// Apontando para o Railway no fallback
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
-const API = `${BACKEND_URL}/api`;
-const POLLING_INTERVAL = 10000;
-const BACKGROUND_SYNC_INTERVAL = 5 * 60 * 1000;
-
-function normalizeState(statusValue, tagValue, scoreValue) {
-  const status = String(statusValue || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  const tag = String(tagValue || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  const score = Number(scoreValue ?? 0);
-
-  if (
-    status.includes("vermelho") ||
-    status.includes("critico") ||
-    status.includes("urgente") ||
-    tag.includes("urgente") ||
-    tag.includes("critico") ||
-    score < 50
-  ) {
-    return {
-      key: "critico",
-      border: "border-rose-500/30",
-      bg: "bg-rose-500/8",
-      soft: "bg-rose-500/10",
-      text: "text-rose-300",
-      pill: "border-rose-500/20 bg-rose-500/10 text-rose-300",
-      button: "bg-rose-500 hover:bg-rose-400",
-    };
-  }
-
-  if (
-    status.includes("amarelo") ||
-    status.includes("atencao") ||
-    status.includes("stress") ||
-    status.includes("alerta") ||
-    tag.includes("stress") ||
-    tag.includes("alerta") ||
-    (score >= 50 && score < 80)
-  ) {
-    return {
-      key: "atencao",
-      border: "border-amber-500/30",
-      bg: "bg-amber-500/8",
-      soft: "bg-amber-500/10",
-      text: "text-amber-300",
-      pill: "border-amber-500/20 bg-amber-500/10 text-amber-300",
-      button: "bg-amber-500 hover:bg-amber-400",
-    };
-  }
-
-  return {
-    key: "normal",
-    border: "border-emerald-500/25",
-    bg: "bg-emerald-500/8",
-    soft: "bg-emerald-500/10",
-    text: "text-emerald-300",
-    pill: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
-    button: "bg-emerald-500 hover:bg-emerald-400",
-  };
-}
-
-function getMetricTheme(metricLabel, metricValue, analysis) {
-  const state = normalizeState(
-    analysis?.status_visual,
-    analysis?.tag_rapida,
-    analysis?.v_score
-  );
-
-  const label = String(metricLabel || "").toLowerCase();
-  const numeric = Number(
-    typeof metricValue === "string"
-      ? metricValue.replace(/[^\d.-]/g, "")
-      : metricValue
-  );
-
-  if (label === "bpm") {
-    if (numeric >= 100) {
-      return {
-        border: "border-rose-500/20",
-        bg: "from-rose-500/18 to-rose-400/5",
-        text: "text-rose-300",
-        icon: "text-rose-300",
-      };
-    }
-    if (numeric >= 85) {
-      return {
-        border: "border-amber-500/20",
-        bg: "from-amber-500/18 to-amber-400/5",
-        text: "text-amber-300",
-        icon: "text-amber-300",
-      };
-    }
-    return {
-      border: "border-emerald-500/20",
-      bg: "from-emerald-500/18 to-emerald-400/5",
-      text: "text-emerald-300",
-      icon: "text-emerald-300",
-    };
-  }
-
-  if (label === "hrv") {
-    if (numeric < 35) {
-      return {
-        border: "border-rose-500/20",
-        bg: "from-rose-500/18 to-rose-400/5",
-        text: "text-rose-300",
-        icon: "text-rose-300",
-      };
-    }
-    if (numeric < 50) {
-      return {
-        border: "border-amber-500/20",
-        bg: "from-amber-500/18 to-amber-400/5",
-        text: "text-amber-300",
-        icon: "text-amber-300",
-      };
-    }
-    return {
-      border: "border-cyan-500/20",
-      bg: "from-cyan-500/18 to-cyan-400/5",
-      text: "text-cyan-300",
-      icon: "text-cyan-300",
-    };
-  }
-
-  if (label === "sono") {
-    if (numeric < 5.5) {
-      return {
-        border: "border-rose-500/20",
-        bg: "from-rose-500/18 to-rose-400/5",
-        text: "text-rose-300",
-        icon: "text-rose-300",
-      };
-    }
-    if (numeric < 7) {
-      return {
-        border: "border-amber-500/20",
-        bg: "from-amber-500/18 to-amber-400/5",
-        text: "text-amber-300",
-        icon: "text-amber-300",
-      };
-    }
-    return {
-      border: "border-indigo-500/20",
-      bg: "from-indigo-500/18 to-indigo-400/5",
-      text: "text-indigo-300",
-      icon: "text-indigo-300",
-    };
-  }
-
-  if (label === "passos") {
-    if (numeric < 3500) {
-      return {
-        border: "border-amber-500/20",
-        bg: "from-amber-500/18 to-amber-400/5",
-        text: "text-amber-300",
-        icon: "text-amber-300",
-      };
-    }
-    return {
-      border: "border-emerald-500/20",
-      bg: "from-emerald-500/18 to-emerald-400/5",
-      text: "text-emerald-300",
-      icon: "text-emerald-300",
-    };
-  }
-
-  if (label === "stress") {
-    return state.key === "critico"
-      ? {
-          border: "border-rose-500/20",
-          bg: "from-rose-500/18 to-rose-400/5",
-          text: "text-rose-300",
-          icon: "text-rose-300",
-        }
-      : state.key === "atencao"
-      ? {
-          border: "border-amber-500/20",
-          bg: "from-amber-500/18 to-amber-400/5",
-          text: "text-amber-300",
-          icon: "text-amber-300",
-        }
-      : {
-          border: "border-emerald-500/20",
-          bg: "from-emerald-500/18 to-emerald-400/5",
-          text: "text-emerald-300",
-          icon: "text-emerald-300",
-        };
-  }
-
-  if (label === "recovery") {
-    if (numeric < 55) {
-      return {
-        border: "border-rose-500/20",
-        bg: "from-rose-500/18 to-rose-400/5",
-        text: "text-rose-300",
-        icon: "text-rose-300",
-      };
-    }
-    if (numeric < 75) {
-      return {
-        border: "border-amber-500/20",
-        bg: "from-amber-500/18 to-amber-400/5",
-        text: "text-amber-300",
-        icon: "text-amber-300",
-      };
-    }
-    return {
-      border: "border-emerald-500/20",
-      bg: "from-emerald-500/18 to-emerald-400/5",
-      text: "text-emerald-300",
-      icon: "text-emerald-300",
-    };
-  }
-
-  if (label === "risco") {
-    if (numeric >= 70) {
-      return {
-        border: "border-rose-500/20",
-        bg: "from-rose-500/18 to-rose-400/5",
-        text: "text-rose-300",
-        icon: "text-rose-300",
-      };
-    }
-    if (numeric >= 35) {
-      return {
-        border: "border-amber-500/20",
-        bg: "from-amber-500/18 to-amber-400/5",
-        text: "text-amber-300",
-        icon: "text-amber-300",
-      };
-    }
-    return {
-      border: "border-emerald-500/20",
-      bg: "from-emerald-500/18 to-emerald-400/5",
-      text: "text-emerald-300",
-      icon: "text-emerald-300",
-    };
-  }
-
-  if (label === "contexto") {
-    const context = String(metricValue || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-
-    if (context.includes("stress") || context.includes("alerta")) {
-      return state.key === "critico"
-        ? {
-            border: "border-rose-500/20",
-            bg: "from-rose-500/18 to-rose-400/5",
-            text: "text-rose-300",
-            icon: "text-rose-300",
-          }
-        : {
-            border: "border-amber-500/20",
-            bg: "from-amber-500/18 to-amber-400/5",
-            text: "text-amber-300",
-            icon: "text-amber-300",
-          };
-    }
-
-    if (context.includes("normal")) {
-      return {
-        border: "border-emerald-500/20",
-        bg: "from-emerald-500/18 to-emerald-400/5",
-        text: "text-emerald-300",
-        icon: "text-emerald-300",
-      };
-    }
-
-    return {
-      border: "border-sky-500/20",
-      bg: "from-sky-500/18 to-sky-400/5",
-      text: "text-sky-300",
-      icon: "text-sky-300",
-    };
-  }
-
-  return {
-    border: "border-white/10",
-    bg: "from-white/5 to-white/[0.02]",
-    text: "text-white",
-    icon: "text-neutral-300",
-  };
-}
-
-
-const hasRealMetric = (value) =>
-  value !== null &&
-  value !== undefined &&
-  value !== "" &&
-  !(typeof value === "number" && Number.isNaN(value));
-
-const formatSleepMetric = (value) => {
-  const num = Number(value);
-  if (!hasRealMetric(value) || !Number.isFinite(num) || num <= 0) return "--";
-  const normalized = Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, "");
-  return `${normalized}h`;
-};
-
-const formatOptionalMetric = (value, suffix = "") => {
-  const num = Number(value);
-  if (!hasRealMetric(value) || !Number.isFinite(num) || num <= 0) return "--";
-  const normalized = Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, "");
-  return `${normalized}${suffix}`;
-};
-
-
-const formatMetricValue = (value, suffix = "") => {
-  const num = Number(value);
-  if (value === null || value === undefined || value === "" || !Number.isFinite(num) || num <= 0) {
-    return "--";
-  }
-  const normalized = Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, "");
-  return `${normalized}${suffix}`;
-};
-
-const formatSleepValue = (value) => formatMetricValue(value, "h");
-const formatCaloriesValue = (value) => formatMetricValue(value, " kcal");
-const formatMinutesValue = (value) => formatMetricValue(value, " min");
-
-
-const DASHBOARD_CACHE_KEY_PREFIX = "vitalflow_dashboard_cache_v2";
-const PREMIUM_TRIAL_KEY_PREFIX = "vitalflow_premium_trial_v1";
-const PREMIUM_TRIAL_DAYS = 30;
-
-const getDashboardCacheKey = (user) => {
-  const identity = user?.id || user?.email || "guest";
-  return `${DASHBOARD_CACHE_KEY_PREFIX}:${identity}`;
-};
-
-const getPremiumTrialKey = (user) => {
-  const identity = user?.id || user?.email || "guest";
-  return `${PREMIUM_TRIAL_KEY_PREFIX}:${identity}`;
-};
-
-const readDashboardCache = (user) => {
-  try {
-    const raw = sessionStorage.getItem(getDashboardCacheKey(user));
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-};
-
-export default function Dashboard() {
-  const { user, refreshUser } = useAuth();
-  const dashboardCache = readDashboardCache(user);
-  const [dashboardLoading, setDashboardLoading] = useState(
-    !dashboardCache.currentAnalysis && !(dashboardCache.history || []).length
-  );
-  const [currentAnalysis, setCurrentAnalysis] = useState(
-    dashboardCache.currentAnalysis ?? null
-  );
-  const [history, setHistory] = useState(dashboardCache.history ?? []);
-  const [connectedDevices, setConnectedDevices] = useState(
-    dashboardCache.connectedDevices ?? []
-  );
-  const [devicesLoading, setDevicesLoading] = useState(true);
-  const [selectedRoutine, setSelectedRoutine] = useState(null);
-  const [predictiveAlert, setPredictiveAlert] = useState(null);
-  const [gamStats, setGamStats] = useState(null);
-  const [healthTrend, setHealthTrend] = useState(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showFirstAccess, setShowFirstAccess] = useState(false);
-  const [showMedicalAlert, setShowMedicalAlert] = useState(false);
-  const [medicalAlertData, setMedicalAlertData] = useState(null);
-  const [morningReport, setMorningReport] = useState(null);
-  const [lastSyncData, setLastSyncData] = useState(dashboardCache.lastSyncData ?? null);
-  const [trialStartedAt, setTrialStartedAt] = useState(null);
-
-  const pollingIntervalRef = useRef(null);
-  const bgSyncRef = useRef(null);
-  const lastAnalysisKeyRef = useRef(null);
-
-  const getAnalysisKey = (analysis) => {
-    if (!analysis) return null;
-    return analysis.id || analysis.timestamp || JSON.stringify(analysis);
-  };
-
-  const sortHistoryDesc = (items) => {
-    const list = Array.isArray(items) ? [...items] : [];
-    return list.sort((a, b) => {
-      const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
-      return tb - ta;
-    });
-  };
-
-  // ✅ CORRIGIDO: Retornando os dados normalmente sem filtro fantasma!
-  const filterRealAnalyses = (items) => {
-    return Array.isArray(items) ? items : [];
-  };
-
-  const getAnalysisMoment = (analysis) => {
-    const raw =
-      analysis?.timestamp ||
-      analysis?.created_at ||
-      analysis?.updated_at ||
-      null;
-
-    if (!raw) return 0;
-
-    const ms = new Date(raw).getTime();
-    return Number.isFinite(ms) ? ms : 0;
-  };
-
-  const fetchHistory = async () => {
-    try {
-      const response = await axios.get(`${API}/history?limit=30`, {
-        withCredentials: true,
-      });
-
-      const realHistory = filterRealAnalyses(response.data);
-      const orderedHistory = sortHistoryDesc(realHistory);
-
-      setHistory((prev) => {
-        const prevList = Array.isArray(prev) ? prev : [];
-        const merged = [...orderedHistory];
-
-        for (const item of prevList) {
-          const key = item?.id || item?.timestamp;
-          if (!merged.some((candidate) => (candidate?.id || candidate?.timestamp) === key)) {
-            merged.push(item);
-          }
-        }
-
-        return sortHistoryDesc(merged);
-      });
-
-      if (orderedHistory.length > 0) {
-        const latest = orderedHistory[0];
-        const latestMoment = getAnalysisMoment(latest);
-        const currentMoment = getAnalysisMoment(currentAnalysis);
-
-        if (!currentAnalysis || latestMoment >= currentMoment) {
-          setCurrentAnalysis(latest);
-          lastAnalysisKeyRef.current = getAnalysisKey(latest);
-        }
-      } else if (!currentAnalysis) {
-        setCurrentAnalysis(null);
-        lastAnalysisKeyRef.current = null;
-      }
-    } catch (error) {
-      console.error("Erro ao buscar histórico:", error);
-    } finally {
-      setDashboardLoading(false);
-    }
-  };
-
-  const fetchConnectedDevices = async () => {
-    try {
-      setDevicesLoading(true);
-
-      const response = await axios.get(`${API}/wearables`, {
-        withCredentials: true,
-      });
-
-      const payload = response?.data;
-      const list = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.devices)
-        ? payload.devices
-        : [];
-
-      setConnectedDevices(list);
-    } catch (error) {
-      console.error("Erro ao buscar dispositivos:", error);
-      setConnectedDevices([]);
-    } finally {
-      setDevicesLoading(false);
-    }
-  };
-
-  const fetchPredictiveAlert = async () => {
-    try {
-      const { data } = await axios.get(`${API}/predictive/alert`, {
-        withCredentials: true,
-      });
-      setPredictiveAlert(data);
-    } catch (error) {
-      console.error("Erro ao buscar alerta preditivo:", error);
-    }
-  };
-
-  const fetchGamificationStats = async () => {
-    try {
-      const { data } = await axios.get(`${API}/gamification/stats`, {
-        withCredentials: true,
-      });
-      setGamStats(data);
-    } catch (error) {
-      console.error("Erro ao buscar gamificação:", error);
-    }
-  };
-
-  const fetchHealthTrend = async () => {
-    try {
-      const { data } = await axios.get(`${API}/health/trend`, {
-        withCredentials: true,
-      });
-      setHealthTrend(data);
-
-      if (data?.medical_alert?.show) {
-        const dismissed = localStorage.getItem(
-          "vitalflow_medical_alert_dismissed"
-        );
-        const today = new Date().toISOString().split("T")[0];
-
-        if (dismissed !== today) {
-          setMedicalAlertData(data.medical_alert);
-          setShowMedicalAlert(true);
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao buscar tendência:", error);
-    }
-  };
-
-  const fetchMorningReport = async () => {
-    try {
-      const { data } = await axios.get(`${API}/health/morning-report`, {
-        withCredentials: true,
-      });
-
-      if (data?.available) {
-        setMorningReport(data);
-      } else {
-        setMorningReport(null);
-      }
-    } catch {
-      setMorningReport(null);
-    }
-  };
-
-  const checkForNewAnalysis = async () => {
-    try {
-      const response = await axios.get(`${API}/history?limit=5`, {
-        withCredentials: true,
-      });
-
-      const realHistory = filterRealAnalyses(response.data);
-      const orderedHistory = sortHistoryDesc(realHistory);
-
-      if (orderedHistory.length === 0) {
-        return;
-      }
-
-      const latest = orderedHistory[0];
-      const latestKey = getAnalysisKey(latest);
-
-      if (lastAnalysisKeyRef.current !== latestKey) {
-        lastAnalysisKeyRef.current = latestKey;
-        setCurrentAnalysis(latest);
-        setHistory(orderedHistory);
-      }
-    } catch (error) {
-      console.error("Erro ao verificar nova análise:", error);
-    }
-  };
-
-  const backgroundSync = useCallback(async ({ silent = false } = {}) => {
-    try {
-      const { data } = await axios.post(
-        `${API}/wearables/sync`,
-        {},
-        { withCredentials: true }
-      );
-
-      if (data.status === "synced") {
-        setLastSyncData(data);
-
-        if (data.has_real_data && data.auto_analysis) {
-          const a = data.auto_analysis;
-          const exerciseMsg = a.exercise_detected
-            ? " | Exercício detectado!"
-            : "";
-
-          setCurrentAnalysis(a);
-          setHistory((prev) => {
-            const prevList = Array.isArray(prev) ? prev : [];
-            const filtered = prevList.filter(
-              (item) =>
-                (item?.id || item?.timestamp) !== (a?.id || a?.timestamp)
-            );
-            return [a, ...filtered];
-          });
-          lastAnalysisKeyRef.current = getAnalysisKey(a);
-
-          if (!silent) {
-            toast.success(
-              `Sync: V-Score ${a.v_score} (${a.status_visual}) - ${a.recovery_label}${exerciseMsg}`,
-              { duration: 5000 }
-            );
-          }
-        } else {
-          if (!silent) {
-            toast.success("Dados do wearable sincronizados!", {
-              duration: 3000,
-            });
-          }
-        }
-
-        fetchHistory();
-        fetchConnectedDevices();
-        fetchMorningReport();
-      } else if (data.status === "no_real_data") {
-        if (!silent) {
-          toast.info(
-            data.message ||
-              "Conecte um wearable real para carregar dados verdadeiros.",
-            { duration: 4000 }
-          );
-        }
-      } else if (data.status === "no_data") {
-        if (!silent) {
-          toast.info(
-            data.message || "Nenhum dado novo real disponível no momento.",
-            { duration: 4000 }
-          );
-        }
-      }
-    } catch {
-      queueOfflineData("wearables/sync", {});
-      setDashboardLoading(false);
-    }
-  }, []);
-
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(
-        getDashboardCacheKey(user),
-        JSON.stringify({
-          currentAnalysis,
-          history,
-          connectedDevices,
-          lastSyncData,
-        })
-      );
-    } catch {}
-  }, [user, currentAnalysis, history, connectedDevices, lastSyncData]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(getPremiumTrialKey(user));
-      setTrialStartedAt(raw || null);
-    } catch {
-      setTrialStartedAt(null);
-    }
-  }, [user]);
-
-  const handleStartPremiumTrial = () => {
-    try {
-      const startedAt = new Date().toISOString();
-      localStorage.setItem(getPremiumTrialKey(user), startedAt);
-      setTrialStartedAt(startedAt);
-      toast.success("Teste gratuito Premium ativado por 30 dias!");
-    } catch {
-      toast.error("Não foi possível ativar o teste gratuito agora.");
-    }
-  };
-
-  useEffect(() => {
-    fetchHistory();
-    fetchConnectedDevices();
-    fetchPredictiveAlert();
-    fetchGamificationStats();
-    fetchHealthTrend();
-    fetchMorningReport();
-    backgroundSync({ silent: true });
-  }, [backgroundSync]);
-
-  useEffect(() => {
-    bgSyncRef.current = setInterval(() => {
-      backgroundSync({ silent: true });
-    }, BACKGROUND_SYNC_INTERVAL);
-
-    return () => {
-      if (bgSyncRef.current) clearInterval(bgSyncRef.current);
-    };
-  }, [backgroundSync]);
-
-  useEffect(() => {
-    pollingIntervalRef.current = setInterval(() => {
-      checkForNewAnalysis();
-      fetchConnectedDevices();
-    }, POLLING_INTERVAL);
-
-    return () => {
-      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-    };
-  }, []);
-
-  const handlePointsEarned = async () => {
-    await fetchGamificationStats();
-    await refreshUser();
-  };
-
-  const handleUpgrade = async () => {
-    try {
-      const originUrl = window.location.origin;
-      const { data } = await axios.post(
-        `${API}/billing/create-checkout`,
-        {
-          plan_id: "premium_monthly",
-          origin_url: originUrl,
-        },
-        { withCredentials: true }
-      );
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        toast.error("Erro ao iniciar pagamento.");
-      }
-    } catch (error) {
-      const msg =
-        error.response?.data?.detail || "Erro ao processar upgrade.";
-      toast.error(msg);
-    }
-  };
-
-  const accountType = String(user?.account_type || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  const isB2BUser =
-    Boolean(user?.is_b2b) ||
-    accountType.includes("b2b") ||
-    accountType.includes("business") ||
-    accountType.includes("empresa") ||
-    accountType.includes("empresarial") ||
-    accountType.includes("corporate") ||
-    accountType.includes("rh");
-
-  const isPremiumUser = Boolean(user?.is_premium);
-  const userPlan = String(
-    user?.plan || (isPremiumUser ? "premium" : "free")
-  ).toLowerCase();
-
-  const isAdmin = String(user?.nivel_acesso || user?.role || "")
-    .toLowerCase()
-    .includes("ceo") ||
-    String(user?.nivel_acesso || user?.role || "")
-    .toLowerCase()
-    .includes("admin");
-
-  const isFreeLocked =
-    userPlan === "free" && !isPremiumUser && !isB2BUser && !isAdmin;
-
-  console.log("USER PLAN DEBUG", {
-    accountType,
-    isB2BUser,
-    isPremiumUser,
-    userPlan,
-    isFreeLocked,
-    user,
-  });
-
-  const trialEndsAt = useMemo(() => {
-    if (!trialStartedAt) return null;
-    const started = new Date(trialStartedAt);
-    if (Number.isNaN(started.getTime())) return null;
-    const ends = new Date(started);
-    ends.setDate(ends.getDate() + PREMIUM_TRIAL_DAYS);
-    return ends;
-  }, [trialStartedAt]);
-
-  const trialDaysLeft = useMemo(() => {
-    if (!trialEndsAt) return 0;
-    const now = new Date();
-    const diffMs = trialEndsAt.getTime() - now.getTime();
-    if (diffMs <= 0) return 0;
-    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  }, [trialEndsAt]);
-
-  const isTrialActive = Boolean(trialEndsAt && trialDaysLeft > 0);
-  const hasTrialStarted = Boolean(trialStartedAt);
-  const shouldShowTrialBanner = isFreeLocked && !hasTrialStarted;
-  const shouldShowUpgradeBanner = isFreeLocked && !isTrialActive && hasTrialStarted;
-
-  const trialProgressPercent = useMemo(() => {
-    if (!trialStartedAt || !trialEndsAt) return 0;
-
-    const started = new Date(trialStartedAt).getTime();
-    const ends = trialEndsAt.getTime();
-    const now = Date.now();
-
-    if (!Number.isFinite(started) || !Number.isFinite(ends) || ends <= started) {
-      return 0;
-    }
-
-    const total = ends - started;
-    const elapsed = Math.min(Math.max(now - started, 0), total);
-    return Math.round((elapsed / total) * 100);
-  }, [trialStartedAt, trialEndsAt]);
-
-  const hasData = !dashboardLoading && currentAnalysis !== null;
-
-  const connectedDevicesCount = useMemo(() => {
-    if (!Array.isArray(connectedDevices)) return 0;
-    return connectedDevices.filter((device) => device?.is_connected).length;
-  }, [connectedDevices]);
-
-  const hasConnectedWearables = connectedDevicesCount > 0;
-  const shouldShowEnergyBar =
-    Number(gamStats?.energy_points ?? 0) > 0 || hasConnectedWearables || hasData;
-
-  const lastSyncTime = useMemo(() => {
-    if (!Array.isArray(connectedDevices)) return null;
-    const connected = connectedDevices.filter(d => d?.is_connected && d?.last_sync);
-    if (connected.length === 0) return null;
-    const latest = connected.sort((a, b) => new Date(b.last_sync) - new Date(a.last_sync))[0];
-    return latest?.last_sync ? new Date(latest.last_sync) : null;
-  }, [connectedDevices]);
-
-  const formatSyncTime = (date) => {
-    if (!date) return null;
-    const now = new Date();
-    const diff = Math.floor((now - date) / 60000);
-    if (diff < 1) return "agora mesmo";
-    if (diff < 60) return `há ${diff} min`;
-    if (diff < 1440) return `há ${Math.floor(diff / 60)}h`;
-    return `há ${Math.floor(diff / 1440)}d`;
-  };
-
-  const formatExactSyncTime = (date) => {
-    if (!date) return null;
-    return date.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const engine = currentAnalysis?.engine || {};
-  const inputData = currentAnalysis?.input_data || {};
-  const realData = currentAnalysis?.real_data || {};
-  const stateUI = normalizeState(
-    currentAnalysis?.status_visual,
-    currentAnalysis?.tag_rapida,
-    currentAnalysis?.v_score
-  );
-
-  const mergedAnalysis = useMemo(() => {
-    if (!currentAnalysis) return null;
-    return {
-      ...currentAnalysis,
-      history,
-    };
-  }, [currentAnalysis, history]);
-
-  const renderPremiumBanner = () => {
-    if (shouldShowTrialBanner) {
-      return (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="border border-cyan-500/30 bg-cyan-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-3">
-            <Zap className="w-5 h-5 text-cyan-400" />
-            <div>
-              <p className="text-sm font-semibold text-cyan-400">
-                Teste gratuito Premium
-              </p>
-              <p className="text-xs text-neutral-400">
-                Ative 30 dias grátis para liberar os recursos Premium.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleStartPremiumTrial}
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-bold rounded-xl transition-all"
-          >
-            Ativar teste grátis
-          </button>
-        </motion.div>
-      );
-    }
-
-    if (isTrialActive) {
-      return (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3 min-w-0">
-              <Shield className="w-5 h-5 text-emerald-400 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-emerald-400">
-                  Premium em teste gratuito
-                </p>
-                <p className="text-xs text-neutral-300 mt-1">
-                  Expira em {trialDaysLeft} dia(s).
-                </p>
-              </div>
-            </div>
-
-            <div className="text-right shrink-0">
-              <span className="text-[11px] uppercase tracking-wide text-emerald-300/80">
-                {trialProgressPercent}% usado
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-3 h-2 rounded-full bg-neutral-900/70 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-500"
-              style={{ width: `${trialProgressPercent}%` }}
-            />
-          </div>
-        </motion.div>
-      );
-    }
-
-    if (shouldShowUpgradeBanner) {
-      return (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-4 flex items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-3">
-            <Lock className="w-5 h-5 text-amber-400" />
-            <div>
-              <p className="text-sm font-semibold text-amber-400">
-                Seu teste Premium terminou
-              </p>
-              <p className="text-xs text-neutral-400">
-                Faça upgrade para Premium e continue com acesso completo.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleUpgrade}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-xl transition-all"
-          >
-            Ativar Premium
-          </button>
-        </motion.div>
-      );
-    }
-
-    return null;
-  };
-
-  const metrics = [
-    {
-      label: "BPM",
-      value: inputData.bpm ?? "--",
-      icon: HeartPulse,
-    },
-    {
-      label: "HRV estimado",
-      value: inputData.hrv ?? "--",
-      icon: Activity,
-    },
-    {
-          label: "SpO2",
-          value: inputData.spo2 ? `${inputData.spo2}%` : "--",
-          icon: Activity,
-        },
-    {
-      label: "Sono",
-      value:
-        Number(inputData.sleep_hours) > 0
-          ? formatSleepValue(inputData.sleep_hours)
-          : Number(realData.sleep_hours) > 0
-          ? formatSleepValue(realData.sleep_hours)
-          : "--",
-      icon: BedDouble,
-    },
-    {
-      label: "Passos",
-      value:
-        realData.steps !== undefined
-          ? Number(realData.steps).toLocaleString("pt-BR")
-          : "--",
-      icon: Footprints,
-    },
-    {
-      label: "Stress",
-      value: engine.stress_score ?? "--",
-      icon: Activity,
-    },
-    {
-      label: "Recovery",
-      value:
-        currentAnalysis?.recovery?.label === "no_sleep_data"
-          ? "--"
-          : engine.recovery_score ?? "--",
-      icon: Shield,
-    },
-    {
-      label: "Risco",
-      value: engine.risk_score ?? "--",
-      icon: TrendingUp,
-    },
-    {
-      label: "Contexto",
-      value:
-        typeof engine.contexto === "string"
-          ? engine.contexto
-          : engine.contexto?.label || "--",
-      icon: Radio,
-    },
-    {
-      label: "Calorias",
-      value: formatCaloriesValue(realData.calories),
-      icon: Flame,
-    },
-    {
-      label: "Distância",
-      value: formatOptionalMetric(realData.distance ?? realData.distance_km, " km"),
-      icon: Footprints,
-    },
-    {
-      label: "Min. Ativos",
-      value: formatMinutesValue(realData.active_minutes),
-      icon: TrendingUp,
-    },
-  ];
-
-  return (
-    <div className="min-h-screen bg-neutral-950">
-      <Navbar />
-
-      {showFirstAccess && (
-        <FirstAccessFlow
-          user={user}
-          onComplete={() => {
-            setShowFirstAccess(false);
-            refreshUser();
-            const onboardingDone = localStorage.getItem(
-              "vitalflow_onboarding_done"
-            );
-            if (!onboardingDone) setShowOnboarding(true);
-          }}
-        />
-      )}
-
-      <AnimatePresence>
-        {showMedicalAlert && medicalAlertData && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.94, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.94, opacity: 0 }}
-              className="w-full max-w-md mx-4 bg-neutral-900 border-2 border-rose-500/40 rounded-2xl overflow-hidden shadow-2xl shadow-rose-500/10"
-            >
-              <div className="h-1.5 bg-gradient-to-r from-rose-500 to-amber-500 w-full" />
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center">
-                    <Stethoscope className="w-6 h-6 text-rose-400" />
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowMedicalAlert(false);
-                      localStorage.setItem(
-                        "vitalflow_medical_alert_dismissed",
-                        new Date().toISOString().split("T")[0]
-                      );
-                    }}
-                    className="text-neutral-500 hover:text-white transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <h2 className="text-lg font-black text-rose-400 mb-2">
-                  Recomendação de Consulta Profissional
-                </h2>
-
-                <p className="text-sm text-neutral-300 leading-relaxed mb-4">
-                  {medicalAlertData.message}
-                </p>
-
-                <div className="bg-rose-500/5 border border-rose-500/20 rounded-xl p-3 mb-4">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-400">V-Score médio</span>
-                    <span className="text-rose-400 font-mono font-bold">
-                      {medicalAlertData.avg_score}/100
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs mt-1">
-                    <span className="text-neutral-400">Dias consecutivos</span>
-                    <span className="text-rose-400 font-mono font-bold">
-                      {medicalAlertData.days} dias
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 flex items-start gap-2">
-                  <Shield className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-amber-300/70">
-                    O VitalFlow é uma ferramenta de suporte ao bem-estar. Não
-                    substitui diagnóstico ou tratamento médico profissional.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setShowMedicalAlert(false);
-                    localStorage.setItem(
-                      "vitalflow_medical_alert_dismissed",
-                      new Date().toISOString().split("T")[0]
-                    );
-                  }}
-                  className="w-full mt-4 py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-semibold text-sm rounded-xl border border-rose-500/30 transition-all"
-                >
-                  Entendi
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {showOnboarding && !showFirstAccess && (
-        <OnboardingTour onComplete={() => setShowOnboarding(false)} />
-      )}
-
-      <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {hasData ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.45 }}
-            className="space-y-6"
-          >
-            {gamStats && shouldShowEnergyBar && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4"
-              >
-                <div className="flex items-center gap-6 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-amber-400" />
-                    <span className="text-sm text-neutral-400">
-                      Pontos de Energia
-                    </span>
-                    <span className="text-lg font-mono font-bold text-amber-400">
-                      {gamStats.energy_points}
-                    </span>
-                  </div>
-
-                  {gamStats.current_streak > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Flame className="w-4 h-4 text-orange-400" />
-                      <span className="text-sm text-neutral-400">Streak</span>
-                      <span className="text-lg font-mono font-bold text-orange-400">
-                        {gamStats.current_streak} dia(s)
-                      </span>
-                    </div>
-                  )}
-
-                  {gamStats.badges?.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-purple-400" />
-                      <span className="text-sm text-purple-400 font-semibold">
-                        Biohacker da Semana
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <span className="text-xs text-neutral-600">
-                  Próximo badge em {gamStats.next_badge_in} dia(s)
-                </span>
-              </motion.div>
-            )}
-
-            {hasConnectedWearables && lastSyncTime && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-white/8 bg-neutral-900/30 text-xs text-neutral-500"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>
-                    Último dado do Google às{" "}
-                    <span className="text-neutral-300 font-medium">
-                      {formatExactSyncTime(lastSyncTime)}
-                    </span>
-                    <span className="text-neutral-500"> ({formatSyncTime(lastSyncTime)})</span>
-                  </span>
-                </div>
-                <button
-                  onClick={() => backgroundSync()}
-                  className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
-                >
-                  Atualizar agora
-                </button>
-              </motion.div>
-            )}
-
-            {morningReport && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="border border-indigo-500/30 bg-indigo-500/5 rounded-2xl p-4"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
-                    {new Date().getHours() < 12 ? (
-                      <Sun className="w-4 h-4 text-amber-400" />
-                    ) : (
-                      <Moon className="w-4 h-4 text-indigo-400" />
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                      Morning Report
-                    </span>
-                    <p className="text-sm text-neutral-200 font-medium">
-                      {morningReport.greeting}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                  <MiniMorningCard
-                    label="Sono Total"
-                    value={`${morningReport.sleep_hours}h`}
-                    color="text-indigo-400"
-                  />
-                  <MiniMorningCard
-                    label="Sono Profundo"
-                    value={`${morningReport.deep_sleep_pct}%`}
-                    color="text-blue-400"
-                  />
-                  <MiniMorningCard
-                    label="Limite BPM"
-                    value={morningReport.bpm_stress_threshold}
-                    color="text-cyan-400"
-                  />
-                  <MiniMorningCard
-                    label="Recuperação"
-                    value={morningReport.recovery_label}
-                    color={
-                      morningReport.recovery_factor >= 0.9
-                        ? "text-emerald-400"
-                        : morningReport.recovery_factor >= 0.7
-                        ? "text-amber-400"
-                        : "text-rose-400"
-                    }
-                  />
-                </div>
-
-                <p className="text-xs text-neutral-400 italic">
-                  {morningReport.personalized_tip}
-                </p>
-              </motion.div>
-            )}
-
-            {renderPremiumBanner()}
-
-            {healthTrend?.requires_intervention && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="border border-rose-500/40 bg-rose-500/8 rounded-2xl p-4 flex items-start gap-3"
-              >
-                <Shield className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-rose-400">
-                    Intervenção Necessária
-                  </p>
-                  <p className="text-xs text-neutral-300 mt-1">
-                    {healthTrend.intervention_message}
-                  </p>
-                </div>
-              </motion.div>
-            )}
-
-            {!isFreeLocked && predictiveAlert?.has_alert && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="border border-purple-500/30 bg-purple-500/5 rounded-2xl p-4"
-              >
-                <p className="text-sm font-bold text-purple-400 mb-1">
-                  Alerta Preditivo
-                </p>
-                <p className="text-xs text-neutral-300">
-                  {predictiveAlert.message}
-                </p>
-              </motion.div>
-            )}
-
-            <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-              <div className="xl:col-span-4">
-                <StatusOrb
-                  score={currentAnalysis?.v_score || 0}
-                  status={currentAnalysis?.status_visual || "Sem dados"}
-                  tag={currentAnalysis?.tag_rapida || "Aguardando"}
-                  areas={currentAnalysis?.area_afetada || []}
-                />
-              </div>
-
-              <div className="xl:col-span-8 space-y-6">
-                <AIAnalysis analysis={mergedAnalysis} />
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {metrics.map((metric) => (
-                    <MetricCard
-                      key={metric.label}
-                      analysis={currentAnalysis}
-                      label={metric.label}
-                      value={metric.value}
-                      Icon={metric.icon}
-                    />
-                  ))}
-                </div>
-
-                {engine.alert && (
-                  <div className="border border-rose-500/20 bg-rose-500/10 rounded-2xl p-4 flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-rose-300 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-rose-300">
-                        Alerta detectado
-                      </p>
-                      <p className="text-xs text-neutral-300 mt-1">
-                        {engine.alert}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-              <div className="xl:col-span-8">
-                <HistoryChart history={history} />
-              </div>
-
-              <div className="xl:col-span-4 space-y-6">
-                <RoutineSuggestionCard
-                  currentData={{
-                    stress:
-                      currentAnalysis?.stress ??
-                      currentAnalysis?.stress_score ??
-                      0,
-                    sleep: currentAnalysis?.input_data?.sleep_hours ?? 0,
-                    hrv: currentAnalysis?.input_data?.hrv ?? 0,
-                    recovery:
-                      currentAnalysis?.recovery ??
-                      currentAnalysis?.recovery_score ??
-                      100,
-                    bpm: currentAnalysis?.input_data?.bpm ?? 0,
-                    v_score: currentAnalysis?.v_score ?? 100,
-                    status:
-                      currentAnalysis?.status_visual ||
-                      currentAnalysis?.status ||
-                      "normal",
-                  }}
-                  previousData={{
-                    stress: history?.[1]?.stress ?? history?.[1]?.stress_score ?? 0,
-                    sleep: history?.[1]?.input_data?.sleep_hours ?? 0,
-                    hrv: history?.[1]?.input_data?.hrv ?? 0,
-                    recovery:
-                      history?.[1]?.recovery ??
-                      history?.[1]?.recovery_score ??
-                      100,
-                    bpm: history?.[1]?.input_data?.bpm ?? 0,
-                    v_score: history?.[1]?.v_score ?? 100,
-                    status:
-                      history?.[1]?.status_visual ||
-                      history?.[1]?.status ||
-                      "normal",
-                  }}
-                  onStartRoutine={(routineData) =>
-                    setSelectedRoutine(routineData)
-                  }
-                />
-              </div>
-            </section>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-6"
-          >
-            {renderPremiumBanner()}
-            {gamStats && shouldShowEnergyBar && (
-              <div className="border border-white/10 bg-neutral-900/40 backdrop-blur-xl rounded-2xl p-4 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span className="text-sm text-neutral-400">
-                  Pontos de Energia
-                </span>
-                <span className="text-lg font-mono font-bold text-amber-400">
-                  {gamStats.energy_points}
-                </span>
-              </div>
-            )}
-
-            <div className="border border-white/10 bg-neutral-900/50 rounded-3xl p-10 text-center">
-              <div className="w-20 h-20 mx-auto rounded-full border border-cyan-500/20 bg-cyan-500/5 flex items-center justify-center mb-6">
-                <Wifi className="w-10 h-10 text-cyan-400" />
-              </div>
-
-              <h2 className="text-3xl font-black tracking-tight mb-3 text-white">
-                {devicesLoading
-                  ? "Verificando wearables..."
-                  : hasConnectedWearables
-                  ? "Aguardando sincronização"
-                  : "Nenhum dispositivo conectado"}
-              </h2>
-
-              <p className="text-neutral-400 max-w-2xl mx-auto">
-                {devicesLoading
-                  ? "Estamos verificando seus dispositivos conectados."
-                  : hasConnectedWearables
-                  ? "Seu dispositivo está conectado. Assim que os primeiros dados biométricos reais forem sincronizados, o VitalFlow vai gerar sua primeira análise automaticamente."
-                  : "Conecte um wearable para começar a receber seus dados biométricos reais e gerar suas análises automaticamente."}
-              </p>
-
-              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 text-sm font-semibold">
-                <Smartphone className="w-4 h-4" />
-                {devicesLoading
-                  ? "Verificando..."
-                  : `${connectedDevicesCount} dispositivo(s) conectado(s)`}
-              </div>
-
-              <div className="mt-4 text-xs text-neutral-500">
-                {hasConnectedWearables
-                  ? "A primeira análise será gerada automaticamente após a sincronização"
-                  : "Conecte um dispositivo em Dispositivos para começar"}
-              </div>
-
-              {hasConnectedWearables && (
-                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button
-                    onClick={async () => {
-                      await fetchHistory();
-                    }}
-                    className="px-4 py-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all text-sm font-semibold"
-                  >
-                    Carregar última análise
-                  </button>
-                  <button
-                    onClick={() => backgroundSync()}
-                    className="px-4 py-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-all text-sm font-semibold"
-                  >
-                    Sincronizar agora
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="border border-white/10 bg-neutral-900/50 rounded-3xl p-6">
-              <div className="text-xs uppercase tracking-[0.18em] text-cyan-300 font-bold mb-6">
-                Histórico V-Score
-              </div>
-
-              <div className="h-60 flex items-center justify-center text-center text-neutral-500">
-                Seus dados biométricos aparecerão aqui em tempo real assim que
-                forem recebidos.
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      <RoutineExecutionModal
-        open={!!selectedRoutine}
-        routine={selectedRoutine}
-        onClose={() => setSelectedRoutine(null)}
-        onComplete={async () => {
-          setSelectedRoutine(null);
-          await fetchHistory();
-          await fetchGamificationStats();
-          await refreshUser();
-          toast.success("Pontos de energia atualizados!");
-        }}
-      />
-    </div>
-  );
-}
-
-function MetricCard({ Icon, label, value, analysis }) {
-  const theme = getMetricTheme(label, value, analysis);
+import Navbar from "../components/Navbar";
+
+const bg = "#050816";
+const card = "rgba(10,18,26,0.92)";
+const cardSoft = "rgba(8,15,22,0.88)";
+const border = "#0f2a2a";
+const teal = "#27e1b3";
+const textSoft = "#8fa3ad";
+const textMuted = "#6f808a";
+
+const dayModeBlocks = [
+  {
+    label: "Modo do dia",
+    value: "Manutenção",
+    sub: "Condição ideal para manter consistência e foco nas suas atividades.",
+    icon: Gauge,
+    color: "text-[#27e1b3]",
+  },
+  {
+    label: "Prioridade",
+    value: "Baixa",
+    sub: "Momento favorável",
+    icon: ShieldCheck,
+    color: "text-[#42f0bf]",
+  },
+  {
+    label: "Janela ideal",
+    value: "Agora",
+    sub: "Próximas 2-3 horas",
+    icon: TimerReset,
+    color: "text-[#2ee7b7]",
+  },
+  {
+    label: "Foco do dia",
+    value: "Manutenção leve",
+    sub: "Evite excessos",
+    icon: Focus,
+    color: "text-[#ffd166]",
+  },
+  {
+    label: "Próxima reavaliação",
+    value: "Em 3h 12m",
+    sub: "16:30",
+    icon: Clock3,
+    color: "text-white",
+  },
+];
+
+const quickReadItems = [
+  {
+    icon: Activity,
+    title: "Estável nas últimas 6h",
+    sub: "Variação mínima detectada",
+    tone: "text-[#27e1b3]",
+    bgTone: "bg-[#27e1b3]/10",
+  },
+  {
+    icon: Brain,
+    title: "Stress controlado",
+    sub: "Carga mental dentro do ideal",
+    tone: "text-[#f8bf4f]",
+    bgTone: "bg-[#f8bf4f]/10",
+  },
+  {
+    icon: HeartPulse,
+    title: "HRV preservada",
+    sub: "Bom sinal de recuperação",
+    tone: "text-[#3cf0c2]",
+    bgTone: "bg-[#3cf0c2]/10",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Boa janela para manutenção",
+    sub: "Aproveite para manter consistência",
+    tone: "text-[#27e1b3]",
+    bgTone: "bg-[#27e1b3]/10",
+  },
+];
+
+const trendData = [
+  { time: "00:00", score: 82 },
+  { time: "02:00", score: 80 },
+  { time: "04:00", score: 81 },
+  { time: "05:00", score: 62 },
+  { time: "06:00", score: 56 },
+  { time: "08:00", score: 68 },
+  { time: "10:00", score: 67 },
+  { time: "12:00", score: 74 },
+  { time: "14:00", score: 77 },
+  { time: "16:00", score: 84 },
+  { time: "18:00", score: 79 },
+  { time: "20:00", score: 93 },
+  { time: "22:00", score: 90 },
+  { time: "24:00", score: 100 },
+];
+
+const metricCards = [
+  { icon: HeartPulse, title: "BPM", value: "70", sub: "Normal", color: "text-[#27e1b3]" },
+  { icon: Activity, title: "HRV", value: "45", sub: "Excelente", color: "text-[#42f0bf]" },
+  { icon: Droplets, title: "SpO2", value: "98%", sub: "Normal", color: "text-[#3cf0c2]" },
+  { icon: Moon, title: "Sono", value: "7h 32m", sub: "Bom", color: "text-[#b39cff]" },
+  { icon: Footprints, title: "Passos", value: "947", sub: "Meta: 8.000", color: "text-[#ffd166]", footer: 12 },
+  { icon: Flame, title: "Calorias", value: "240", sub: "Atividade leve", color: "text-[#ffa94d]" },
+  { icon: Route, title: "Distância", value: "2,2", unit: "km", sub: "Baixo impacto", color: "text-[#b39cff]" },
+  { icon: Timer, title: "Min. Ativos", value: "59", unit: "min", sub: "Meta: 60 min", color: "text-[#b39cff]", footer: 98 },
+];
+
+const insights = [
+  {
+    icon: CheckCircle2,
+    title: "Excelente recuperação",
+    sub: "Seu corpo está se recuperando muito bem. Continue assim!",
+    tone: "text-[#27e1b3]",
+    bgTone: "bg-[#27e1b3]/10",
+  },
+  {
+    icon: Star,
+    title: "Consistência é chave",
+    sub: "7 dias seguidos monitorando. Mantenha o ritmo!",
+    tone: "text-[#ffd166]",
+    bgTone: "bg-[#ffd166]/10",
+  },
+  {
+    icon: Droplets,
+    title: "Atenção à hidratação",
+    sub: "Sua ingestão de água está um pouco abaixo do ideal.",
+    tone: "text-[#a9a1ff]",
+    bgTone: "bg-[#a9a1ff]/10",
+  },
+  {
+    icon: Target,
+    title: "Próximo objetivo",
+    sub: "Mantenha 7+ horas de sono para otimizar ainda mais.",
+    tone: "text-[#ff6b81]",
+    bgTone: "bg-[#ff6b81]/10",
+  },
+];
+
+const sideMenu = [
+  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: Activity, label: "Análise" },
+  { icon: TrendingUp, label: "Tendências" },
+  { icon: Repeat, label: "Rotinas" },
+  { icon: Smartphone, label: "Dispositivos" },
+  { icon: FileText, label: "Relatório" },
+  { icon: Settings, label: "Configurações" },
+];
+
+function TrendTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const value = payload[0].value;
 
   return (
     <div
-      className={`rounded-2xl border ${theme.border} bg-gradient-to-br ${theme.bg} bg-neutral-900/50 p-4 backdrop-blur-xl min-h-[112px]`}
+      className="rounded-2xl border px-3 py-2 shadow-2xl"
+      style={{
+        background: "rgba(5, 8, 22, 0.96)",
+        borderColor: border,
+      }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className={`w-4 h-4 ${theme.icon}`} />
-        <span className="text-[11px] text-neutral-500 uppercase tracking-[0.14em]">
-          {label}
-        </span>
-      </div>
-      <div className={`text-2xl font-black ${theme.text}`}>
-        {value !== undefined && value !== null ? value : "--"}
-      </div>
+      <p className="text-xs text-white">{label}</p>
+      <p className="text-sm font-bold text-[#27e1b3]">{value}</p>
     </div>
   );
 }
 
-function MiniMorningCard({ label, value, color }) {
+function TrendDot(props) {
+  const { cx, cy, payload } = props;
+  if (cx == null || cy == null || !payload) return null;
+
+  const score = payload.score;
+  const fill = score >= 80 ? "#27e1b3" : score >= 60 ? "#f8bf4f" : "#ff4d6d";
+
+  const labelMap = {
+    "05:00": "Maior queda",
+    "12:00": "Recuperação",
+    "24:00": "Atual",
+  };
+
+  const markerLabel = labelMap[payload.time];
+
   return (
-    <div className="bg-neutral-900/50 rounded-xl p-3 border border-white/5">
-      <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
-        {label}
-      </p>
-      <p className={`text-lg font-mono font-bold ${color}`}>{value}</p>
+    <g>
+      <circle cx={cx} cy={cy} r="5.5" fill={fill} stroke="#06111a" strokeWidth="2.5" />
+      {markerLabel ? (
+        <g>
+          <rect
+            x={cx - 44}
+            y={cy + 18}
+            width={88}
+            height={24}
+            rx={8}
+            fill={fill === "#27e1b3" ? "rgba(39,225,179,0.12)" : fill === "#f8bf4f" ? "rgba(248,191,79,0.12)" : "rgba(255,77,109,0.12)"}
+            stroke={fill}
+            strokeOpacity={0.35}
+          />
+          <text x={cx} y={cy + 34} textAnchor="middle" fill={fill} fontSize="11" fontWeight="700">
+            {markerLabel}
+          </text>
+        </g>
+      ) : null}
+    </g>
+  );
+}
+
+export default function Dashboard() {
+  const avgScore = useMemo(() => {
+    const total = trendData.reduce((acc, item) => acc + item.score, 0);
+    return Math.round(total / trendData.length);
+  }, []);
+
+  return (
+    <div className="min-h-screen text-white" style={{ backgroundColor: bg }}>
+      <Navbar />
+
+      <div className="mx-auto max-w-[1600px] px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <motion.aside
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex h-full flex-col rounded-2xl border p-4"
+            style={{ background: cardSoft, borderColor: border }}
+          >
+            <div className="mb-4 flex items-center gap-3 border-b border-white/5 pb-4">
+              <div className="rounded-2xl border border-[#0f2a2a] bg-[#07131d] p-3 shadow-[0_0_20px_rgba(39,225,179,0.08)]">
+                <LayoutDashboard className="h-6 w-6 text-[#27e1b3]" />
+              </div>
+              <div>
+                <p className="text-sm uppercase tracking-[0.22em]" style={{ color: textMuted }}>
+                  Navegação
+                </p>
+                <p className="text-base font-semibold text-white">Painel principal</p>
+              </div>
+            </div>
+
+            <nav className="space-y-2">
+              {sideMenu.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <motion.button
+                    key={item.label}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.03 * index }}
+                    className={`group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
+                      item.active ? "bg-[#0b1d24] shadow-[inset_3px_0_0_0_#27e1b3]" : "bg-transparent hover:bg-white/[0.03]"
+                    }`}
+                    style={{ borderColor: item.active ? "#153839" : "transparent" }}
+                    type="button"
+                  >
+                    <Icon className={`h-5 w-5 ${item.active ? "text-[#27e1b3]" : "text-white/45 group-hover:text-white/70"}`} />
+                    <span className={`text-[15px] ${item.active ? "font-semibold text-[#dffdf4]" : "text-white/65"}`}>
+                      {item.label}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </nav>
+
+            <div className="mt-auto pt-6">
+              <div
+                className="rounded-2xl border p-4 shadow-[0_0_30px_rgba(39,225,179,0.06)]"
+                style={{ background: "linear-gradient(180deg, rgba(8,18,24,0.96), rgba(6,14,20,0.96))", borderColor: border }}
+              >
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="rounded-xl bg-[#27e1b3]/10 p-2">
+                    <Crown className="h-4 w-4 text-[#27e1b3]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Plano Premium</p>
+                    <p className="text-sm text-[#27e1b3]">Ativo</p>
+                  </div>
+                </div>
+                <p className="text-sm leading-relaxed" style={{ color: textSoft }}>
+                  Acesso completo a insights e recomendações avançadas.
+                </p>
+              </div>
+            </div>
+          </motion.aside>
+
+          <main className="space-y-6">
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-1 overflow-hidden rounded-2xl border xl:grid-cols-5"
+              style={{ background: card, borderColor: border }}
+            >
+              {dayModeBlocks.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.label}
+                    className={`relative flex min-h-[142px] gap-4 px-6 py-5 ${index !== dayModeBlocks.length - 1 ? "border-b xl:border-b-0 xl:border-r" : ""}`}
+                    style={{ borderColor: "rgba(255,255,255,0.05)" }}
+                  >
+                    {index === 0 ? (
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#27e1b3]/10">
+                        <Icon className="h-7 w-7 text-[#27e1b3]" />
+                      </div>
+                    ) : (
+                      <div className="mt-1 shrink-0">
+                        <Icon className="h-5 w-5 text-white/50" />
+                      </div>
+                    )}
+
+                    <div className="min-w-0">
+                      <p className="mb-1 text-[11px] uppercase tracking-[0.24em]" style={{ color: textMuted }}>
+                        {item.label}
+                      </p>
+                      <p className={`text-[18px] font-bold ${item.color}`}>{item.value}</p>
+                      <p className="mt-1 max-w-[240px] text-sm leading-relaxed" style={{ color: textSoft }}>
+                        {item.sub}
+                      </p>
+                      {index === 0 ? (
+                        <button
+                          type="button"
+                          className="mt-3 rounded-xl border px-3 py-1.5 text-xs font-medium text-white/80 transition hover:bg-white/5"
+                          style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                        >
+                          Saiba mais
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </motion.section>
+
+            <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.9fr_1.1fr_1.3fr]">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border p-6" style={{ background: card, borderColor: border }}>
+                <p className="mb-5 text-xs font-semibold uppercase tracking-[0.28em] text-[#b7c7cf]">Status Vital</p>
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-[#27e1b3]" />
+                  <h3 className="text-[19px] font-bold text-white">Resiliência ótima</h3>
+                </div>
+                <div className="mx-auto mt-7 flex h-44 w-44 items-center justify-center rounded-full bg-[conic-gradient(#27e1b3_0deg,#32f0c0_360deg)] p-[12px] shadow-[0_0_40px_rgba(39,225,179,0.16)]">
+                  <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-[#0e2327] bg-[#071018]">
+                    <span className="text-5xl font-black text-white">100</span>
+                    <span className="mt-1 text-sm" style={{ color: textSoft }}>de 100</span>
+                  </div>
+                </div>
+                <div className="mt-7 flex justify-center">
+                  <span className="rounded-full border border-[#12433a] bg-[#27e1b3]/10 px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.22em] text-[#27e1b3]">
+                    NORMAL
+                  </span>
+                </div>
+                <p className="mx-auto mt-5 max-w-[280px] text-center text-base leading-relaxed" style={{ color: textSoft }}>
+                  Seu estado fisiológico está excelente e em equilíbrio.
+                </p>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }} className="rounded-2xl border p-6" style={{ background: card, borderColor: border }}>
+                <p className="mb-5 text-xs font-semibold uppercase tracking-[0.28em] text-[#b7c7cf]">Leitura Rápida</p>
+                <div className="space-y-4">
+                  {quickReadItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.title} className="flex items-start gap-4 rounded-2xl border p-4" style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
+                        <div className={`rounded-2xl p-3 ${item.bgTone}`}>
+                          <Icon className={`h-5 w-5 ${item.tone}`} />
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-white">{item.title}</p>
+                          <p className="mt-1 text-sm leading-relaxed" style={{ color: textSoft }}>{item.sub}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="rounded-2xl border p-6" style={{ background: card, borderColor: border }}>
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b7c7cf]">Sugestão Inteligente</p>
+                  <div className="flex items-center gap-2 rounded-full bg-[#27e1b3]/8 px-3 py-1.5">
+                    <Sparkles className="h-4 w-4 text-[#27e1b3]" />
+                    <span className="text-sm font-semibold text-white/90">VitalFlow AI</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_170px]">
+                  <div className="rounded-2xl border p-5" style={{ borderColor: "#184239", background: "linear-gradient(180deg, rgba(13,43,34,0.55), rgba(8,21,18,0.72))" }}>
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#63f0c8]">Recomendação prioritária</p>
+                    <h3 className="text-[20px] font-bold text-[#35e8ba]">Manutenção positiva</h3>
+                    <p className="mt-2 max-w-[540px] text-[17px] leading-relaxed text-white/92">
+                      Mantenha seu estado estável com uma respiração curta de manutenção.
+                    </p>
+                    <div className="mt-5 border-t border-white/8 pt-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9ed8c9]">Por que esta recomendação?</p>
+                      <p className="mt-2 text-sm leading-relaxed" style={{ color: textSoft }}>
+                        Seu V-Score está estável, HRV preservada e stress controlado. Este é o momento ideal para manter consistência e evitar sobrecarga.
+                      </p>
+                    </div>
+                    <div className="mt-5 border-t border-white/8 pt-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9ed8c9]">Base da recomendação</p>
+                      <p className="mt-2 text-sm leading-relaxed text-white/90">Baseado em 122 leituras válidas hoje.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col justify-between gap-4">
+                    <div className="rounded-2xl border p-4" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
+                      <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: textMuted }}>Duração sugerida</p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Clock3 className="h-4 w-4 text-[#27e1b3]" />
+                        <span className="text-lg font-bold text-white">3 min</span>
+                      </div>
+                      <p className="mt-6 text-[11px] uppercase tracking-[0.24em]" style={{ color: textMuted }}>Tipo</p>
+                      <p className="mt-2 text-base text-white/90">Manutenção</p>
+                    </div>
+
+                    <motion.button
+                      whileHover={{ y: -1, scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      type="button"
+                      className="flex h-14 items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(90deg,#2df1bd,#27e1b3)] px-5 text-lg font-bold text-[#041018] shadow-[0_8px_30px_rgba(39,225,179,0.2)]"
+                    >
+                      Iniciar agora
+                      <ArrowRight className="h-5 w-5" />
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            </section>
+
+            <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-2 rounded-2xl border px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between" style={{ background: cardSoft, borderColor: border }}>
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-[#27e1b3]" />
+                <span style={{ color: textSoft }}>Última sincronização:</span>
+                <span className="text-white/95">agora mesmo</span>
+              </div>
+              <div>
+                <span style={{ color: textSoft }}>Qualidade do sinal:</span> <span className="font-semibold text-[#27e1b3]">Boa</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span style={{ color: textSoft }}>Cobertura do dia:</span>
+                <span className="font-semibold text-[#ffd166]">82%</span>
+                <div className="h-1.5 w-14 overflow-hidden rounded-full bg-white/5">
+                  <div className="h-full rounded-full bg-[#27e1b3]" style={{ width: "82%" }} />
+                </div>
+              </div>
+            </motion.section>
+
+            <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.3fr_0.9fr]">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border p-6" style={{ background: card, borderColor: border }}>
+                <div className="mb-5 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-[#27e1b3]" />
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b7c7cf]">Evolução do V-Score</p>
+                </div>
+
+                <div className="h-[320px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendData} margin={{ top: 20, right: 18, left: -12, bottom: 10 }}>
+                      <defs>
+                        <linearGradient id="vscoreFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#27e1b3" stopOpacity={0.25} />
+                          <stop offset="100%" stopColor="#27e1b3" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 4" />
+                      <ReferenceLine y={70} stroke="#d6b74a" strokeDasharray="6 5" label={{ value: "Zona ideal", position: "insideBottomRight", fill: "#d6b74a", fontSize: 11 }} />
+                      <ReferenceLine y={avgScore} stroke="rgba(255,255,255,0.16)" strokeDasharray="4 4" label={{ value: "Média", position: "insideTopRight", fill: "#91a5b0", fontSize: 11 }} />
+                      <XAxis dataKey="time" stroke="rgba(255,255,255,0.26)" tickLine={false} axisLine={false} style={{ fontSize: "11px" }} />
+                      <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.26)" tickLine={false} axisLine={false} style={{ fontSize: "11px" }} />
+                      <Tooltip content={<TrendTooltip />} />
+                      <Area
+                        type="monotone"
+                        dataKey="score"
+                        stroke="#34eac0"
+                        strokeWidth={4}
+                        fill="url(#vscoreFill)"
+                        dot={<TrendDot />}
+                        activeDot={{ r: 7, fill: "#27e1b3", stroke: "#061018", strokeWidth: 3 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-5 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="h-[3px] w-6 rounded-full bg-[#27e1b3]" />
+                    <span style={{ color: textSoft }}>V-Score</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-[3px] w-6 rounded-full bg-white/30" />
+                    <span style={{ color: textSoft }}>Média pessoal</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-6 rounded-md bg-[#27e1b3]/20" />
+                    <span style={{ color: textSoft }}>Zona ideal</span>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="grid grid-cols-1 gap-5">
+                <div className="rounded-2xl border p-6" style={{ background: card, borderColor: border }}>
+                  <div className="mb-5 flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-[#27e1b3]" />
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b7c7cf]">Métricas do momento</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {metricCards.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <div key={item.title} className="rounded-2xl border p-4" style={{ background: "rgba(255,255,255,0.01)", borderColor: "rgba(255,255,255,0.06)" }}>
+                          <div className="mb-3 flex items-center gap-2">
+                            <Icon className={`h-4 w-4 ${item.color}`} />
+                            <span className="text-[15px] text-white/90">{item.title}</span>
+                          </div>
+                          <div className="flex items-end gap-1">
+                            <span className={`text-[22px] font-bold ${item.color}`}>{item.value}</span>
+                            {item.unit ? <span className="pb-1 text-sm text-white/70">{item.unit}</span> : null}
+                          </div>
+                          <p className="mt-2 text-sm" style={{ color: textSoft }}>{item.sub}</p>
+                          {typeof item.footer === "number" ? (
+                            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">
+                              <div className={`h-full rounded-full ${item.title === "Passos" ? "bg-[#ffd166]" : "bg-[#27e1b3]"}`} style={{ width: `${item.footer}%` }} />
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            </section>
+
+            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border p-6" style={{ background: card, borderColor: border }}>
+              <p className="mb-5 text-xs font-semibold uppercase tracking-[0.28em] text-[#b7c7cf]">Insights do momento</p>
+
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+                {insights.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.title} className="flex items-start gap-4 rounded-2xl border p-4" style={{ background: "rgba(255,255,255,0.01)", borderColor: "rgba(255,255,255,0.06)" }}>
+                      <div className={`rounded-2xl p-3 ${item.bgTone}`}>
+                        <Icon className={`h-5 w-5 ${item.tone}`} />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-white">{item.title}</p>
+                        <p className="mt-1 text-sm leading-relaxed" style={{ color: textSoft }}>{item.sub}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.section>
+          </main>
+        </div>
+      </div>
     </div>
   );
 }
