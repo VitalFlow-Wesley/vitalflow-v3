@@ -122,18 +122,18 @@ const ReportTrendTooltip = ({ active, payload, label }) => {
 
   return (
     <div className="bg-[#050505]/95 border border-white/[0.07] rounded-xl p-3 shadow-xl min-w-[220px]">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-2">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300 mb-2">
         {formatLongDateLabel(label)}
       </p>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-neutral-400">V-Score</span>
+        <span className="text-xs text-slate-300">V-Score</span>
         <span className={`text-sm font-bold ${tone}`}>{value}</span>
       </div>
       <div className="flex items-center justify-between gap-3 mt-1">
-        <span className="text-xs text-neutral-400">Leitura</span>
+        <span className="text-xs text-slate-300">Leitura</span>
         <span className={`text-xs font-semibold ${tone}`}>{statusLabel}</span>
       </div>
-      <p className="text-xs text-neutral-500 mt-3">{eventLabel}</p>
+      <p className="text-xs text-slate-300 mt-3">{eventLabel}</p>
     </div>
   );
 };
@@ -449,7 +449,7 @@ const MeuRelatorio = () => {
 
   const trendDirectionTone =
     trendDelta === null
-      ? "text-neutral-400"
+      ? "text-slate-300"
       : trendDelta > 1
       ? "text-emerald-400"
       : trendDelta < -1
@@ -605,13 +605,13 @@ const MeuRelatorio = () => {
               </span>
             </div>
 
-            <p className="text-neutral-400 text-base sm:text-lg mt-2">
+            <p className="text-slate-300 text-base sm:text-lg mt-2">
               Visão consolidada da sua saúde e performance
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 mt-4">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300 mt-4">
               <div className="flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                <Calendar className="w-3.5 h-3.5 text-slate-300" />
                 <span>
                   Período analisado: {orderedTrend[0]?.date || "--"} a {orderedTrend[orderedTrend.length - 1]?.date || "--"} ({orderedTrend.length} dias)
                 </span>
@@ -631,7 +631,7 @@ const MeuRelatorio = () => {
                   className={`px-5 py-3 text-sm font-semibold rounded-xl transition-all ${
                     period === opt.value
                       ? "bg-cyan-500 text-black"
-                      : "text-neutral-400 hover:text-white"
+                      : "text-slate-300 hover:text-white"
                   }`}
                 >
                   {opt.label}
@@ -646,7 +646,7 @@ const MeuRelatorio = () => {
               className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
                 canExportPdf
                   ? "bg-cyan-500 hover:bg-cyan-400 text-black"
-                  : "bg-neutral-800 text-neutral-500 border border-white/[0.07]"
+                  : "bg-neutral-800 text-slate-300 border border-white/[0.07]"
               }`}
             >
               {canExportPdf ? (
@@ -683,7 +683,7 @@ const MeuRelatorio = () => {
               <Radio className="w-8 h-8 text-cyan-400/60" />
             </motion.div>
             <p className="text-neutral-300 font-semibold text-base mb-1">Sem dados no período</p>
-            <p className="text-neutral-500 text-sm text-center max-w-sm mb-4">
+            <p className="text-slate-300 text-sm text-center max-w-sm mb-4">
               {hasDevices
                 ? "Aguardando sincronização. Seus dados aparecerão aqui em breve."
                 : "Conecte um dispositivo e comece a monitorar para gerar seu relatório personalizado."}
@@ -700,13 +700,13 @@ const MeuRelatorio = () => {
             )}
           </motion.div>
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-6">
             <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-5">
               <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl px-3 py-5 sm:p-6">
                 <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.15fr] gap-5 items-stretch h-full">
                   <div className="flex items-start">
                     <div className="min-w-0">
-                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-300 font-bold mb-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-200 font-bold mb-3">
                         Resumo Executivo
                       </p>
                       <p className="text-white text-lg sm:text-[1.95rem] leading-tight font-semibold">
@@ -714,7 +714,7 @@ const MeuRelatorio = () => {
                         <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em{" "}
                         <span className="text-white">{topAreasSummary}</span>.
                       </p>
-                      <p className="text-sm text-neutral-400 mt-5">
+                      <p className="text-sm text-slate-300 mt-5">
                         Cobertura do período: {coverageLabel}.
                       </p>
                     </div>
@@ -724,39 +724,39 @@ const MeuRelatorio = () => {
                     <div className="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                       <div className="flex items-center gap-2 mb-2">
                         <Gauge className="w-4 h-4 text-amber-400" />
-                        <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Status geral</span>
+                        <span className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Status geral</span>
                       </div>
                       <p className={`text-sm font-semibold ${trendDirectionTone}`}>{trendDirectionLabel}</p>
-                      <p className="text-xs text-neutral-500 mt-2">{executiveRecoveryLabel}</p>
+                      <p className="text-xs text-slate-300 mt-2">{executiveRecoveryLabel}</p>
                     </div>
 
                     <div className="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                       <div className="flex items-center gap-2 mb-2">
                         <HeartPulse className="w-4 h-4 text-rose-400" />
-                        <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Principal risco</span>
+                        <span className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Principal risco</span>
                       </div>
                       <p className="text-sm font-semibold leading-snug text-rose-300">{executiveCauseLabel}</p>
-                      <p className="text-xs text-neutral-500 mt-2">Sinais consistentes de sobrecarga</p>
+                      <p className="text-xs text-slate-300 mt-2">Sinais consistentes de sobrecarga</p>
                     </div>
 
                     <div className="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                       <div className="flex items-center gap-2 mb-2">
                         <Sparkles className="w-4 h-4 text-purple-400" />
-                        <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Provável causa</span>
+                        <span className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Provável causa</span>
                       </div>
                       <p className="text-sm font-semibold leading-snug text-purple-300">
                         Baixa recuperação + esforço acumulado
                       </p>
-                      <p className="text-xs text-neutral-500 mt-2">Sono irregular e carga acumulada elevada</p>
+                      <p className="text-xs text-slate-300 mt-2">Sono irregular e carga acumulada elevada</p>
                     </div>
 
                     <div className="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                       <div className="flex items-center gap-2 mb-2">
                         <Shield className="w-4 h-4 text-emerald-400" />
-                        <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Nível de confiança</span>
+                        <span className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Nível de confiança</span>
                       </div>
                       <p className="text-3xl font-black text-emerald-300">{confidenceScore}%</p>
-                      <p className="text-xs text-neutral-500 mt-2">{confidenceLabel}</p>
+                      <p className="text-xs text-slate-300 mt-2">{confidenceLabel}</p>
                     </div>
                   </div>
                 </div>
@@ -774,7 +774,7 @@ const MeuRelatorio = () => {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-white">{interpretationTitle}</p>
-                      <p className="text-xs text-neutral-400 mt-1">
+                      <p className="text-xs text-slate-300 mt-1">
                         {interpretationDescription}
                       </p>
                     </div>
@@ -786,7 +786,7 @@ const MeuRelatorio = () => {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-white">Impacto cardiovascular relevante</p>
-                      <p className="text-xs text-neutral-400 mt-1">
+                      <p className="text-xs text-slate-300 mt-1">
                         Sinais de sobrecarga do sistema cardiovascular foram predominantes.
                       </p>
                     </div>
@@ -798,7 +798,7 @@ const MeuRelatorio = () => {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-white">Fadiga cognitiva elevada</p>
-                      <p className="text-xs text-neutral-400 mt-1">
+                      <p className="text-xs text-slate-300 mt-1">
                         Indicadores de esforço mental ficaram acima do ideal para sua rotina atual.
                       </p>
                     </div>
@@ -810,7 +810,7 @@ const MeuRelatorio = () => {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-white">Recuperação inconsistente</p>
-                      <p className="text-xs text-neutral-400 mt-1">
+                      <p className="text-xs text-slate-300 mt-1">
                         Sono irregular e variabilidade reduzida afetam sua capacidade de recuperação.
                       </p>
                     </div>
@@ -873,12 +873,12 @@ const MeuRelatorio = () => {
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
-                    <span className="text-xs text-neutral-500 uppercase tracking-[0.16em]">{kpi.label}</span>
+                    <span className="text-xs text-slate-300 uppercase tracking-[0.16em]">{kpi.label}</span>
                   </div>
                   <p className={`text-4xl sm:text-[2.45rem] leading-none font-mono font-black ${kpi.color}`}>
                     {kpi.value}
                   </p>
-                  <p className="text-sm text-neutral-500 mt-4 leading-relaxed">{kpi.helper}</p>
+                  <p className="text-sm text-slate-300 mt-4 leading-relaxed">{kpi.helper}</p>
                 </motion.div>
               ))}
             </div>
@@ -972,7 +972,7 @@ const MeuRelatorio = () => {
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                       <span className="text-4xl font-black text-white">{dominantDistributionPercent}%</span>
-                      <span className="text-sm text-neutral-400 mt-1">
+                      <span className="text-sm text-slate-300 mt-1">
                         {dominantDistribution?.tone || "Sem dados"}
                       </span>
                     </div>
@@ -1001,7 +1001,7 @@ const MeuRelatorio = () => {
                             <p className={`text-lg font-bold ${toneClass}`}>
                               {percent}% {item.tone}
                             </p>
-                            <p className="text-sm text-neutral-500">{item.helper}</p>
+                            <p className="text-sm text-slate-300">{item.helper}</p>
                           </div>
                         </div>
                       );
@@ -1061,7 +1061,7 @@ const MeuRelatorio = () => {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <p className="text-sm text-neutral-500 mt-2">
+                <p className="text-sm text-slate-300 mt-2">
                   {benchmarkSummaryText}
                 </p>
               </div>
@@ -1078,7 +1078,7 @@ const MeuRelatorio = () => {
                     <div key={item.area}>
                       <div className="flex items-center justify-between text-sm mb-2">
                         <span className="text-neutral-300">{item.area}</span>
-                        <span className="text-neutral-400">{item.status}</span>
+                        <span className="text-slate-300">{item.status}</span>
                       </div>
                       <div className="h-3 rounded-full bg-[#050505]/70 overflow-hidden">
                         <div
@@ -1097,17 +1097,17 @@ const MeuRelatorio = () => {
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
-                    <span className="text-neutral-400">Vs início do período</span>
+                    <span className="text-slate-300">Vs início do período</span>
                     <span className="font-bold text-rose-300">{trendDelta ?? 0}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
-                    <span className="text-neutral-400">Vs melhor leitura</span>
+                    <span className="text-slate-300">Vs melhor leitura</span>
                     <span className="font-bold text-rose-300">
                       {bestTrendPoint ? Number((report.avg_v_score - bestTrendPoint.avg_v_score).toFixed(1)) : 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-400">Vs sua média pessoal</span>
+                    <span className="text-slate-300">Vs sua média pessoal</span>
                     <span className="font-bold text-amber-300">
                       {report.avg_v_score ? `${Math.round(((report.avg_v_score - 83) / 83) * 100)}%` : "0%"}
                     </span>
@@ -1121,19 +1121,19 @@ const MeuRelatorio = () => {
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
-                    <span className="text-neutral-400">Cobertura biométrica</span>
+                    <span className="text-slate-300">Cobertura biométrica</span>
                     <span className="font-bold text-emerald-300">Alta</span>
                   </div>
                   <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
-                    <span className="text-neutral-400">Qualidade dos sinais</span>
+                    <span className="text-slate-300">Qualidade dos sinais</span>
                     <span className="font-bold text-emerald-300">Boa</span>
                   </div>
                   <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
-                    <span className="text-neutral-400">Janela de sono</span>
+                    <span className="text-slate-300">Janela de sono</span>
                     <span className="font-bold text-amber-300">Incompleta</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-400">Confiança</span>
+                    <span className="text-slate-300">Confiança</span>
                     <span className="font-bold text-cyan-300">{confidenceScore}%</span>
                   </div>
                 </div>
@@ -1180,7 +1180,7 @@ const MeuRelatorio = () => {
             </div>
 
             <div className="border border-white/[0.07] bg-[#0b0d0f]/30 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-1">
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-slate-300">
                 Este relatório foi gerado com base em dados biométricos coletados pelos seus dispositivos e algoritmos proprietários da VitalFlow.
               </p>
               <p className="text-xs text-neutral-600">
@@ -1194,7 +1194,7 @@ const MeuRelatorio = () => {
                   <Lock className="w-5 h-5 text-amber-400" />
                   <div>
                     <p className="text-sm font-semibold text-amber-400">Exportar PDF é exclusivo do Plano Premium</p>
-                    <p className="text-xs text-neutral-400">Faça upgrade para baixar seus relatórios completos</p>
+                    <p className="text-xs text-slate-300">Faça upgrade para baixar seus relatórios completos</p>
                   </div>
                 </div>
               </div>
