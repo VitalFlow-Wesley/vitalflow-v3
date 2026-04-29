@@ -916,7 +916,11 @@ const MeuRelatorio = () => {
                         style={{ fontSize: "11px" }}
                         tickMargin={10}
                       />
-                      <Tooltip content={<ReportTrendTooltip />} />
+                      <Tooltip
+  cursor={{ fill: "transparent" }}
+  cursor={{ fill: "transparent" }}
+  content={<ReportTrendTooltip />}
+/>
                       <ReferenceLine
                         y={avgReferenceValue}
                         stroke="rgba(255,255,255,0.16)"
