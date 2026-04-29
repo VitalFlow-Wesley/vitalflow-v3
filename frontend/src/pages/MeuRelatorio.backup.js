@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
-import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -343,7 +342,7 @@ const MeuRelatorio = () => {
 
   return (
     <div className="min-h-screen bg-neutral-950">
-      <Navbar />
+      
 
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
