@@ -178,7 +178,7 @@ function deriveRecommendation(score, trend, predictiveAlert) {
 function PremiumCard({ children, className = "" }) {
   return (
     <div
-      className={`rounded-[18px] border border-white/[0.07] bg-[#0b0d0f] shadow-[0_18px_54px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.03)] ${className}`}
+      className={`rounded-[18px] border border-white/[0.07] bg-[#0b0d0f] shadow-[0_16px_46px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.035)] ${className}`}
     >
       {children}
     </div>
@@ -187,7 +187,7 @@ function PremiumCard({ children, className = "" }) {
 
 function SectionLabel({ children }) {
   return (
-    <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-400/80">
+    <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-300/85">
       {children}
     </div>
   );
@@ -560,7 +560,7 @@ export default function Dashboard() {
         </PremiumCard>
 
         <PremiumCard className="relative min-h-[225px] overflow-hidden p-3">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_38%_18%,rgba(16,185,129,0.16),transparent_38%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_38%_18%,rgba(16,185,129,0.12),transparent_38%)]" />
 
           <div className="relative flex items-start justify-between gap-3">
             <SectionLabel>Sugestão Inteligente</SectionLabel>
@@ -570,7 +570,7 @@ export default function Dashboard() {
           </div>
 
           <div className="relative mt-3 grid gap-3 lg:grid-cols-[1fr_130px]">
-            <div className="rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.055] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_0_38px_rgba(16,185,129,0.08)]">
+            <div className="rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_0_28px_rgba(16,185,129,0.06)]">
               <div className="text-[9px] font-black uppercase tracking-[0.24em] text-emerald-300/80">
                 Recomendação prioritária
               </div>
