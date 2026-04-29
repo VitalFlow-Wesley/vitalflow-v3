@@ -889,7 +889,7 @@ const MeuRelatorio = () => {
                   <TrendingUp className="w-4 h-4 text-cyan-400" />
                   Evolução do V-Score
                 </h3>
-                <div className="w-full h-[320px]">
+                <div className="w-full h-[430px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={trendChartData} margin={{ top: 28, right: 28, left: -8, bottom: 40 }}>
                       <defs>
@@ -1013,7 +1013,7 @@ const MeuRelatorio = () => {
                 </h3>
                 <div className="w-full h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={benchmarkData} margin={{ top: 22, right: 8, left: -8, bottom: 8 }}>
+                    <BarChart data={benchmarkData} margin={{ top: 8, right: 0, left: -24, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                       <XAxis
                         dataKey="shortLabel"
