@@ -249,22 +249,7 @@ const Navbar = () => {
               ))}
 
             {!isRelatorio && (
-              <button
-                onClick={() => navigate("/relatorio")}
-                className={navButtonClass(isRelatorio)}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Relatório</span>
-              </button>
             )}
-
-            <button
-              onClick={() => navigate("/devices")}
-              className={navButtonClass(isDevicesPage)}
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Dispositivos</span>
-            </button>
 
             <div className="relative" ref={dropdownRef}>
               <button
