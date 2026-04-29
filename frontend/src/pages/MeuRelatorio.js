@@ -703,11 +703,8 @@ const MeuRelatorio = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-5">
               <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl p-5 sm:p-6">
-                <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.9fr] gap-4 items-stretch h-full">
-                  <div className="flex items-start gap-5">
-                    <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-                      <Brain className="w-8 h-8 text-cyan-400" />
-                    </div>
+                <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.15fr] gap-5 items-stretch h-full">
+                  <div className="flex items-start">
                     <div className="min-w-0">
                       <p className="text-xs uppercase tracking-[0.22em] text-cyan-300 font-bold mb-3">
                         Resumo Executivo
@@ -723,8 +720,8 @@ const MeuRelatorio = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Gauge className="w-4 h-4 text-amber-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Status geral</span>
@@ -733,27 +730,27 @@ const MeuRelatorio = () => {
                       <p className="text-xs text-neutral-500 mt-2">{executiveRecoveryLabel}</p>
                     </div>
 
-                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-3">
+                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <HeartPulse className="w-4 h-4 text-rose-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Principal risco</span>
                       </div>
-                      <p className="text-[13px] font-semibold leading-snug text-rose-300 break-words">{executiveCauseLabel}</p>
+                      <p className="text-sm font-semibold leading-snug text-rose-300">{executiveCauseLabel}</p>
                       <p className="text-xs text-neutral-500 mt-2">Sinais consistentes de sobrecarga</p>
                     </div>
 
-                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-3">
+                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Sparkles className="w-4 h-4 text-purple-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Provável causa</span>
                       </div>
-                      <p className="text-[13px] font-semibold leading-snug text-purple-300 break-words">
+                      <p className="text-sm font-semibold leading-snug text-purple-300">
                         Baixa recuperação + esforço acumulado
                       </p>
                       <p className="text-xs text-neutral-500 mt-2">Sono irregular e carga acumulada elevada</p>
                     </div>
 
-                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-3">
+                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Shield className="w-4 h-4 text-emerald-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Nível de confiança</span>
@@ -1188,7 +1185,7 @@ const MeuRelatorio = () => {
             </div>
 
             {!canExportPdf && (
-              <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-3 flex items-center justify-between">
+              <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Lock className="w-5 h-5 text-amber-400" />
                   <div>
