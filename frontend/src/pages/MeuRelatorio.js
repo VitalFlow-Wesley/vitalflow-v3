@@ -603,7 +603,7 @@ const MeuRelatorio = () => {
               data-testid="back-to-dashboard"
             >
               <ArrowLeft className="w-4 h-4" />
-              Dashboard
+              
             </button>
 
             <div className="flex items-center gap-3 flex-wrap max-w-5xl">
