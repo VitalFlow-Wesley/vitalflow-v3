@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { Toaster } from "./components/ui/sonner";
 import GestaoLayout from "./layouts/GestaoLayout";
+import UserLayout from "./layouts/UserLayout";
 import GestorDashboard from "./pages/GestorDashboard";
 import GestaoColaboradores from "./pages/GestaoColaboradores";
 import SetoresEquipes from "./pages/SetoresEquipes";
@@ -32,64 +33,19 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+            <Route element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/devices" element={<ConnectDevices />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/relatorio" element={<MeuRelatorio />} />
+              <Route path="/payment/success" element={<PaymentSuccess />} />
+            </Route>
 
-            <Route
-              path="/devices"
-              element={
-                <ProtectedRoute>
-                  <ConnectDevices />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/relatorio"
-              element={
-                <ProtectedRoute>
-                  <MeuRelatorio />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/payment/success"
-              element={
-                <ProtectedRoute>
-                  <PaymentSuccess />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/gestor"
-              element={
-                <GestorRoute>
-                  <GestaoLayout />
-                </GestorRoute>
-              }
-            >
+            <Route path="/gestor" element={<GestorRoute><GestaoLayout /></GestorRoute>}>
               <Route index element={<GestorDashboard />} />
               <Route path="colaboradores" element={<GestaoColaboradores />} />
               <Route path="setores" element={<SetoresEquipes />} />
               <Route path="hierarquia" element={<HierarquiaAcesso />} />
-
               <Route path="relatorios" element={<RelatoriosEquipe />} />
               <Route path="relatorios/executivo" element={<RelatorioExecutivo />} />
               <Route path="relatorios/tendencia" element={<RelatorioTendencia />} />
