@@ -440,6 +440,40 @@ export default function Dashboard() {
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-5 rounded-xl border border-white/[0.06] bg-[#071018] px-4 py-2 text-[11px] text-slate-300">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-3.5 w-3.5 text-cyan-300" />
+          <span className="font-semibold text-white">Plano Premium Ativo</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <RefreshCw className="h-3.5 w-3.5 text-cyan-300" />
+          <span>Última sincronização:</span>
+          <span className="font-semibold text-white">Google Fit · agora mesmo</span>
+        </div>
+
+        <button
+          onClick={() => fetchDashboardData({ silent: true })}
+          className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.08] px-3 py-1.5 text-[11px] font-bold text-cyan-200 transition hover:bg-cyan-400/[0.14]"
+        >
+          Sincronizar agora
+        </button>
+
+        <div className="ml-auto flex items-center gap-8">
+          <div className="flex items-center gap-2">
+            <Wifi className="h-3.5 w-3.5 text-emerald-300" />
+            <span>Qualidade do sinal:</span>
+            <span className="font-semibold text-emerald-400">Boa</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5 text-amber-300" />
+            <span>Cobertura do dia:</span>
+            <span className="font-semibold text-amber-400">82%</span>
+          </div>
+        </div>
+      </div>
+
       <PremiumCard className="overflow-hidden bg-gradient-to-r from-[#0a0d0f] via-[#0d1012] to-[#0a0d0f]">
         <div className="grid min-h-[74px] xl:grid-cols-[1.45fr_repeat(4,1fr)]">
           <div className="relative flex items-center gap-3 border-b border-white/[0.06] p-3 xl:border-b-0 xl:border-r">
@@ -629,35 +663,6 @@ export default function Dashboard() {
         </PremiumCard>
       </div>
 
-
-      <div className="flex flex-wrap items-center gap-6 rounded-xl border border-white/[0.06] bg-[#071018] px-4 py-2 text-[11px] text-slate-300">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="h-3.5 w-3.5 text-cyan-300" />
-          <span>Última sincronização:</span>
-          <span className="font-semibold text-white">Google Fit · agora mesmo</span>
-        </div>
-
-        <button
-          onClick={() => fetchDashboardData({ silent: true })}
-          className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.08] px-3 py-1.5 text-[11px] font-bold text-cyan-200 transition hover:bg-cyan-400/[0.14]"
-        >
-          Sincronizar agora
-        </button>
-
-        <div className="ml-auto flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Wifi className="h-3.5 w-3.5 text-emerald-300" />
-            <span>Qualidade do sinal:</span>
-            <span className="font-semibold text-emerald-400">Boa</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Activity className="h-3.5 w-3.5 text-amber-300" />
-            <span>Cobertura do dia:</span>
-            <span className="font-semibold text-amber-400">82%</span>
-          </div>
-        </div>
-      </div>
 
       <div className="grid gap-2 xl:grid-cols-[1.1fr_0.9fr]">
         <PremiumCard className="p-3">
