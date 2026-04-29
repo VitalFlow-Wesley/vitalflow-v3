@@ -121,7 +121,7 @@ const ReportTrendTooltip = ({ active, payload, label }) => {
   const eventLabel = point?.eventLabel || "Leitura do período";
 
   return (
-    <div className="bg-neutral-950/95 border border-white/10 rounded-xl p-3 shadow-xl min-w-[220px]">
+    <div className="bg-[#050505]/95 border border-white/[0.07] rounded-xl p-3 shadow-xl min-w-[220px]">
       <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-2">
         {formatLongDateLabel(label)}
       </p>
@@ -583,7 +583,7 @@ const MeuRelatorio = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-950">
+    <div className="min-h-screen bg-[#050505]">
       
 
       <div className="w-full max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-8">
@@ -622,7 +622,7 @@ const MeuRelatorio = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 xl:justify-end">
-            <div className="flex bg-neutral-900 rounded-2xl border border-white/10 p-1" data-testid="period-filter">
+            <div className="flex bg-[#0b0d0f] rounded-2xl border border-white/[0.07] p-1" data-testid="period-filter">
               {PERIOD_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -646,7 +646,7 @@ const MeuRelatorio = () => {
               className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
                 canExportPdf
                   ? "bg-cyan-500 hover:bg-cyan-400 text-black"
-                  : "bg-neutral-800 text-neutral-500 border border-white/10"
+                  : "bg-neutral-800 text-neutral-500 border border-white/[0.07]"
               }`}
             >
               {canExportPdf ? (
@@ -724,7 +724,7 @@ const MeuRelatorio = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="border border-white/10 bg-neutral-950/40 rounded-2xl p-4">
+                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Gauge className="w-4 h-4 text-amber-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Status geral</span>
@@ -733,27 +733,27 @@ const MeuRelatorio = () => {
                       <p className="text-xs text-neutral-500 mt-2">{executiveRecoveryLabel}</p>
                     </div>
 
-                    <div className="border border-white/10 bg-neutral-950/40 rounded-2xl p-4">
+                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <HeartPulse className="w-4 h-4 text-rose-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Principal risco</span>
                       </div>
-                      <p className="text-sm font-semibold text-rose-300">{executiveCauseLabel}</p>
+                      <p className="text-[13px] font-semibold leading-snug text-rose-300 break-words">{executiveCauseLabel}</p>
                       <p className="text-xs text-neutral-500 mt-2">Sinais consistentes de sobrecarga</p>
                     </div>
 
-                    <div className="border border-white/10 bg-neutral-950/40 rounded-2xl p-4">
+                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Sparkles className="w-4 h-4 text-purple-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Provável causa</span>
                       </div>
-                      <p className="text-sm font-semibold text-purple-300">
+                      <p className="text-[13px] font-semibold leading-snug text-purple-300 break-words">
                         Baixa recuperação + esforço acumulado
                       </p>
                       <p className="text-xs text-neutral-500 mt-2">Sono irregular e carga acumulada elevada</p>
                     </div>
 
-                    <div className="border border-white/10 bg-neutral-950/40 rounded-2xl p-4">
+                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Shield className="w-4 h-4 text-emerald-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Nível de confiança</span>
@@ -765,7 +765,7 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 sm:p-6">
+              <div className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-5 sm:p-6">
                 <p className="text-xs uppercase tracking-[0.22em] text-neutral-300 font-bold mb-5">
                   Interpretação do período
                 </p>
@@ -871,7 +871,7 @@ const MeuRelatorio = () => {
                   key={kpi.label}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 min-h-[220px] flex flex-col"
+                  className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-5 min-h-[220px] flex flex-col"
                   data-testid={`kpi-${kpi.label.toLowerCase().replace(/ /g, "-")}`}
                 >
                   <div className="flex items-center gap-2 mb-3">
@@ -887,7 +887,7 @@ const MeuRelatorio = () => {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-[1.65fr_0.95fr_0.9fr] gap-5 items-stretch">
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 sm:p-6" data-testid="trend-chart">
+              <div className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-5 sm:p-6" data-testid="trend-chart">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-cyan-400" />
                   Evolução do V-Score
@@ -945,7 +945,7 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 sm:p-6" data-testid="distribution-chart">
+              <div className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-5 sm:p-6" data-testid="distribution-chart">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-cyan-400" />
                   Distribuição do Período
@@ -1009,7 +1009,7 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-5 sm:p-6">
+              <div className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-5 sm:p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <Target className="w-4 h-4 text-cyan-400" />
                   Comparativo de Performance (Benchmark)
@@ -1067,7 +1067,7 @@ const MeuRelatorio = () => {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr_0.9fr_1fr] gap-5 items-stretch">
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+              <div className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5 flex items-center gap-2">
                   <HeartPulse className="w-4 h-4 text-cyan-400" />
                   Sistemas mais impactados
@@ -1079,7 +1079,7 @@ const MeuRelatorio = () => {
                         <span className="text-neutral-300">{item.area}</span>
                         <span className="text-neutral-400">{item.status}</span>
                       </div>
-                      <div className="h-3 rounded-full bg-neutral-950/70 overflow-hidden">
+                      <div className="h-3 rounded-full bg-[#050505]/70 overflow-hidden">
                         <div
                           className={`h-full rounded-full bg-gradient-to-r ${item.color}`}
                           style={{ width: `${item.percent}%` }}
@@ -1090,7 +1090,7 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+              <div className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5">
                   Comparativo do período
                 </h3>
@@ -1114,7 +1114,7 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+              <div className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5">
                   Confiabilidade da análise
                 </h3>
@@ -1138,7 +1138,7 @@ const MeuRelatorio = () => {
                 </div>
               </div>
 
-              <div className="border border-white/10 bg-neutral-900/40 rounded-2xl p-6">
+              <div className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-6">
                 <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-neutral-300 mb-5">
                   Insights de longevidade
                 </h3>
@@ -1178,7 +1178,7 @@ const MeuRelatorio = () => {
               </div>
             </div>
 
-            <div className="border border-white/10 bg-neutral-900/30 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-1">
+            <div className="border border-white/[0.07] bg-[#0b0d0f]/30 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-1">
               <p className="text-xs text-neutral-500">
                 Este relatório foi gerado com base em dados biométricos coletados pelos seus dispositivos e algoritmos proprietários da VitalFlow.
               </p>
@@ -1188,7 +1188,7 @@ const MeuRelatorio = () => {
             </div>
 
             {!canExportPdf && (
-              <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-4 flex items-center justify-between">
+              <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Lock className="w-5 h-5 text-amber-400" />
                   <div>

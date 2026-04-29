@@ -377,7 +377,7 @@ const ConnectDevices = () => {
     TEST_SCENARIOS[0];
 
   return (
-    <div className="min-h-screen bg-neutral-950 p-6">
+    <div className="min-h-screen bg-[#050505] p-6">
       <div className="w-full max-w-5xl mx-auto mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -437,7 +437,7 @@ const ConnectDevices = () => {
                 <select
                   value={selectedScenario}
                   onChange={(e) => setSelectedScenario(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-white/10 text-sm text-white outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-[#0b0d0f] border border-white/[0.07] text-sm text-white outline-none"
                 >
                   {TEST_SCENARIOS.map((scenario) => (
                     <option key={scenario.value} value={scenario.value}>
@@ -454,7 +454,7 @@ const ConnectDevices = () => {
               <Button
                 onClick={() => setSelectedScenario("random")}
                 type="button"
-                className="bg-neutral-800 hover:bg-neutral-700 text-white border border-white/10"
+                className="bg-neutral-800 hover:bg-neutral-700 text-white border border-white/[0.07]"
               >
                 <Shuffle className="w-4 h-4 mr-2" />
                 Aleatório
@@ -476,7 +476,7 @@ const ConnectDevices = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-neutral-900 border border-white/10 rounded-xl p-8 w-full max-w-md mx-4"
+              className="bg-[#0b0d0f] border border-white/[0.07] rounded-xl p-8 w-full max-w-md mx-4"
               data-testid="oauth-flow-modal"
             >
               <h3 className="text-lg font-bold text-white mb-6 text-center">
@@ -581,7 +581,7 @@ const ConnectDevices = () => {
               className={`border rounded-xl p-6 relative overflow-hidden transition-all duration-200 ${
                 connected
                   ? `${provider.borderColor} ${provider.bgColor} border-2`
-                  : "border-white/10 bg-neutral-900/40 hover:bg-neutral-900/60 hover:border-white/20"
+                  : "border-white/[0.07] bg-[#0b0d0f] hover:bg-[#0b0d0f]/60 hover:border-white/20"
               }`}
             >
               {connected && (
@@ -750,7 +750,7 @@ const ConnectDevices = () => {
         </div>
       )}
 
-      <div className="w-full max-w-5xl mx-auto mt-8 border border-white/5 bg-neutral-900/40 rounded-xl p-6">
+      <div className="w-full max-w-5xl mx-auto mt-8 border border-white/5 bg-[#0b0d0f] rounded-xl p-6">
         <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-3">
           Dados Coletados Automaticamente
         </h3>
@@ -788,7 +788,7 @@ const ConnectDevices = () => {
 
 function MetricBox({ label, value, color }) {
   return (
-    <div className="border border-white/10 bg-black/20 rounded-xl p-3">
+    <div className="border border-white/[0.07] bg-black/20 rounded-xl p-3">
       <div className="text-[11px] text-neutral-500 uppercase tracking-[0.12em] mb-2">
         {label}
       </div>
