@@ -84,7 +84,8 @@ const fallbackInsights = [
 ];
 
 function authHeaders() {
-  const token = localStorage.getItem("vf_token") || localStorage.getItem("token");
+  const token =
+    localStorage.getItem("vf_token") || localStorage.getItem("token");
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -150,7 +151,8 @@ function deriveRecommendation(score, trend, predictiveAlert) {
   if (trend === "falling") {
     return {
       title: "Manutenção com cautela",
-      description: "Mantenha o ritmo, mas evite excesso de carga nas próximas horas.",
+      description:
+        "Mantenha o ritmo, mas evite excesso de carga nas próximas horas.",
       reason:
         "Existe tendência de queda nos últimos registros, então a IA recomenda preservar energia e evitar sobrecarga.",
       duration: "4 min",
@@ -162,7 +164,8 @@ function deriveRecommendation(score, trend, predictiveAlert) {
 
   return {
     title: "Manutenção positiva",
-    description: "Mantenha seu estado estável com uma respiração curta de manutenção.",
+    description:
+      "Mantenha seu estado estável com uma respiração curta de manutenção.",
     reason:
       "Seu V-Score está estável, HRV preservada e stress controlado. Este é o momento ideal para manter consistência.",
     duration: "3 min",
@@ -205,12 +208,13 @@ export default function Dashboard() {
       setRefreshing(true);
       setError("");
 
-      const [historyRes, trendRes, morningRes, alertRes] = await Promise.allSettled([
-        fetch(`${API}/history?limit=30`, { headers: authHeaders() }),
-        fetch(`${API}/health/trend`, { headers: authHeaders() }),
-        fetch(`${API}/health/morning-report`, { headers: authHeaders() }),
-        fetch(`${API}/predictive/alert`, { headers: authHeaders() }),
-      ]);
+      const [historyRes, trendRes, morningRes, alertRes] =
+        await Promise.allSettled([
+          fetch(`${API}/history?limit=30`, { headers: authHeaders() }),
+          fetch(`${API}/health/trend`, { headers: authHeaders() }),
+          fetch(`${API}/health/morning-report`, { headers: authHeaders() }),
+          fetch(`${API}/predictive/alert`, { headers: authHeaders() }),
+        ]);
 
       if (historyRes.status === "fulfilled" && historyRes.value.ok) {
         const data = await historyRes.value.json();
@@ -234,9 +238,11 @@ export default function Dashboard() {
       );
 
       if (allFailed) {
-        setError("Não foi possível carregar os dados reais agora. Exibindo base visual de segurança.");
+        setError(
+          "Não foi possível carregar os dados reais agora. Exibindo base visual de segurança."
+        );
       }
-    } catch (err) {
+    } catch {
       setError("Falha ao atualizar o dashboard.");
     } finally {
       setLoading(false);
@@ -246,7 +252,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(() => fetchDashboardData({ silent: true }), POLLING_INTERVAL);
+    const interval = setInterval(
+      () => fetchDashboardData({ silent: true }),
+      POLLING_INTERVAL
+    );
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
 
@@ -254,11 +263,12 @@ export default function Dashboard() {
   const currentScore = Math.round(
     safeNumber(latest?.v_score ?? latest?.vScore ?? healthTrend?.avg_7d, 100)
   );
-  const currentScore = Math.round(
-  safeNumber(latest?.v_score ?? latest?.vScore ?? healthTrend?.avg_7d, 100)
-);
   const status = deriveStatus(currentScore);
-  const recommendation = deriveRecommendation(currentScore, healthTrend?.trend, predictiveAlert);
+  const recommendation = deriveRecommendation(
+    currentScore,
+    healthTrend?.trend,
+    predictiveAlert
+  );
 
   const trendData = useMemo(() => {
     if (Array.isArray(history) && history.length > 0) {
@@ -267,11 +277,16 @@ export default function Dashboard() {
         .slice(-14)
         .map((item, index) => ({
           time: formatHour(item.timestamp || item.created_at, index),
-          score: Math.round(safeNumber(item.v_score ?? item.vScore, currentScore)),
+          score: Math.round(
+            safeNumber(item.v_score ?? item.vScore, currentScore)
+          ),
         }));
     }
 
-    if (Array.isArray(healthTrend?.v_scores_7d) && healthTrend.v_scores_7d.length > 0) {
+    if (
+      Array.isArray(healthTrend?.v_scores_7d) &&
+      healthTrend.v_scores_7d.length > 0
+    ) {
       return healthTrend.v_scores_7d.map((item, index) => ({
         time: item.date?.slice(5) || `D${index + 1}`,
         score: Math.round(safeNumber(item.avg_v_score, currentScore)),
@@ -282,42 +297,106 @@ export default function Dashboard() {
   }, [history, healthTrend, currentScore]);
 
   const avgScore = useMemo(
-    () => Math.round(trendData.reduce((acc, item) => acc + item.score, 0) / Math.max(trendData.length, 1)),
+    () =>
+      Math.round(
+        trendData.reduce((acc, item) => acc + item.score, 0) /
+          Math.max(trendData.length, 1)
+      ),
     [trendData]
   );
 
   const sleepHours = safeNumber(morningReport?.sleep_hours, 7.53);
-  const sleepLabel = `${Math.floor(sleepHours)}h ${Math.round((sleepHours % 1) * 60)}m`;
+  const sleepLabel = `${Math.floor(sleepHours)}h ${Math.round(
+    (sleepHours % 1) * 60
+  )}m`;
 
   const metrics = [
-    [HeartPulse, "BPM", latest?.bpm || latest?.heart_rate || 70, "Normal", "text-cyan-300"],
-    [Activity, "HRV", latest?.hrv || 45, currentScore >= 80 ? "Excelente" : "Atenção", "text-emerald-300"],
-    [Droplets, "SpO2", `${latest?.spo2 || latest?.oxygen_saturation || 98}%`, "Normal", "text-violet-300"],
-    [BedDouble, "Sono", sleepLabel, morningReport?.recovery_label || "Bom", "text-indigo-300"],
-    [Footprints, "Passos", latest?.steps || latest?.passos || 947, "Meta: 8.000", "text-amber-300"],
-    [Flame, "Calorias", latest?.calories || latest?.calorias || 240, "Atividade leve", "text-orange-300"],
-    [Route, "Distância", latest?.distance_km || latest?.distancia || "2,2", "Baixo impacto", "text-violet-300"],
-    [Timer, "Min. Ativos", latest?.active_minutes || latest?.minutos_ativos || 59, "Meta: 60 min", "text-indigo-300"],
+    [
+      HeartPulse,
+      "BPM",
+      latest?.bpm || latest?.heart_rate || 70,
+      "Normal",
+      "text-cyan-300",
+    ],
+    [
+      Activity,
+      "HRV",
+      latest?.hrv || 45,
+      currentScore >= 80 ? "Excelente" : "Atenção",
+      "text-emerald-300",
+    ],
+    [
+      Droplets,
+      "SpO2",
+      `${latest?.spo2 || latest?.oxygen_saturation || 98}%`,
+      "Normal",
+      "text-violet-300",
+    ],
+    [
+      BedDouble,
+      "Sono",
+      sleepLabel,
+      morningReport?.recovery_label || "Bom",
+      "text-indigo-300",
+    ],
+    [
+      Footprints,
+      "Passos",
+      latest?.steps || latest?.passos || 947,
+      "Meta: 8.000",
+      "text-amber-300",
+    ],
+    [
+      Flame,
+      "Calorias",
+      latest?.calories || latest?.calorias || 240,
+      "Atividade leve",
+      "text-orange-300",
+    ],
+    [
+      Route,
+      "Distância",
+      latest?.distance_km || latest?.distancia || "2,2",
+      "Baixo impacto",
+      "text-violet-300",
+    ],
+    [
+      Timer,
+      "Min. Ativos",
+      latest?.active_minutes || latest?.minutos_ativos || 59,
+      "Meta: 60 min",
+      "text-indigo-300",
+    ],
   ];
 
   const quick = [
     [
       Activity,
       "Estável nas últimas 6h",
-      healthTrend?.trend === "falling" ? "Tendência de queda" : "Variação mínima detectada",
-      healthTrend?.trend === "falling" ? "text-amber-300" : "text-emerald-300",
+      healthTrend?.trend === "falling"
+        ? "Tendência de queda"
+        : "Variação mínima detectada",
+      healthTrend?.trend === "falling"
+        ? "text-amber-300"
+        : "text-emerald-300",
     ],
     [
       Brain,
       currentScore >= 80 ? "Stress controlado" : "Stress em atenção",
-      currentScore >= 80 ? "Carga mental dentro do ideal" : "Reduza estímulos por alguns minutos",
+      currentScore >= 80
+        ? "Carga mental dentro do ideal"
+        : "Reduza estímulos por alguns minutos",
       currentScore >= 80 ? "text-amber-300" : "text-rose-300",
     ],
     [HeartPulse, "HRV preservada", "Bom sinal de recuperação", "text-cyan-300"],
     [
       ShieldCheck,
-      recommendation.priority === "Alta" ? "Janela de recuperação" : "Boa janela para manutenção",
-      recommendation.priority === "Alta" ? "Priorize pausa curta" : "Aproveite para manter consistência",
+      recommendation.priority === "Alta"
+        ? "Janela de recuperação"
+        : "Boa janela para manutenção",
+      recommendation.priority === "Alta"
+        ? "Priorize pausa curta"
+        : "Aproveite para manter consistência",
       "text-emerald-300",
     ],
   ];
@@ -326,9 +405,13 @@ export default function Dashboard() {
     [
       "Prioridade",
       recommendation.priority,
-      recommendation.priority === "Alta" ? "Ação recomendada" : "Momento favorável",
+      recommendation.priority === "Alta"
+        ? "Ação recomendada"
+        : "Momento favorável",
       Sprout,
-      recommendation.priority === "Alta" ? "text-rose-300" : "text-emerald-300",
+      recommendation.priority === "Alta"
+        ? "text-rose-300"
+        : "text-emerald-300",
     ],
     ["Janela ideal", "Agora", "Próximas 2-3 horas", TimerReset, "text-emerald-300"],
     ["Foco do dia", recommendation.focus, "Evite excessos", Flame, "text-amber-300"],
@@ -340,7 +423,8 @@ export default function Dashboard() {
         [
           AlertTriangle,
           "Atenção necessária",
-          healthTrend.intervention_message || "Seus indicadores pedem cuidado preventivo.",
+          healthTrend.intervention_message ||
+            "Seus indicadores pedem cuidado preventivo.",
           "text-rose-300",
         ],
         ...fallbackInsights.slice(1),
@@ -367,10 +451,13 @@ export default function Dashboard() {
             <div className="relative min-w-0">
               <SectionLabel>Modo do dia</SectionLabel>
               <div className="mt-0.5 text-2xl font-black leading-tight text-emerald-300">
-                {recommendation.type === "Recuperação" ? "Recuperação" : "Manutenção"}
+                {recommendation.type === "Recuperação"
+                  ? "Recuperação"
+                  : "Manutenção"}
               </div>
               <p className="mt-0.5 max-w-[390px] text-xs leading-relaxed text-slate-300/80">
-                Condição ideal para manter consistência e foco nas suas atividades.
+                Condição ideal para manter consistência e foco nas suas
+                atividades.
               </p>
             </div>
 
@@ -379,7 +466,9 @@ export default function Dashboard() {
               className="relative ml-auto hidden rounded-xl border border-white/[0.08] bg-white/[0.035] p-2 text-slate-300 transition hover:bg-white/[0.07] lg:block"
               title="Atualizar dashboard"
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
 
@@ -396,8 +485,12 @@ export default function Dashboard() {
                 <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500">
                   {label}
                 </div>
-                <div className={`mt-0.5 truncate text-base font-black ${color}`}>{value}</div>
-                <div className="mt-0.5 truncate text-[11px] text-slate-400">{subtitle}</div>
+                <div className={`mt-0.5 truncate text-base font-black ${color}`}>
+                  {value}
+                </div>
+                <div className="mt-0.5 truncate text-[11px] text-slate-400">
+                  {subtitle}
+                </div>
               </div>
             </div>
           ))}
@@ -410,7 +503,11 @@ export default function Dashboard() {
 
           <div className="mt-3 flex items-center gap-2 text-xl font-black">
             <span className="text-emerald-300">›</span> Resiliência{" "}
-            {currentScore >= 80 ? "ótima" : currentScore >= 60 ? "moderada" : "baixa"}
+            {currentScore >= 80
+              ? "ótima"
+              : currentScore >= 60
+              ? "moderada"
+              : "baixa"}
           </div>
 
           <div className="flex flex-1 items-center justify-center py-2">
@@ -435,8 +532,8 @@ export default function Dashboard() {
             {currentScore >= 80
               ? "Seu estado fisiológico está excelente e em equilíbrio."
               : currentScore >= 60
-                ? "Seu estado está estável, mas pede manutenção preventiva."
-                : "Seu estado pede recuperação e redução de carga agora."}
+              ? "Seu estado está estável, mas pede manutenção preventiva."
+              : "Seu estado pede recuperação e redução de carga agora."}
           </p>
         </PremiumCard>
 
@@ -518,7 +615,9 @@ export default function Dashboard() {
               <SectionLabel>Base da recomendação</SectionLabel>
               <p className="mt-1 text-xs text-slate-300/80">
                 Baseado em{" "}
-                <span className="font-bold text-white">{history.length || 122} leituras válidas</span>{" "}
+                <span className="font-bold text-white">
+                  {history.length || 122} leituras válidas
+                </span>{" "}
                 hoje.
               </p>
             </div>
@@ -541,7 +640,10 @@ export default function Dashboard() {
 
           <div className="h-[245px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 8, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart
+                data={trendData}
+                margin={{ top: 8, right: 10, left: -20, bottom: 0 }}
+              >
                 <defs>
                   <linearGradient id="vscoreGlow" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.3} />
@@ -550,13 +652,45 @@ export default function Dashboard() {
                   </linearGradient>
                 </defs>
 
-                <CartesianGrid stroke="rgba(255,255,255,.055)" strokeDasharray="4 4" />
+                <CartesianGrid
+                  stroke="rgba(255,255,255,.055)"
+                  strokeDasharray="4 4"
+                />
                 <ReferenceLine y={70} stroke="#d6a756" strokeDasharray="7 5" />
-                <ReferenceLine y={avgScore} stroke="rgba(255,255,255,.14)" strokeDasharray="4 4" />
-                <XAxis dataKey="time" stroke="rgba(255,255,255,.35)" tickLine={false} axisLine={false} fontSize={11} />
-                <YAxis stroke="rgba(255,255,255,.35)" tickLine={false} axisLine={false} fontSize={11} domain={[0, 100]} />
-                <Tooltip contentStyle={{ background: "#0b0d0f", border: "1px solid rgba(255,255,255,.12)", borderRadius: 14 }} />
-                <Area type="monotone" dataKey="score" stroke="#22d3ee" strokeWidth={3} fill="url(#vscoreGlow)" activeDot={{ r: 5 }} />
+                <ReferenceLine
+                  y={avgScore}
+                  stroke="rgba(255,255,255,.14)"
+                  strokeDasharray="4 4"
+                />
+                <XAxis
+                  dataKey="time"
+                  stroke="rgba(255,255,255,.35)"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                />
+                <YAxis
+                  stroke="rgba(255,255,255,.35)"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  domain={[0, 100]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "#0b0d0f",
+                    border: "1px solid rgba(255,255,255,.12)",
+                    borderRadius: 14,
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#22d3ee"
+                  strokeWidth={3}
+                  fill="url(#vscoreGlow)"
+                  activeDot={{ r: 5 }}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -566,7 +700,8 @@ export default function Dashboard() {
               <span className="h-1 w-7 rounded-full bg-cyan-300" /> V-Score
             </span>
             <span className="flex items-center gap-2">
-              <span className="h-1 w-7 rounded-full border-t border-dashed border-amber-300" /> Média pessoal
+              <span className="h-1 w-7 rounded-full border-t border-dashed border-amber-300" />{" "}
+              Média pessoal
             </span>
             <span className="flex items-center gap-2">
               <span className="h-3 w-6 rounded-md bg-emerald-400/20" /> Zona ideal
@@ -606,14 +741,19 @@ export default function Dashboard() {
 
         <div className="mt-3 grid gap-2 xl:grid-cols-4">
           {insights.map(([Icon, title, subtitle, color]) => (
-            <div key={title} className="flex items-center gap-3 rounded-2xl bg-white/[0.025] p-3">
+            <div
+              key={title}
+              className="flex items-center gap-3 rounded-2xl bg-white/[0.025] p-3"
+            >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.05]">
                 <Icon className={`h-4 w-4 ${color}`} />
               </div>
 
               <div>
                 <div className={`text-sm font-black ${color}`}>{title}</div>
-                <div className="mt-0.5 text-xs leading-snug text-slate-400">{subtitle}</div>
+                <div className="mt-0.5 text-xs leading-snug text-slate-400">
+                  {subtitle}
+                </div>
               </div>
             </div>
           ))}
