@@ -33,11 +33,11 @@ export default function UserSidebar({ collapsed, onToggle }) {
   return (
     <aside
       className={`hidden lg:flex h-[calc(100vh-64px)] shrink-0 flex-col border-r border-white/5 bg-[#050505] transition-all duration-300 ${
-        collapsed ? "w-[72px]" : "w-[196px]"
+        collapsed ? "w-[68px]" : "w-[176px]"
       }`}
     >
       <div className="flex h-full flex-col p-2">
-        <div className={`mb-2 flex items-center ${collapsed ? "justify-center" : "justify-end"}`}>
+        <div className="mb-2 flex items-center justify-start">
           <button
             type="button"
             onClick={onToggle}
@@ -59,7 +59,7 @@ export default function UserSidebar({ collapsed, onToggle }) {
                 type="button"
                 title={collapsed ? item.label : undefined}
                 onClick={() => navigate(item.path)}
-                className={`group relative flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-all ${
+                className={`group relative flex w-full items-center gap-2.5 rounded-xl border px-2 py-2 text-left transition-all ${
                   collapsed ? "justify-center" : "justify-start"
                 } ${
                   active
@@ -71,7 +71,7 @@ export default function UserSidebar({ collapsed, onToggle }) {
                 {!collapsed && <span className="text-[13px] font-semibold">{item.label}</span>}
 
                 {collapsed && (
-                  <span className="pointer-events-none absolute left-[58px] z-50 whitespace-nowrap rounded-xl border border-white/10 bg-[#101214] px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-2xl transition group-hover:opacity-100">
+                  <span className="pointer-events-none absolute left-[54px] z-50 whitespace-nowrap rounded-xl border border-white/10 bg-[#101214] px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-2xl transition group-hover:opacity-100">
                     {item.label}
                   </span>
                 )}
