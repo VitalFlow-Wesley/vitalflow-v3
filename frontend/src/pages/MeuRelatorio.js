@@ -702,7 +702,7 @@ const MeuRelatorio = () => {
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-5">
-              <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl p-5 sm:p-6">
+              <div className="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl px-3 py-5 sm:p-6">
                 <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.15fr] gap-5 items-stretch h-full">
                   <div className="flex items-start">
                     <div className="min-w-0">
@@ -868,7 +868,7 @@ const MeuRelatorio = () => {
                   key={kpi.label}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-5 min-h-[220px] flex flex-col"
+                  className="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl px-3 py-5 min-h-[220px] flex flex-col"
                   data-testid={`kpi-${kpi.label.toLowerCase().replace(/ /g, "-")}`}
                 >
                   <div className="flex items-center gap-2 mb-3">
@@ -1048,7 +1048,7 @@ const MeuRelatorio = () => {
                           fontSize: 11,
                         }}
                       />
-                      <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={42}>
                         {benchmarkData.map((entry) => (
                           <Cell key={entry.label} fill={entry.fill} />
                         ))}
