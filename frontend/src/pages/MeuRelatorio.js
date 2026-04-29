@@ -721,7 +721,7 @@ const MeuRelatorio = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-4">
+                    <div className="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                       <div className="flex items-center gap-2 mb-2">
                         <Gauge className="w-4 h-4 text-amber-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Status geral</span>
@@ -730,7 +730,7 @@ const MeuRelatorio = () => {
                       <p className="text-xs text-neutral-500 mt-2">{executiveRecoveryLabel}</p>
                     </div>
 
-                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-4">
+                    <div className="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                       <div className="flex items-center gap-2 mb-2">
                         <HeartPulse className="w-4 h-4 text-rose-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Principal risco</span>
@@ -739,7 +739,7 @@ const MeuRelatorio = () => {
                       <p className="text-xs text-neutral-500 mt-2">Sinais consistentes de sobrecarga</p>
                     </div>
 
-                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-4">
+                    <div className="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                       <div className="flex items-center gap-2 mb-2">
                         <Sparkles className="w-4 h-4 text-purple-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Provável causa</span>
@@ -750,7 +750,7 @@ const MeuRelatorio = () => {
                       <p className="text-xs text-neutral-500 mt-2">Sono irregular e carga acumulada elevada</p>
                     </div>
 
-                    <div className="border border-white/[0.07] bg-[#050505]/40 rounded-2xl p-4">
+                    <div className="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                       <div className="flex items-center gap-2 mb-2">
                         <Shield className="w-4 h-4 text-emerald-400" />
                         <span className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">Nível de confiança</span>
