@@ -441,8 +441,8 @@ export default function Dashboard() {
       )}
 
       <PremiumCard className="overflow-hidden bg-gradient-to-r from-[#0a0d0f] via-[#0d1012] to-[#0a0d0f]">
-        <div className="grid min-h-[82px] xl:grid-cols-[1.45fr_repeat(4,1fr)]">
-          <div className="relative flex items-center gap-3 border-b border-white/[0.06] p-4 xl:border-b-0 xl:border-r">
+        <div className="grid min-h-[74px] xl:grid-cols-[1.45fr_repeat(4,1fr)]">
+          <div className="relative flex items-center gap-3 border-b border-white/[0.06] p-3 xl:border-b-0 xl:border-r">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_48%,rgba(16,185,129,0.13),transparent_32%)]" />
             <div className="relative flex h-11 w-11 items-center justify-center rounded-full border border-emerald-400/15 bg-emerald-400/[0.08] shadow-[0_0_22px_rgba(16,185,129,0.14)]">
               <Gauge className="h-6 w-6 text-emerald-300" />
@@ -475,7 +475,7 @@ export default function Dashboard() {
           {executiveSummary.map(([label, value, subtitle, Icon, color]) => (
             <div
               key={label}
-              className="flex items-center gap-3 border-t border-white/[0.06] p-4 first:border-t-0 xl:border-l xl:border-t-0"
+              className="flex items-center gap-3 border-t border-white/[0.06] p-3 first:border-t-0 xl:border-l xl:border-t-0"
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04]">
                 <Icon className={`h-4 w-4 ${color}`} />
@@ -498,7 +498,7 @@ export default function Dashboard() {
       </PremiumCard>
 
       <div className="grid gap-2 xl:grid-cols-[0.9fr_1fr_1.5fr]">
-        <PremiumCard className="flex min-h-[255px] flex-col p-4">
+        <PremiumCard className="flex min-h-[235px] flex-col p-3">
           <SectionLabel>Status Vital</SectionLabel>
 
           <div className="mt-3 flex items-center gap-2 text-xl font-black">
@@ -511,10 +511,10 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-1 items-center justify-center py-2">
-            <div className="relative flex h-32 w-32 items-center justify-center rounded-full border-[9px] border-emerald-400 shadow-[0_0_34px_rgba(52,211,153,0.2)]">
+            <div className="relative flex h-28 w-28 items-center justify-center rounded-full border-[9px] border-emerald-400 shadow-[0_0_34px_rgba(52,211,153,0.2)]">
               <div className="absolute inset-3 rounded-full bg-emerald-400/[0.04]" />
               <div className="relative text-center">
-                <div className="text-3xl font-black leading-none">
+                <div className="text-2xl font-black leading-none">
                   {loading ? "--" : currentScore}
                 </div>
                 <div className="mt-1 text-sm text-slate-300/75">de 100</div>
@@ -537,10 +537,10 @@ export default function Dashboard() {
           </p>
         </PremiumCard>
 
-        <PremiumCard className="min-h-[255px] p-4">
+        <PremiumCard className="min-h-[235px] p-3">
           <SectionLabel>Leitura Rápida</SectionLabel>
 
-          <div className="mt-4 space-y-1">
+          <div className="mt-3 space-y-1">
             {quick.map(([Icon, title, subtitle, color]) => (
               <div
                 key={title}
@@ -559,7 +559,7 @@ export default function Dashboard() {
           </div>
         </PremiumCard>
 
-        <PremiumCard className="relative min-h-[255px] overflow-hidden p-4">
+        <PremiumCard className="relative min-h-[235px] overflow-hidden p-3">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_38%_18%,rgba(16,185,129,0.16),transparent_38%)]" />
 
           <div className="relative flex items-start justify-between gap-3">
@@ -570,7 +570,7 @@ export default function Dashboard() {
           </div>
 
           <div className="relative mt-3 grid gap-3 lg:grid-cols-[1fr_130px]">
-            <div className="rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.055] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_0_38px_rgba(16,185,129,0.08)]">
+            <div className="rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.055] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_0_38px_rgba(16,185,129,0.08)]">
               <div className="text-[9px] font-black uppercase tracking-[0.24em] text-emerald-300/80">
                 Recomendação prioritária
               </div>
@@ -629,8 +629,15 @@ export default function Dashboard() {
         </PremiumCard>
       </div>
 
+
+      <div className="grid gap-2 rounded-2xl border border-white/[0.06] bg-[#071018] px-4 py-2 text-xs text-slate-300 md:grid-cols-3">
+        <div>Última sincronização: agora mesmo</div>
+        <div>Qualidade do sinal: <span className="font-semibold text-emerald-400">Boa</span></div>
+        <div>Cobertura do dia: <span className="font-semibold text-amber-400">82%</span></div>
+      </div>
+
       <div className="grid gap-2 xl:grid-cols-[1.1fr_0.9fr]">
-        <PremiumCard className="p-4">
+        <PremiumCard className="p-3">
           <div className="mb-3 flex items-center justify-between">
             <SectionLabel>Evolução do V-Score</SectionLabel>
             <span className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300">
@@ -638,7 +645,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className="h-[210px]">
+          <div className="h-[190px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={trendData}
@@ -695,7 +702,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-400">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
             <span className="flex items-center gap-2">
               <span className="h-1 w-7 rounded-full bg-cyan-300" /> V-Score
             </span>
@@ -716,7 +723,7 @@ export default function Dashboard() {
             {metrics.map(([Icon, title, value, subtitle, color]) => (
               <div
                 key={title}
-                className="min-h-[82px] rounded-[16px] border border-white/[0.07] bg-white/[0.025] p-3"
+                className="min-h-[74px] rounded-[16px] border border-white/[0.07] bg-white/[0.025] p-3"
               >
                 <div className="flex items-center justify-between text-xs font-bold text-slate-400">
                   {title}
