@@ -497,44 +497,6 @@ const MeuRelatorio = () => {
                 Atualizando relatório...
               </div>
             )}
-
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-3"
-              data-testid="back-to-dashboard"
-            >
-
-            <p className="text-neutral-400 text-base sm:text-lg mt-2">
-              Visão consolidada da sua saúde e performance
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 mt-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5 text-neutral-400" />
-                <span>
-                  Período analisado: {orderedTrend[0]?.date || "--"} a {orderedTrend[orderedTrend.length - 1]?.date || "--"} ({orderedTrend.length} dias)
-                </span>
-              </div>
-              <span className="hidden sm:inline text-neutral-700">|</span>
-              <div>Gerado em: {generatedAtLabel}</div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
-            <div className="flex bg-neutral-900 rounded-2xl border border-white/10 p-1" data-testid="period-filter">
-              {PERIOD_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setPeriod(opt.value)}
-                  data-testid={`period-${opt.value}`}
-                  className={`px-5 py-3 text-sm font-semibold rounded-xl transition-all ${
-                    period === opt.value
-                      ? "bg-cyan-500 text-black"
-                      : "text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  {opt.label}
-                </button>
               ))}
             </div>
 
