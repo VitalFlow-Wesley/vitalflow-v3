@@ -659,13 +659,59 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="grid gap-2 xl:grid-cols-[1.1fr_0.9fr]">
+        <PremiumCard className="p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <SectionLabel>Evolução do V-Score</SectionLabel>
+            <span className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300">
+              Atual
+            </span>
+          </div>
+
+          <div className="h-[210px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={trendData}
+                margin={{ top: 8, right: 10, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="vscoreGlow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.3} />
+                    <stop offset="55%" stopColor="#10b981" stopOpacity={0.12} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+
+                <CartesianGrid stroke="rgba(255,255,255,.055)" strokeDasharray="4 4" />
+                <ReferenceLine y={70} stroke="#d6a756" strokeDasharray="7 5" />
+                <ReferenceLine y={avgScore} stroke="rgba(255,255,255,.14)" strokeDasharray="4 4" />
+                <XAxis dataKey="time" stroke="rgba(255,255,255,.35)" tickLine={false} axisLine={false} fontSize={11} />
+                <YAxis stroke="rgba(255,255,255,.35)" tickLine={false} axisLine={false} fontSize={11} domain={[0, 100]} />
+                <Tooltip
+                  contentStyle={{
+                    background: "#0b0d0f",
+                    border: "1px solid rgba(255,255,255,.12)",
+                    borderRadius: 14,
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#22d3ee"
+                  strokeWidth={3}
+                  fill="url(#vscoreGlow)"
+                  activeDot={{ r: 5 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
           <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
             <span className="flex items-center gap-2">
               <span className="h-1 w-7 rounded-full bg-cyan-300" /> V-Score
             </span>
             <span className="flex items-center gap-2">
-              <span className="h-1 w-7 rounded-full border-t border-dashed border-amber-300" />{" "}
-              Média pessoal
+              <span className="h-1 w-7 rounded-full border-t border-dashed border-amber-300" /> Média pessoal
             </span>
             <span className="flex items-center gap-2">
               <span className="h-3 w-6 rounded-md bg-emerald-400/20" /> Zona ideal
