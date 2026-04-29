@@ -31,7 +31,6 @@ import {
   Lock,
   Radio,
   Smartphone,
-  ArrowLeft,
   Shield,
   Brain,
   HeartPulse,
@@ -596,15 +595,6 @@ const MeuRelatorio = () => {
                 Atualizando relatório...
               </div>
             )}
-
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-3"
-              data-testid="back-to-dashboard"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              
-            </button>
 
             <div className="flex items-center gap-3 flex-wrap max-w-5xl">
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white" data-testid="report-title">
