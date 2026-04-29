@@ -630,77 +630,34 @@ export default function Dashboard() {
       </div>
 
 
-      <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-[#071018] px-4 py-1.5 text-[11px] text-slate-300 md:grid-cols-3">
-        <div>Última sincronização: agora mesmo</div>
-        <div>Qualidade do sinal: <span className="font-semibold text-emerald-400">Boa</span></div>
-        <div>Cobertura do dia: <span className="font-semibold text-amber-400">82%</span></div>
+      <div className="flex flex-wrap items-center gap-6 rounded-xl border border-white/[0.06] bg-[#071018] px-4 py-2 text-[11px] text-slate-300">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="h-3.5 w-3.5 text-cyan-300" />
+          <span>Última sincronização:</span>
+          <span className="font-semibold text-white">Google Fit · agora mesmo</span>
+        </div>
+
+        <button
+          onClick={() => fetchDashboardData({ silent: true })}
+          className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.08] px-3 py-1.5 text-[11px] font-bold text-cyan-200 transition hover:bg-cyan-400/[0.14]"
+        >
+          Sincronizar agora
+        </button>
+
+        <div className="ml-auto flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <Wifi className="h-3.5 w-3.5 text-emerald-300" />
+            <span>Qualidade do sinal:</span>
+            <span className="font-semibold text-emerald-400">Boa</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5 text-amber-300" />
+            <span>Cobertura do dia:</span>
+            <span className="font-semibold text-amber-400">82%</span>
+          </div>
+        </div>
       </div>
-
-      <div className="grid gap-2 xl:grid-cols-[1.1fr_0.9fr]">
-        <PremiumCard className="p-3">
-          <div className="mb-3 flex items-center justify-between">
-            <SectionLabel>Evolução do V-Score</SectionLabel>
-            <span className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300">
-              Atual
-            </span>
-          </div>
-
-          <div className="h-[210px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={trendData}
-                margin={{ top: 8, right: 10, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="vscoreGlow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.3} />
-                    <stop offset="55%" stopColor="#10b981" stopOpacity={0.12} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-
-                <CartesianGrid
-                  stroke="rgba(255,255,255,.055)"
-                  strokeDasharray="4 4"
-                />
-                <ReferenceLine y={70} stroke="#d6a756" strokeDasharray="7 5" />
-                <ReferenceLine
-                  y={avgScore}
-                  stroke="rgba(255,255,255,.14)"
-                  strokeDasharray="4 4"
-                />
-                <XAxis
-                  dataKey="time"
-                  stroke="rgba(255,255,255,.35)"
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={11}
-                />
-                <YAxis
-                  stroke="rgba(255,255,255,.35)"
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={11}
-                  domain={[0, 100]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "#0b0d0f",
-                    border: "1px solid rgba(255,255,255,.12)",
-                    borderRadius: 14,
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="score"
-                  stroke="#22d3ee"
-                  strokeWidth={3}
-                  fill="url(#vscoreGlow)"
-                  activeDot={{ r: 5 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
             <span className="flex items-center gap-2">
