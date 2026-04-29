@@ -434,7 +434,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-1 text-white">
       {error && (
-        <div className="flex items-center gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-2 text-xs text-amber-100">
+        <div className="flex items-center gap-2 rounded-xl border border-amber-400/15 bg-amber-400/[0.06] px-4 py-1.5 text-[11px] text-amber-100/90">
           <AlertTriangle className="h-4 w-4 text-amber-300" />
           {error}
         </div>
@@ -498,7 +498,7 @@ export default function Dashboard() {
       </PremiumCard>
 
       <div className="grid gap-2 xl:grid-cols-[0.9fr_1fr_1.5fr]">
-        <PremiumCard className="flex min-h-[235px] flex-col p-3">
+        <PremiumCard className="flex min-h-[225px] flex-col p-3">
           <SectionLabel>Status Vital</SectionLabel>
 
           <div className="mt-3 flex items-center gap-2 text-xl font-black">
@@ -511,10 +511,10 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-1 items-center justify-center py-2">
-            <div className="relative flex h-28 w-28 items-center justify-center rounded-full border-[9px] border-emerald-400 shadow-[0_0_34px_rgba(52,211,153,0.2)]">
+            <div className="relative flex h-32 w-32 items-center justify-center rounded-full border-[9px] border-emerald-400 shadow-[0_0_34px_rgba(52,211,153,0.2)]">
               <div className="absolute inset-3 rounded-full bg-emerald-400/[0.04]" />
               <div className="relative text-center">
-                <div className="text-2xl font-black leading-none">
+                <div className="text-3xl font-black leading-none">
                   {loading ? "--" : currentScore}
                 </div>
                 <div className="mt-1 text-sm text-slate-300/75">de 100</div>
@@ -537,7 +537,7 @@ export default function Dashboard() {
           </p>
         </PremiumCard>
 
-        <PremiumCard className="min-h-[235px] p-3">
+        <PremiumCard className="min-h-[225px] p-3">
           <SectionLabel>Leitura Rápida</SectionLabel>
 
           <div className="mt-3 space-y-1">
@@ -559,7 +559,7 @@ export default function Dashboard() {
           </div>
         </PremiumCard>
 
-        <PremiumCard className="relative min-h-[235px] overflow-hidden p-3">
+        <PremiumCard className="relative min-h-[225px] overflow-hidden p-3">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_38%_18%,rgba(16,185,129,0.16),transparent_38%)]" />
 
           <div className="relative flex items-start justify-between gap-3">
@@ -630,7 +630,7 @@ export default function Dashboard() {
       </div>
 
 
-      <div className="grid gap-2 rounded-2xl border border-white/[0.06] bg-[#071018] px-4 py-2 text-xs text-slate-300 md:grid-cols-3">
+      <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-[#071018] px-4 py-1.5 text-[11px] text-slate-300 md:grid-cols-3">
         <div>Última sincronização: agora mesmo</div>
         <div>Qualidade do sinal: <span className="font-semibold text-emerald-400">Boa</span></div>
         <div>Cobertura do dia: <span className="font-semibold text-amber-400">82%</span></div>
@@ -645,7 +645,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className="h-[190px]">
+          <div className="h-[210px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={trendData}
