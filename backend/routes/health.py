@@ -42,7 +42,7 @@ async def get_predictive_alert(request: Request):
             return {
                 "has_alert": False,
                 "locked": True,
-                "message": "Recurso exclusivo do plano Premium. Faca upgrade para acessar predicoes de IA.",
+                "message": "Recurso exclusivo do plano Premium. Faça upgrade para acessar predicoes de IA.",
             }
 
         alert_data = await analyze_stress_patterns(colaborador["id"])
@@ -304,7 +304,7 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
                     if datetime.now(timezone.utc) > exp:
                         raise HTTPException(
                             status_code=403,
-                            detail="Seu trial Premium expirou. Faca upgrade para exportar PDF.",
+                            detail="Seu trial Premium expirou. Faça upgrade para exportar PDF.",
                         )
                 except (ValueError, TypeError):
                     pass
@@ -389,20 +389,20 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
         )
 
         elements = []
-        elements.append(Paragraph("VitalFlow - Meu Relatorio de Saude", title_style))
+        elements.append(Paragraph("VitalFlow - Meu Relatório de Saúde", title_style))
         elements.append(
             Paragraph(
-                f"Periodo: Ultimos {period_label} | Gerado em {now.strftime('%d/%m/%Y as %H:%M')} | {colaborador['nome']}",
+                f"Período: Ultimos {period_label} | Gerado em {now.strftime('%d/%m/%Y as %H:%M')} | {colaborador.get('nome') or colaborador.get('name') or colaborador.get('email') or 'Usuario VitalFlow'}",
                 subtitle_style,
             )
         )
 
         elements.append(Paragraph("Resumo", h2_style))
-        elements.append(Paragraph(f"Total de analises no periodo: {total}", body_style))
+        elements.append(Paragraph(f"Total de análises no periodo: {total}", body_style))
         elements.append(Paragraph(f"V-Score medio: {avg_v}/100", body_style))
         elements.append(Spacer(1, 5 * mm))
 
-        elements.append(Paragraph("Distribuicao de Status", h2_style))
+        elements.append(Paragraph("Distribuição de Status", h2_style))
         dist_data = [
             ["Status", "Quantidade", "Percentual"],
             ["Verde (V-Score >= 80)", str(verde), f"{round(verde / total * 100, 1)}%" if total else "0%"],
@@ -431,7 +431,7 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
         elements.append(Spacer(1, 5 * mm))
 
         if top_areas:
-            elements.append(Paragraph("Areas Mais Afetadas", h2_style))
+            elements.append(Paragraph("Áreas Mais Afetadas", h2_style))
             area_data = [["Area", "Ocorrencias"]] + [[area, str(count)] for area, count in top_areas]
             area_table = Table(area_data, colWidths=[250, 100])
             area_table.setStyle(
@@ -452,7 +452,7 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
         elements.append(Spacer(1, 10 * mm))
         elements.append(
             Paragraph(
-                "Relatorio gerado pelo VitalFlow. Dados confidenciais do usuario.",
+                "Relatório gerado pelo VitalFlow. Dados confidenciais do usuário.",
                 ParagraphStyle("Footer", parent=styles["Normal"], fontSize=8, textColor=HexColor("#999999")),
             )
         )
