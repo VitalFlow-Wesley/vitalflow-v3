@@ -3,7 +3,7 @@ import uuid
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request, Response, HTTPException
+from fastapi import Response, APIRouter, Request, Response, HTTPException
 
 from database import db
 from auth_utils import (
@@ -27,6 +27,16 @@ from services.domain_service import check_corporate_domain
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.options("/auth/login")
+async def options_auth_login():
+    return Response(status_code=200)
+
+
+@router.options("/auth/me")
+async def options_auth_me():
+    return Response(status_code=200)
 
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str):
