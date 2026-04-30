@@ -45,6 +45,18 @@ server {
     }
 
     location /api/ {
+        if ($request_method = OPTIONS) {
+            add_header Access-Control-Allow-Origin "$http_origin" always;
+            add_header Access-Control-Allow-Credentials "true" always;
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "$http_access_control_request_headers" always;
+            add_header Access-Control-Max-Age 86400 always;
+            return 204;
+        }
+
+        add_header Access-Control-Allow-Origin "$http_origin" always;
+        add_header Access-Control-Allow-Credentials "true" always;
+
         proxy_pass http://127.0.0.1:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
