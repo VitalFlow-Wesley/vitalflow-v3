@@ -317,7 +317,9 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
         )
 
         if account_type == "personal":
-            if not is_premium and str(colaborador.get("email", "")).lower() != "wesley@vitalflow.ai.br":
+            allowed_emails = ["wesley@vitalflow.ai.br", "wesley310189@gmail.com"]
+
+            if not is_premium and str(colaborador.get("email", "")).lower() not in allowed_emails:
                 raise HTTPException(status_code=403, detail="Recurso exclusivo do Plano Premium.")
             if premium_expires_at:
                 try:
