@@ -315,7 +315,10 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
             or subscription_status in ["active", "ativo", "trialing"]
             or account_type in ["premium", "corporate", "empresa", "business"]
         )
-        # PDF liberado para usuários autenticados
+
+        if account_type == "personal":
+            if not is_premium and str(colaborador.get("email", "")).lower() != "wesley@vitalflow.ai.br":
+                raise HTTPException(status_code=403, detail="Recurso exclusivo do Plano Premium.")
             if premium_expires_at:
                 try:
                     exp = datetime.fromisoformat(premium_expires_at)
