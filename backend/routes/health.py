@@ -291,13 +291,34 @@ async def export_personal_pdf(request: Request, period: str = "7d"):
     try:
         colaborador = await get_current_colaborador(request)
 
-        is_premium = colaborador.get("is_premium", False)
         account_type = colaborador.get("account_type", "personal")
         premium_expires_at = colaborador.get("premium_expires_at")
 
+        plan_name = str(
+            colaborador.get("plan")
+            or colaborador.get("plano")
+            or colaborador.get("subscription_plan")
+            or colaborador.get("tipo_plano")
+            or ""
+        ).lower()
+
+        subscription_status = str(
+            colaborador.get("subscription_status")
+            or colaborador.get("status_assinatura")
+            or ""
+        ).lower()
+
+        is_premium = bool(
+            colaborador.get("is_premium")
+            or colaborador.get("premium")
+            or "premium" in plan_name
+            or subscription_status in ["active", "ativo", "trialing"]
+            or account_type in ["premium", "corporate", "empresa", "business"]
+        )
+
         if account_type == "personal":
             if not is_premium:
-                raise HTTPException(status_code=403, detail="Recurso exclusivo do plano Premium.")
+                raise HTTPException(status_code=403, detail="Recurso exclusivo do Plano Premium.")
             if premium_expires_at:
                 try:
                     exp = datetime.fromisoformat(premium_expires_at)
