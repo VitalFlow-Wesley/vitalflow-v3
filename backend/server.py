@@ -38,6 +38,7 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:3001",
+    "https://www.vitalflow.ia.br",
     "http://127.0.0.1:3001",
     "https://vitalflow-api-1hjc.onrender.com",
     "https://vitalflow.up.railway.app",
