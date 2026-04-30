@@ -1,7 +1,4 @@
-import {
-  useState,
-  useEffect,
-  useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
 import { motion } from "framer-motion";
@@ -587,6 +584,31 @@ const MeuRelatorio = () => {
       
 
       <div className="w-full max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-8">
+        {!canExportPdf && (
+          <div className="mb-6 border border-amber-500/30 bg-amber-500/10 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center shrink-0">
+                <Lock className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm sm:text-base font-semibold text-amber-400">
+                  Exportar PDF é exclusivo do Plano Premium
+                </p>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                  Faça upgrade para baixar seus relatórios completos em PDF.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate("/premium")}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-400 text-black text-sm font-bold hover:bg-amber-300 transition-all"
+            >
+              Fazer upgrade
+            </button>
+          </div>
+        )}
         <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 mb-7">
           <div>
             {refreshing && (
@@ -915,8 +937,7 @@ const MeuRelatorio = () => {
                         axisLine={false}
                         style={{ fontSize: "11px" }}
                         tickMargin={10}
-                      />}
-/>
+                      />
                       <ReferenceLine
                         y={avgReferenceValue}
                         stroke="rgba(255,255,255,0.16)"
@@ -1184,17 +1205,6 @@ const MeuRelatorio = () => {
               </p>
             </div>
 
-            {!canExportPdf && (
-              <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Lock className="w-5 h-5 text-amber-400" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-400">Exportar PDF é exclusivo do Plano Premium</p>
-                    <p className="text-xs text-slate-300">Faça upgrade para baixar seus relatórios completos</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </motion.div>
         )}
       </div>
