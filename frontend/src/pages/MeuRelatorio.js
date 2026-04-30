@@ -141,7 +141,7 @@ const ReportTrendTooltip = ({ active, payload, label }) => {
 const TrendDot = ({ cx, cy, payload }) => {
   if (cx == null || cy == null || !payload) return null;
 
-  const score = Number(payload.avg_v_score ?? 0);
+  const score = Number(payload?.avg_v_score ?? 0);
   const color = getScoreColor(score);
 
   return (
@@ -414,13 +414,13 @@ const MeuRelatorio = () => {
 
   const bestTrendPoint = orderedTrend.length
     ? orderedTrend.reduce((best, item) =>
-        Number(item.avg_v_score ?? 0) > Number(best.avg_v_score ?? 0) ? item : best
+        Number(item?.avg_v_score ?? 0) > Number(best?.avg_v_score ?? 0) ? item : best
       )
     : null;
 
   const worstTrendPoint = orderedTrend.length
     ? orderedTrend.reduce((worst, item) =>
-        Number(item.avg_v_score ?? 0) < Number(worst.avg_v_score ?? 0) ? item : worst
+        Number(item?.avg_v_score ?? 0) < Number(worst?.avg_v_score ?? 0) ? item : worst
       )
     : null;
 
@@ -550,9 +550,9 @@ const MeuRelatorio = () => {
       : "Seu período apresentou relativa estabilidade de resiliência, com sinais ainda concentrados em sistemas cardiovascular e cognitivo. A principal oportunidade está em manter a qualidade da recuperação, preservar o sono e acompanhar possíveis oscilações antes que se tornem persistentes. Continue monitorando para validar essa consistência no próximo período.";
 
   const benchmarkSummaryText =
-    report.avg_v_score >= 85
+    report?.avg_v_score >= 85
       ? "Seu V-Score está acima da média da faixa etária e já dentro da sua meta pessoal."
-      : report.avg_v_score >= 72.3
+      : report?.avg_v_score >= 72.3
       ? "Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal."
       : "Seu V-Score ainda está abaixo da média da faixa etária e da sua meta pessoal, indicando espaço relevante para evolução.";
 
@@ -711,7 +711,7 @@ const MeuRelatorio = () => {
                       </p>
                       <p className="text-white text-lg sm:text-[1.95rem] leading-tight font-semibold">
                         <span className={trendDirectionTone}>{executiveSummaryLead}</span>, com V-Score médio de{" "}
-                        <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em{" "}
+                        <span className="text-cyan-400">{report?.avg_v_score}</span> e maior impacto fisiológico em{" "}
                         <span className="text-white">{topAreasSummary}</span>.
                       </p>
                       <p className="text-sm text-slate-300 mt-5">
@@ -830,9 +830,9 @@ const MeuRelatorio = () => {
                 },
                 {
                   label: "V-Score Médio",
-                  value: report.avg_v_score,
+                  value: report?.avg_v_score,
                   icon: Activity,
-                  color: report.avg_v_score >= 80 ? "text-emerald-400" : report.avg_v_score >= 60 ? "text-amber-400" : "text-rose-400",
+                  color: report?.avg_v_score >= 80 ? "text-emerald-400" : report?.avg_v_score >= 60 ? "text-amber-400" : "text-rose-400",
                   helper: `${trendDelta > 0 ? "+" : ""}${trendDelta || 0} vs início do período`,
                 },
                 {
@@ -854,14 +854,14 @@ const MeuRelatorio = () => {
                   value: bestDayLabel,
                   icon: TrendingUp,
                   color: "text-emerald-400",
-                  helper: bestTrendPoint ? `V-Score ${bestTrendPoint.avg_v_score}` : "sem destaque",
+                  helper: bestTrendPoint ? `V-Score ${bestTrendPoint?.avg_v_score}` : "sem destaque",
                 },
                 {
                   label: "Pior Dia",
                   value: worstDayLabel,
                   icon: TrendingUp,
                   color: "text-rose-400",
-                  helper: worstTrendPoint ? `V-Score ${worstTrendPoint.avg_v_score}` : "sem destaque",
+                  helper: worstTrendPoint ? `V-Score ${worstTrendPoint?.avg_v_score}` : "sem destaque",
                 },
               ].map((kpi) => (
                 <motion.div
@@ -1099,13 +1099,13 @@ const MeuRelatorio = () => {
                   <div className="flex items-center justify-between text-sm border-b border-white/5 pb-3">
                     <span className="text-slate-300">Vs melhor leitura</span>
                     <span className="font-bold text-rose-300">
-                      {bestTrendPoint ? Number((report.avg_v_score - bestTrendPoint.avg_v_score).toFixed(1)) : 0}
+                      {bestTrendPoint ? Number((report?.avg_v_score - bestTrendPoint?.avg_v_score).toFixed(1)) : 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-300">Vs sua média pessoal</span>
                     <span className="font-bold text-amber-300">
-                      {report.avg_v_score ? `${Math.round(((report.avg_v_score - 83) / 83) * 100)}%` : "0%"}
+                      {report?.avg_v_score ? `${Math.round(((report?.avg_v_score - 83) / 83) * 100)}%` : "0%"}
                     </span>
                   </div>
                 </div>
