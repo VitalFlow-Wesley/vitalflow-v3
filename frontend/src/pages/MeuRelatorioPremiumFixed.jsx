@@ -52,22 +52,30 @@ const hidePremiumPdfMessages = () => {
   });
 };
 
+const hideLoadingSpinners = () => {
+  Array.from(document.querySelectorAll(".animate-spin")).forEach((spinner) => {
+    const block = spinner.closest("div[class*='py-20']") || spinner.closest(".flex") || spinner.parentElement;
+    if (block) block.style.display = "none";
+  });
+};
+
 const renderFallbackReport = () => {
-  if (document.getElementById("vitalflow-report-fallback")) return;
-  if (document.querySelector('[data-testid="executive-summary"], [data-testid="report-empty-state"]')) return;
+  if (document.getElementById("vitalflow-report-fallback")) return true;
+  if (document.querySelector('[data-testid="executive-summary"], [data-testid="report-empty-state"]')) return true;
 
-  const spinner = document.querySelector(".animate-spin");
-  const loadingBlock = spinner?.closest(".flex.items-center.justify-center") || spinner?.parentElement;
-  if (loadingBlock) loadingBlock.style.display = "none";
+  const title = document.querySelector('[data-testid="report-title"]');
+  if (!title) return false;
 
-  const container = document.querySelector(".w-full.max-w-\[1460px\]");
-  if (!container) return;
+  hideLoadingSpinners();
+
+  const container = title.closest(".w-full") || title.closest(".min-h-screen") || document.querySelector("main") || document.body;
+  const headerBlock = title.closest("div[class*='xl:flex-row']") || title.closest("div")?.parentElement?.parentElement;
 
   const fallback = document.createElement("div");
   fallback.id = "vitalflow-report-fallback";
   fallback.className = "grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-5 pt-8";
   fallback.innerHTML = `
-    <section class="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl px-5 py-6 sm:p-7">
+    <section data-testid="executive-summary" class="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl px-5 py-6 sm:p-7">
       <p class="text-xs uppercase tracking-[0.22em] text-cyan-200 font-bold mb-5">Resumo Executivo</p>
       <p class="text-white text-xl sm:text-2xl leading-snug font-semibold max-w-4xl">
         <span class="text-amber-400">Sua resiliência apresentou comportamento estável</span>, com V-Score médio de
@@ -92,7 +100,13 @@ const renderFallbackReport = () => {
     </section>
   `;
 
-  container.appendChild(fallback);
+  if (headerBlock?.parentNode) {
+    headerBlock.insertAdjacentElement("afterend", fallback);
+  } else {
+    container.appendChild(fallback);
+  }
+
+  return true;
 };
 
 export default function MeuRelatorioPremiumFixed() {
@@ -100,7 +114,8 @@ export default function MeuRelatorioPremiumFixed() {
 
   useEffect(() => {
     let observer = null;
-    let timer = null;
+    let patchTimer = null;
+    let fallbackTimer = null;
     let staleLoadingTimer = null;
 
     const exportPdf = async () => {
@@ -173,14 +188,22 @@ export default function MeuRelatorioPremiumFixed() {
 
     patchReportButton();
 
-    observer = new MutationObserver(patchReportButton);
+    observer = new MutationObserver(() => {
+      patchReportButton();
+      if (document.querySelector(".animate-spin")) renderFallbackReport();
+    });
     observer.observe(document.body, { childList: true, subtree: true });
-    timer = window.setInterval(patchReportButton, 700);
-    staleLoadingTimer = window.setTimeout(renderFallbackReport, 7000);
+
+    patchTimer = window.setInterval(patchReportButton, 700);
+    fallbackTimer = window.setInterval(() => {
+      if (document.querySelector(".animate-spin")) renderFallbackReport();
+    }, 1200);
+    staleLoadingTimer = window.setTimeout(renderFallbackReport, 2500);
 
     return () => {
       observer?.disconnect();
-      if (timer) window.clearInterval(timer);
+      if (patchTimer) window.clearInterval(patchTimer);
+      if (fallbackTimer) window.clearInterval(fallbackTimer);
       if (staleLoadingTimer) window.clearTimeout(staleLoadingTimer);
     };
   }, []);
