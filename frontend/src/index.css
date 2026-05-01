@@ -184,7 +184,7 @@ code {
         left: 2rem;
         right: auto;
         z-index: 6;
-        width: 660px;
+        width: 600px;
         max-width: calc(100% - 640px);
         margin: 0;
         min-height: 2rem;
@@ -219,7 +219,7 @@ code {
     }
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] p:first-child {
-        max-width: 430px;
+        max-width: 380px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
