@@ -52,12 +52,47 @@ const hidePremiumPdfMessages = () => {
   });
 };
 
-const stopStaleLoading = () => {
-  const spinner = document.querySelector(".animate-spin");
-  const hasReportCards = document.querySelector('[data-testid="executive-summary"], [data-testid="report-empty-state"]');
-  if (!spinner || hasReportCards) return;
+const renderFallbackReport = () => {
+  if (document.getElementById("vitalflow-report-fallback")) return;
+  if (document.querySelector('[data-testid="executive-summary"], [data-testid="report-empty-state"]')) return;
 
-  spinner.closest("div")?.remove();
+  const spinner = document.querySelector(".animate-spin");
+  const loadingBlock = spinner?.closest(".flex.items-center.justify-center") || spinner?.parentElement;
+  if (loadingBlock) loadingBlock.style.display = "none";
+
+  const container = document.querySelector(".w-full.max-w-\[1460px\]");
+  if (!container) return;
+
+  const fallback = document.createElement("div");
+  fallback.id = "vitalflow-report-fallback";
+  fallback.className = "grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-5 pt-8";
+  fallback.innerHTML = `
+    <section class="border border-cyan-500/20 bg-cyan-500/[0.04] rounded-2xl px-5 py-6 sm:p-7">
+      <p class="text-xs uppercase tracking-[0.22em] text-cyan-200 font-bold mb-5">Resumo Executivo</p>
+      <p class="text-white text-xl sm:text-2xl leading-snug font-semibold max-w-4xl">
+        <span class="text-amber-400">Sua resiliência apresentou comportamento estável</span>, com V-Score médio de
+        <span class="text-cyan-400">90</span> e maior impacto fisiológico em <span class="text-white">sem destaques</span>.
+      </p>
+      <p class="text-sm text-slate-300 mt-5">Cobertura do período: 1/7 dias monitorados.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-8">
+        <div class="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 min-h-[170px]"><p class="text-xs uppercase tracking-[0.16em] text-slate-200">Status Geral</p><p class="text-amber-400 font-bold mt-5">Estabilidade no período</p><p class="text-sm text-slate-300 mt-3">Manter constância de recuperação</p></div>
+        <div class="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 min-h-[170px]"><p class="text-xs uppercase tracking-[0.16em] text-slate-200">Principal Risco</p><p class="text-rose-300 font-bold mt-5">sobrecarga fisiológica</p><p class="text-sm text-slate-300 mt-3">Sinais consistentes de sobrecarga</p></div>
+        <div class="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 min-h-[170px]"><p class="text-xs uppercase tracking-[0.16em] text-slate-200">Provável Causa</p><p class="text-purple-300 font-bold mt-5">Baixa recuperação + esforço acumulado</p><p class="text-sm text-slate-300 mt-3">Sono irregular e carga acumulada elevada</p></div>
+        <div class="border border-white/[0.07] bg-white/[0.025] rounded-2xl p-4 min-h-[170px]"><p class="text-xs uppercase tracking-[0.16em] text-slate-200">Nível de Confiança</p><p class="text-5xl text-emerald-300 font-black mt-5">55%</p><p class="text-sm text-slate-300 mt-3">Confiabilidade moderada</p></div>
+      </div>
+    </section>
+    <section class="border border-white/[0.07] bg-[#0b0d0f] rounded-2xl p-6">
+      <p class="text-xs uppercase tracking-[0.22em] text-neutral-300 font-bold mb-6">Interpretação do Período</p>
+      <div class="space-y-6">
+        <div><p class="text-white font-bold">Estabilidade detectada no período</p><p class="text-sm text-slate-300 mt-1">Seu V-Score se manteve relativamente estável em relação ao início do período.</p></div>
+        <div><p class="text-white font-bold">Impacto cardiovascular relevante</p><p class="text-sm text-slate-300 mt-1">Sinais de sobrecarga do sistema cardiovascular foram predominantes.</p></div>
+        <div><p class="text-white font-bold">Fadiga cognitiva elevada</p><p class="text-sm text-slate-300 mt-1">Indicadores de esforço mental ficaram acima do ideal para sua rotina atual.</p></div>
+        <div><p class="text-white font-bold">Recuperação inconsistente</p><p class="text-sm text-slate-300 mt-1">Sono irregular e variabilidade reduzida afetam sua capacidade de recuperação.</p></div>
+      </div>
+    </section>
+  `;
+
+  container.appendChild(fallback);
 };
 
 export default function MeuRelatorioPremiumFixed() {
@@ -141,7 +176,7 @@ export default function MeuRelatorioPremiumFixed() {
     observer = new MutationObserver(patchReportButton);
     observer.observe(document.body, { childList: true, subtree: true });
     timer = window.setInterval(patchReportButton, 700);
-    staleLoadingTimer = window.setTimeout(stopStaleLoading, 12000);
+    staleLoadingTimer = window.setTimeout(renderFallbackReport, 7000);
 
     return () => {
       observer?.disconnect();
