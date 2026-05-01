@@ -216,13 +216,22 @@ async def get_plan(request: Request):
 async def upgrade_plan(request: Request):
     try:
         colaborador = await get_current_colaborador(request)
-        if colaborador.get("is_premium"):
-            return {"message": "Ja e Premium", "is_premium": True}
+        premium_fields = {
+            "is_premium": True,
+            "plan": "premium",
+            "subscription_status": "active",
+            "premium_expires_at": None,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
 
         await db.colaboradores.update_one(
             {"id": colaborador["id"]},
-            {"$set": {"is_premium": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": premium_fields}
         )
+
+        if colaborador.get("is_premium"):
+            return {"message": "Ja e Premium", "is_premium": True}
+
         return {"message": "Upgrade para Premium realizado!", "is_premium": True}
     except HTTPException:
         raise
