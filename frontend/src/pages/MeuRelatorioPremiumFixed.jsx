@@ -34,11 +34,9 @@ const hidePremiumPdfMessages = () => {
 };
 
 export default function MeuRelatorioPremiumFixed() {
-  const isPremiumRef = useRef(false);
   const isExportingRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
     let observer = null;
     let timer = null;
 
@@ -58,6 +56,10 @@ export default function MeuRelatorioPremiumFixed() {
         });
 
         if (!response.ok) {
+          if (response.status === 403) {
+            toast.error("Recurso exclusivo do Plano Premium.");
+            return;
+          }
           throw new Error(await response.text());
         }
 
@@ -80,8 +82,6 @@ export default function MeuRelatorioPremiumFixed() {
     };
 
     const patchReportButton = () => {
-      if (!isPremiumRef.current) return;
-
       hidePremiumPdfMessages();
 
       const button = document.querySelector('[data-testid="export-pdf-btn"]');
@@ -96,7 +96,6 @@ export default function MeuRelatorioPremiumFixed() {
       button.addEventListener(
         "click",
         (event) => {
-          if (!isPremiumRef.current) return;
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation?.();
@@ -106,33 +105,13 @@ export default function MeuRelatorioPremiumFixed() {
       );
     };
 
-    const loadPlan = async () => {
-      try {
-        const response = await fetch(`${API}/billing/plan`, {
-          method: "GET",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (!response.ok) return;
+    patchReportButton();
 
-        const plan = await response.json();
-        const planName = String(plan?.plan || "").toLowerCase();
-        const isPremium = Boolean(plan?.is_premium) || planName === "premium";
-        if (cancelled || !isPremium) return;
-
-        isPremiumRef.current = true;
-        patchReportButton();
-
-        observer = new MutationObserver(patchReportButton);
-        observer.observe(document.body, { childList: true, subtree: true });
-        timer = window.setInterval(patchReportButton, 1000);
-      } catch {}
-    };
-
-    loadPlan();
+    observer = new MutationObserver(patchReportButton);
+    observer.observe(document.body, { childList: true, subtree: true });
+    timer = window.setInterval(patchReportButton, 1000);
 
     return () => {
-      cancelled = true;
       observer?.disconnect();
       if (timer) window.clearInterval(timer);
     };
