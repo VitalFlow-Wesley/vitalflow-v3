@@ -5,7 +5,7 @@ import ProtectedRoute, { GestorRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import ConnectDevices from "./pages/ConnectDevices";
 import Profile from "./pages/Profile";
-import MeuRelatorioPremiumFixed from "./pages/MeuRelatorioPremiumFixed";
+import MeuRelatorioStable from "./pages/MeuRelatorioStable";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -37,7 +37,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/devices" element={<ConnectDevices />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/relatorio" element={<MeuRelatorioPremiumFixed />} />
+              <Route path="/relatorio" element={<MeuRelatorioStable />} />
               <Route path="/payment/success" element={<PaymentSuccess />} />
             </Route>
 
