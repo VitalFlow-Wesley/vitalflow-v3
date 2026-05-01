@@ -169,22 +169,22 @@ code {
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] {
         position: absolute;
-        top: 180px;
+        top: 205px;
         left: 3rem;
         right: auto;
-        z-index: 10;
-        width: 540px;
-        max-width: calc(100% - 560px);
+        z-index: 6;
+        width: 560px;
+        max-width: calc(100% - 600px);
         margin: 0;
-        min-height: 2.5rem;
-        padding: 0.3125rem 0.5rem;
-        border-radius: 0.75rem;
+        min-height: 2rem;
+        padding: 0.25rem 0.375rem;
+        border-radius: 0.625rem;
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
         justify-content: space-between !important;
         gap: 0.5rem;
-        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     }
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] > div:first-child {
@@ -194,19 +194,19 @@ code {
     }
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] > div:first-child > div:first-child {
-        width: 1.375rem;
-        height: 1.375rem;
+        width: 1.25rem;
+        height: 1.25rem;
         border-radius: 0.5rem;
         flex-shrink: 0;
     }
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] svg {
-        width: 0.875rem;
-        height: 0.875rem;
+        width: 0.75rem;
+        height: 0.75rem;
     }
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] p:first-child {
-        max-width: 340px;
+        max-width: 365px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -220,8 +220,8 @@ code {
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] button {
         width: auto;
-        min-width: 96px;
-        padding: 0.3125rem 0.625rem;
+        min-width: 94px;
+        padding: 0.25rem 0.625rem;
         border-radius: 0.5rem;
         font-size: 0.6875rem;
         line-height: 1rem;
