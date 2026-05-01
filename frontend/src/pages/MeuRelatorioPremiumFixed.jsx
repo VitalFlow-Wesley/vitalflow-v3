@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
+import axios from "axios";
 import { toast } from "sonner";
 import MeuRelatorio from "./MeuRelatorio";
+
+axios.defaults.timeout = 10000;
 
 const API = `${process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app"}/api`;
 
@@ -49,12 +52,21 @@ const hidePremiumPdfMessages = () => {
   });
 };
 
+const stopStaleLoading = () => {
+  const spinner = document.querySelector(".animate-spin");
+  const hasReportCards = document.querySelector('[data-testid="executive-summary"], [data-testid="report-empty-state"]');
+  if (!spinner || hasReportCards) return;
+
+  spinner.closest("div")?.remove();
+};
+
 export default function MeuRelatorioPremiumFixed() {
   const isExportingRef = useRef(false);
 
   useEffect(() => {
     let observer = null;
     let timer = null;
+    let staleLoadingTimer = null;
 
     const exportPdf = async () => {
       if (isExportingRef.current) return;
@@ -129,10 +141,12 @@ export default function MeuRelatorioPremiumFixed() {
     observer = new MutationObserver(patchReportButton);
     observer.observe(document.body, { childList: true, subtree: true });
     timer = window.setInterval(patchReportButton, 700);
+    staleLoadingTimer = window.setTimeout(stopStaleLoading, 12000);
 
     return () => {
       observer?.disconnect();
       if (timer) window.clearInterval(timer);
+      if (staleLoadingTimer) window.clearTimeout(staleLoadingTimer);
     };
   }, []);
 
