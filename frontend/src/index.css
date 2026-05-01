@@ -172,6 +172,31 @@ code {
     color: #ffffff;
 }
 
+#root .space-y-1.text-white::before {
+    content: "Teste Premium de 30 dias  •  Conecte seu wearable para ativar todos os recursos";
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    border-radius: 0.75rem;
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.13), rgba(245, 158, 11, 0.055));
+    color: #fbbf24;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1.2;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 640px) {
+    #root .space-y-1.text-white::before {
+        content: "Teste Premium de 30 dias";
+        font-size: 0.75rem;
+        min-height: 2.5rem;
+        padding: 0.65rem 0.85rem;
+    }
+}
+
 @media (min-width: 1280px) {
     #root .min-h-screen > div[class*="max-w-[1460px]"] {
         position: relative;
