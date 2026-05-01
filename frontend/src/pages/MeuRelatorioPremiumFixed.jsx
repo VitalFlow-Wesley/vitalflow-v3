@@ -4,18 +4,34 @@ import MeuRelatorio from "./MeuRelatorio";
 
 const API = `${process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app"}/api`;
 
+const findPdfButton = () =>
+  document.querySelector('[data-testid="export-pdf-btn"]') ||
+  Array.from(document.querySelectorAll("button")).find((button) => {
+    const text = button.textContent || "";
+    return text.includes("PDF Premium") || text.includes("Exportar PDF");
+  });
+
 const getActivePeriod = () => {
   const active = Array.from(document.querySelectorAll('[data-testid^="period-"]')).find((button) =>
     String(button.className || "").includes("bg-cyan-500")
   );
 
-  return active?.dataset?.testid?.replace("period-", "") || "7d";
+  if (active?.dataset?.testid) return active.dataset.testid.replace("period-", "");
+
+  const selected = Array.from(document.querySelectorAll("button")).find((button) =>
+    String(button.className || "").includes("bg-cyan-500")
+  );
+  const text = selected?.textContent || "";
+  if (text.includes("30")) return "30d";
+  if (text.includes("6 meses")) return "6m";
+  return "7d";
 };
 
 const hidePremiumPdfMessages = () => {
+  const pdfButton = findPdfButton();
+
   Array.from(document.querySelectorAll("div, p, span")).forEach((node) => {
-    if (node.closest('[data-testid="export-pdf-btn"]')) return;
-    if (node.querySelector?.('[data-testid="export-pdf-btn"]')) return;
+    if (pdfButton && (node === pdfButton || node.contains(pdfButton) || pdfButton.contains(node))) return;
 
     const text = (node.textContent || "").trim();
     if (!text.includes("Exportar PDF")) return;
@@ -27,7 +43,7 @@ const hidePremiumPdfMessages = () => {
     }
 
     const hasUpgradeButton = Boolean(node.querySelector?.("button"));
-    if (hasUpgradeButton) {
+    if (hasUpgradeButton && !text.includes("Seu teste Premium terminou")) {
       node.style.display = "none";
     }
   });
@@ -44,8 +60,7 @@ export default function MeuRelatorioPremiumFixed() {
       if (isExportingRef.current) return;
       isExportingRef.current = true;
 
-      const button = document.querySelector('[data-testid="export-pdf-btn"]');
-      const originalText = button?.textContent;
+      const button = findPdfButton();
       if (button) button.textContent = "Gerando...";
 
       try {
@@ -77,39 +92,43 @@ export default function MeuRelatorioPremiumFixed() {
         toast.error("Erro ao exportar PDF.");
       } finally {
         isExportingRef.current = false;
-        if (button) button.textContent = originalText || "Exportar PDF";
+        const currentButton = findPdfButton();
+        if (currentButton) currentButton.textContent = "Exportar PDF";
       }
     };
 
     const patchReportButton = () => {
+      const button = findPdfButton();
+
+      if (button) {
+        button.disabled = false;
+        button.className =
+          "flex items-center justify-center gap-3 px-6 py-3 rounded-2xl text-sm font-bold transition-all bg-cyan-500 hover:bg-cyan-400 text-black";
+        button.textContent = "Exportar PDF";
+
+        if (button.dataset.premiumFixed !== "true") {
+          button.dataset.premiumFixed = "true";
+          button.addEventListener(
+            "click",
+            (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              event.stopImmediatePropagation?.();
+              exportPdf();
+            },
+            true
+          );
+        }
+      }
+
       hidePremiumPdfMessages();
-
-      const button = document.querySelector('[data-testid="export-pdf-btn"]');
-      if (!button || button.dataset.premiumFixed === "true") return;
-
-      button.dataset.premiumFixed = "true";
-      button.disabled = false;
-      button.className =
-        "flex items-center justify-center gap-3 px-6 py-3 rounded-2xl text-sm font-bold transition-all bg-cyan-500 hover:bg-cyan-400 text-black";
-      button.textContent = "Exportar PDF";
-
-      button.addEventListener(
-        "click",
-        (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation?.();
-          exportPdf();
-        },
-        true
-      );
     };
 
     patchReportButton();
 
     observer = new MutationObserver(patchReportButton);
     observer.observe(document.body, { childList: true, subtree: true });
-    timer = window.setInterval(patchReportButton, 1000);
+    timer = window.setInterval(patchReportButton, 700);
 
     return () => {
       observer?.disconnect();
