@@ -1,7 +1,7 @@
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
-mongo_url = (os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "").strip()
+mongo_url = (os.getenv("MONGO_URI") or os.getenv("MONGO_URL") or "").strip()
 
 if mongo_url.startswith("MONGO_URL="):
     mongo_url = mongo_url.split("=", 1)[1].strip()
