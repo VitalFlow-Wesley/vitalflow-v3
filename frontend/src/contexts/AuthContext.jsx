@@ -26,12 +26,33 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ FIX: ref para evitar logout acidental durante falhas temporárias de rede
   const userRef = useRef(null);
   const failCountRef = useRef(0);
   const MAX_FAILS_BEFORE_LOGOUT = 3;
 
-  const normalizeUser = (data) => {
+  const fetchBillingPlan = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/billing/plan`, {
+        method: "GET",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
+
+  const normalizeUser = (data, billingPlan = null) => {
+    const billingPlanName = String(billingPlan?.plan || "").toLowerCase();
+    const rawPlan = String(data?.plan || data?.subscription_plan || "").toLowerCase();
+    const billingIsPremium = Boolean(billingPlan?.is_premium) || billingPlanName === "premium";
+    const resolvedPlan = billingIsPremium
+      ? "premium"
+      : rawPlan || (data?.is_premium ? "premium" : "free");
+
     return {
       ...data,
       id: data.id || data._id,
@@ -40,14 +61,13 @@ export function AuthProvider({ children }) {
 
       is_premium:
         Boolean(data?.is_premium) ||
-        String(data?.plan || "").toLowerCase() === "premium" ||
-        String(data?.subscription_plan || "").toLowerCase() === "premium",
+        billingIsPremium ||
+        resolvedPlan === "premium",
 
-      plan: String(
-        data?.plan ||
-          data?.subscription_plan ||
-          (data?.is_premium ? "premium" : "free")
-      ).toLowerCase(),
+      plan: resolvedPlan,
+
+      subscription_status:
+        data?.subscription_status || billingPlan?.subscription_status,
 
       is_b2b:
         Boolean(data?.is_b2b) ||
@@ -55,7 +75,6 @@ export function AuthProvider({ children }) {
     };
   };
 
-  // ✅ FIX: tenta usar o refresh_token antes de deslogar
   const tryRefreshToken = async () => {
     try {
       const res = await fetch(`${API_URL}/api/auth/refresh`, {
@@ -84,18 +103,17 @@ export function AuthProvider({ children }) {
 
       if (res.ok) {
         const data = await res.json();
-        const normalized = normalizeUser(data);
+        const billingPlan = await fetchBillingPlan();
+        const normalized = normalizeUser(data, billingPlan);
         userRef.current = normalized;
         setUser(normalized);
-        failCountRef.current = 0; // reseta contador de falhas
+        failCountRef.current = 0;
         return true;
       }
 
-      // ✅ FIX: se 401, tenta refresh antes de deslogar
       if (res.status === 401) {
         const refreshed = await tryRefreshToken();
         if (refreshed) {
-          // tenta buscar o usuário novamente após refresh
           const res2 = await fetch(`${API_URL}/api/auth/me`, {
             method: "GET",
             credentials: "include",
@@ -104,7 +122,8 @@ export function AuthProvider({ children }) {
 
           if (res2.ok) {
             const data2 = await res2.json();
-            const normalized = normalizeUser(data2);
+            const billingPlan = await fetchBillingPlan();
+            const normalized = normalizeUser(data2, billingPlan);
             userRef.current = normalized;
             setUser(normalized);
             failCountRef.current = 0;
@@ -112,16 +131,12 @@ export function AuthProvider({ children }) {
           }
         }
 
-        // ✅ FIX: só desloga após múltiplas falhas consecutivas, não na primeira
         failCountRef.current += 1;
         if (failCountRef.current >= MAX_FAILS_BEFORE_LOGOUT) {
           userRef.current = null;
           setUser(null);
           localStorage.removeItem("vf_token");
-        }
-        // se silent=true (chamado pelo refreshUser do polling), mantém o user atual
-        else if (silent && userRef.current) {
-          // não faz nada — mantém o usuário já logado na memória
+        } else if (silent && userRef.current) {
           return false;
         } else {
           setUser(null);
@@ -129,14 +144,12 @@ export function AuthProvider({ children }) {
         return false;
       }
 
-      // outros erros (500, rede, etc.) — em modo silent mantém o user atual
       if (silent && userRef.current) {
         return false;
       }
       setUser(null);
       return false;
     } catch {
-      // erro de rede — em modo silent NÃO desloga
       if (silent && userRef.current) {
         return false;
       }
@@ -167,7 +180,8 @@ export function AuthProvider({ children }) {
           localStorage.setItem("vf_token", data.access_token);
         }
 
-        const normalized = normalizeUser(data);
+        const billingPlan = await fetchBillingPlan();
+        const normalized = normalizeUser(data, billingPlan);
         userRef.current = normalized;
         failCountRef.current = 0;
         setUser(normalized);
@@ -177,10 +191,10 @@ export function AuthProvider({ children }) {
 
       return {
         success: false,
-        error: data.detail || "Credenciais inválidas",
+        error: data.detail || "Credenciais invalidas",
       };
     } catch {
-      return { success: false, error: "Erro de conexão" };
+      return { success: false, error: "Erro de conexao" };
     }
   };
 
@@ -196,7 +210,8 @@ export function AuthProvider({ children }) {
       const data = await res.json();
 
       if (res.ok) {
-        const normalized = normalizeUser(data);
+        const billingPlan = await fetchBillingPlan();
+        const normalized = normalizeUser(data, billingPlan);
         userRef.current = normalized;
         setUser(normalized);
         return { success: true, data: normalized };
@@ -207,7 +222,7 @@ export function AuthProvider({ children }) {
         error: data.detail || "Erro ao cadastrar",
       };
     } catch {
-      return { success: false, error: "Erro de conexão" };
+      return { success: false, error: "Erro de conexao" };
     }
   };
 
@@ -226,7 +241,6 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  // ✅ FIX: refreshUser em modo silencioso — não desloga em falhas temporárias
   const refreshUser = async () => {
     await fetchUser({ silent: true });
   };
