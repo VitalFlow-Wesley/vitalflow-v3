@@ -14,13 +14,21 @@ const getActivePeriod = () => {
 
 const hidePremiumPdfMessages = () => {
   Array.from(document.querySelectorAll("div, p, span")).forEach((node) => {
+    if (node.closest('[data-testid="export-pdf-btn"]')) return;
+    if (node.querySelector?.('[data-testid="export-pdf-btn"]')) return;
+
     const text = (node.textContent || "").trim();
     if (!text.includes("Exportar PDF")) return;
     if (!text.includes("Plano Premium")) return;
 
-    const card = node.closest(".border") || node;
-    if (card && card !== document.body) {
-      card.style.display = "none";
+    if (node.tagName === "P" || node.tagName === "SPAN") {
+      node.style.display = "none";
+      return;
+    }
+
+    const hasUpgradeButton = Boolean(node.querySelector?.("button"));
+    if (hasUpgradeButton) {
+      node.style.display = "none";
     }
   });
 };
