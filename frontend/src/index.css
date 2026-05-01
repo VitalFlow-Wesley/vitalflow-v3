@@ -167,6 +167,17 @@ code {
         position: relative;
     }
 
+    #root [data-testid="report-title"] {
+        white-space: nowrap;
+        font-size: 2.45rem !important;
+        line-height: 1.08 !important;
+        max-width: none;
+    }
+
+    #root [data-testid="period-filter"] {
+        margin-top: 5rem;
+    }
+
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] {
         position: absolute;
         top: 205px;
