@@ -169,13 +169,15 @@ code {
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] {
         position: absolute;
-        top: 154px;
-        right: 2rem;
+        top: 248px;
+        left: 0;
+        right: auto;
         z-index: 10;
-        width: 250px;
+        width: 540px;
+        max-width: calc(100% - 560px);
         margin: 0;
-        padding: 0.5rem;
-        border-radius: 0.875rem;
+        padding: 0.375rem 0.5rem;
+        border-radius: 0.75rem;
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
@@ -191,14 +193,19 @@ code {
     }
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] > div:first-child > div:first-child {
-        width: 1.75rem;
-        height: 1.75rem;
-        border-radius: 0.625rem;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 0.5rem;
         flex-shrink: 0;
     }
 
+    #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] svg {
+        width: 0.875rem;
+        height: 0.875rem;
+    }
+
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] p:first-child {
-        max-width: 118px;
+        max-width: 340px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -212,9 +219,9 @@ code {
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] button {
         width: auto;
-        min-width: 82px;
-        padding: 0.5rem 0.625rem;
-        border-radius: 0.625rem;
+        min-width: 96px;
+        padding: 0.375rem 0.625rem;
+        border-radius: 0.5rem;
         font-size: 0.6875rem;
         line-height: 1rem;
     }
