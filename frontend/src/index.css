@@ -161,3 +161,50 @@ code {
         transparent 2px
     );
 }
+
+@media (min-width: 1280px) {
+    #root .min-h-screen > div[class*="max-w-[1460px]"] {
+        position: relative;
+    }
+
+    #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] {
+        position: absolute;
+        top: 154px;
+        right: 2rem;
+        z-index: 10;
+        width: 250px;
+        margin: 0;
+        padding: 0.625rem;
+        border-radius: 0.875rem;
+        align-items: stretch;
+        gap: 0.625rem;
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] > div:first-child {
+        align-items: center;
+        gap: 0.625rem;
+    }
+
+    #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] > div:first-child > div:first-child {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.75rem;
+    }
+
+    #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] p:first-child {
+        font-size: 0.75rem;
+        line-height: 1.15rem;
+    }
+
+    #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] p:nth-child(2) {
+        display: none;
+    }
+
+    #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] button {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.75rem;
+        font-size: 0.75rem;
+    }
+}
