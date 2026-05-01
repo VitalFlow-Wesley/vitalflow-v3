@@ -281,3 +281,41 @@ code {
         line-height: 1rem;
     }
 }
+
+#root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] {
+    display: none !important;
+}
+
+#root [data-testid="export-pdf-btn"] ~ div {
+    display: block !important;
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0.15rem 0 0 !important;
+    box-shadow: none !important;
+    text-align: center;
+}
+
+#root [data-testid="export-pdf-btn"] ~ div > div {
+    justify-content: center !important;
+}
+
+#root [data-testid="export-pdf-btn"] ~ div svg,
+#root [data-testid="export-pdf-btn"] ~ div button {
+    display: none !important;
+}
+
+#root [data-testid="export-pdf-btn"] ~ div span {
+    display: block !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    font-size: 0 !important;
+}
+
+#root [data-testid="export-pdf-btn"] ~ div span::after {
+    content: "Exportar PDF é exclusivo do Plano Premium";
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.15;
+    color: rgba(251, 191, 36, 0.78);
+}
