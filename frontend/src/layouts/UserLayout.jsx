@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
+import PremiumTrialBanner from "../components/PremiumTrialBanner";
 import UserSidebar from "../components/UserSidebar";
 
 const STORAGE_KEY = "vitalflow:user-sidebar-collapsed";
@@ -26,6 +27,7 @@ export default function UserLayout() {
       <div className="mx-auto flex max-w-[1540px]">
         <UserSidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
         <main className="min-w-0 flex-1 px-4 py-4 lg:px-6">
+          <PremiumTrialBanner />
           <Outlet />
         </main>
       </div>
