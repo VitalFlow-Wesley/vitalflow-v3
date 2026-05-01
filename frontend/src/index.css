@@ -180,7 +180,7 @@ code {
 
     #root .min-h-screen > div[class*="max-w-[1460px]"] > div[class*="border-amber-500/30"][class*="bg-amber-500/10"] {
         position: absolute;
-        top: 140px;
+        top: 150px;
         left: 2rem;
         right: auto;
         z-index: 6;
