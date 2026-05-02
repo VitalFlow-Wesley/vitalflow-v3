@@ -58,13 +58,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- IMPORTAÇÃO DAS ROTAS ---
+# --- IMPORTACAO DAS ROTAS ---
 from routes.auth import router as auth_router
 from routes.analysis import router as analysis_router
 from routes.wearables import router as wearables_router
 from routes.dashboard import router as dashboard_router
 from routes.smartwatch import router as smartwatch_router
 from routes.gamification import router as gamification_router
+from routes.pdf_report import router as pdf_report_router
 from routes.health import router as health_router
 from routes.payments import router as payments_router
 
@@ -75,6 +76,7 @@ api_router.include_router(wearables_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(smartwatch_router)
 api_router.include_router(gamification_router)
+api_router.include_router(pdf_report_router)
 api_router.include_router(health_router)
 api_router.include_router(payments_router)
 
@@ -86,13 +88,13 @@ async def root():
     return {"status": "ok", "message": "VitalFlow online"}
 
 
-# --- CAMINHO DOS ARQUIVOS ESTÁTICOS ---
+# --- CAMINHO DOS ARQUIVOS ESTATICOS ---
 static_path = Path(__file__).parent / "static"
 
 if (static_path / "static").exists():
     app.mount(
         "/static",
-        StaticFiles(directory=str(static_path / "static")),
+        StaticFiles(directory=str(static_path / "static"),
         name="static",
     )
 
