@@ -187,7 +187,7 @@ export default function MeuRelatorioStable() {
       label: "Nível de Confiança",
       title: `${report.confidence}%`,
       helper: "Confiabilidade moderada",
-      tone: "text-emerald-300 text-xl",
+      tone: "text-emerald-300",
     },
   ];
 
@@ -201,47 +201,49 @@ export default function MeuRelatorioStable() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <div className="w-full max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-5 mb-5">
+      <div className="w-full mx-auto px-4 sm:px-5 lg:px-6 py-3" style={{ maxWidth: 1540 }}>
+        <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] items-start gap-4" style={{ marginBottom: 14 }}>
           <div className="min-w-0">
-            <h1 className="max-w-[760px] text-2xl sm:text-[30px] xl:text-[34px] leading-[1.08] font-black tracking-tight text-white">
+            <h1 className="font-black tracking-tight text-white" style={{ maxWidth: 760, fontSize: "clamp(25px, 2.15vw, 34px)", lineHeight: 1.04 }}>
               Relatório Executivo de Resiliência
             </h1>
-            <p className="mt-1.5 text-base text-slate-300">Visão consolidada da sua saúde e performance</p>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-300">
+            <p className="text-slate-300" style={{ marginTop: 6, fontSize: 16, lineHeight: 1.25 }}>Visão consolidada da sua saúde e performance</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-300" style={{ marginTop: 10, fontSize: 12, lineHeight: 1.2 }}>
               <span className="inline-flex items-center gap-2">
-                <Calendar className="h-4 w-4" /> Período analisado: {periodLabel}
+                <Calendar className="h-3.5 w-3.5" /> Período analisado: {periodLabel}
               </span>
               <span className="hidden sm:inline text-neutral-700">|</span>
               <span>Gerado em: {generatedAt}</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-start gap-3 lg:pt-1">
-            <div className="flex rounded-xl border border-white/[0.08] bg-[#0b0d0f] p-1">
+          <div className="flex flex-col sm:flex-row items-start gap-3 lg:pt-0">
+            <div className="flex rounded-xl border border-white/[0.08] bg-[#0b0d0f] p-1" style={{ height: 48 }}>
               {PERIODS.map((item) => (
                 <button
                   key={item.value}
                   onClick={() => setPeriod(item.value)}
-                  className={`min-w-[88px] rounded-lg px-3 py-2 text-xs font-bold transition ${
+                  className={`rounded-lg font-bold transition ${
                     period === item.value ? "bg-cyan-500 text-black" : "text-slate-300 hover:text-white"
                   }`}
+                  style={{ minWidth: 92, padding: "0 12px", fontSize: 12 }}
                 >
                   {item.label}
                 </button>
               ))}
             </div>
-            <div className="flex flex-col items-center gap-1.5">
+            <div className="flex flex-col items-center gap-1">
               <button
                 onClick={exportPdf}
                 disabled={exporting}
-                className="flex min-w-[154px] items-center justify-center gap-2 rounded-xl bg-cyan-500 px-5 py-2.5 text-xs font-black text-black hover:bg-cyan-400 disabled:opacity-60"
+                className="flex items-center justify-center gap-2 rounded-xl bg-cyan-500 font-black text-black hover:bg-cyan-400 disabled:opacity-60"
+                style={{ minWidth: 158, height: 48, padding: "0 18px", fontSize: 12 }}
               >
                 <Download className="h-4 w-4" />
                 {exporting ? "Gerando..." : "Exportar PDF"}
               </button>
               {showPdfPremiumNote && (
-                <p className="max-w-[170px] text-center text-[10px] font-bold leading-tight text-amber-300">
+                <p className="text-center font-bold leading-tight text-amber-300" style={{ maxWidth: 178, fontSize: 10 }}>
                   Exportar PDF é exclusivo do Plano Premium
                 </p>
               )}
@@ -249,34 +251,38 @@ export default function MeuRelatorioStable() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 xl:grid-cols-[2fr_0.9fr] gap-3.5">
-          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.035] p-4">
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.24em] text-cyan-200">Resumo Executivo</p>
-            <p className="max-w-5xl text-[15px] sm:text-base font-semibold leading-snug text-white">
-              <span className="text-amber-300">Sua resiliência apresentou comportamento estável</span>, com V-Score médio de{" "}
-              <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em sem destaques.
-            </p>
-            <p className="mt-2.5 text-xs text-slate-300">Cobertura do período: {report.coverage}/{activePeriod.days} dias monitorados.</p>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-              {summaryCards.map((card) => {
-                const Icon = card.icon;
-                return (
-                  <div key={card.label} className="min-h-[112px] rounded-xl border border-white/[0.08] bg-white/[0.025] p-3">
-                    <div className="flex items-center gap-2 text-slate-200">
-                      <Icon className={`h-3.5 w-3.5 ${card.tone}`} />
-                      <p className="text-[9px] font-bold uppercase tracking-[0.16em]">{card.label}</p>
+        <section className="grid grid-cols-1 xl:grid-cols-[2.12fr_0.9fr] gap-3">
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.035]" style={{ padding: 16 }}>
+            <p className="font-bold uppercase text-cyan-200" style={{ marginBottom: 10, fontSize: 11, letterSpacing: "0.22em" }}>Resumo Executivo</p>
+            <div className="grid grid-cols-1 2xl:grid-cols-[1fr_1.45fr] gap-4 items-start">
+              <div>
+                <p className="font-semibold text-white" style={{ fontSize: 15, lineHeight: 1.45 }}>
+                  <span className="text-amber-300">Sua resiliência apresentou comportamento estável</span>, com V-Score médio de{" "}
+                  <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em sem destaques.
+                </p>
+                <p className="text-slate-300" style={{ marginTop: 10, fontSize: 12 }}>Cobertura do período: {report.coverage}/{activePeriod.days} dias monitorados.</p>
+              </div>
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5">
+                {summaryCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div key={card.label} className="rounded-lg border border-white/[0.08] bg-white/[0.025]" style={{ minHeight: 112, padding: 12 }}>
+                      <div className="flex items-center gap-2 text-slate-200">
+                        <Icon className={`h-3.5 w-3.5 ${card.tone}`} />
+                        <p className="font-bold uppercase" style={{ fontSize: 9, letterSpacing: "0.14em", lineHeight: 1.2 }}>{card.label}</p>
+                      </div>
+                      <p className={`font-black leading-tight ${card.tone}`} style={{ marginTop: 12, fontSize: card.label === "Nível de Confiança" ? 27 : 12 }}>{card.title}</p>
+                      <p className="leading-relaxed text-slate-300" style={{ marginTop: 8, fontSize: 11 }}>{card.helper}</p>
                     </div>
-                    <p className={`mt-3 text-[13px] font-black leading-tight ${card.tone}`}>{card.title}</p>
-                    <p className="mt-2 text-[11px] leading-relaxed text-slate-300">{card.helper}</p>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f] p-4">
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.24em] text-neutral-300">Interpretação do Período</p>
-            <div className="space-y-3.5">
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 14, fontSize: 11, letterSpacing: "0.22em" }}>Interpretação do Período</p>
+            <div className="space-y-3">
               {[
                 [TrendingUp, "Estabilidade detectada no período", "Seu V-Score se manteve relativamente estável em relação ao início do período.", "text-cyan-300", "bg-cyan-500/10"],
                 [HeartPulse, "Impacto cardiovascular relevante", "Sinais de sobrecarga do sistema cardiovascular foram predominantes.", "text-rose-300", "bg-rose-500/10"],
@@ -284,12 +290,12 @@ export default function MeuRelatorioStable() {
                 [Moon, "Recuperação inconsistente", "Sono irregular e variabilidade reduzida afetam sua capacidade de recuperação.", "text-emerald-300", "bg-emerald-500/10"],
               ].map(([Icon, title, body, tone, bg]) => (
                 <div key={title} className="flex gap-3">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.07] ${bg} ${tone}`}>
+                  <div className={`flex shrink-0 items-center justify-center rounded-lg border border-white/[0.07] ${bg} ${tone}`} style={{ width: 36, height: 36 }}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-[13px] font-black text-white">{title}</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{body}</p>
+                    <p className="font-black text-white" style={{ fontSize: 13, lineHeight: 1.25 }}>{title}</p>
+                    <p className="leading-relaxed text-slate-300" style={{ marginTop: 3, fontSize: 11 }}>{body}</p>
                   </div>
                 </div>
               ))}
@@ -297,53 +303,53 @@ export default function MeuRelatorioStable() {
           </div>
         </section>
 
-        <section className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3" style={{ marginTop: 12 }}>
           {metrics.map((metric) => {
             const Icon = metric.icon;
             return (
-              <div key={metric.label} className="rounded-xl border border-white/[0.08] bg-[#0b0d0f] p-4">
+              <div key={metric.label} className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16, minHeight: 118 }}>
                 <div className="flex items-center gap-2.5">
                   <Icon className="h-4 w-4 text-cyan-300" />
-                  <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-slate-300">{metric.label}</p>
+                  <p className="font-bold uppercase text-slate-300" style={{ fontSize: 10, letterSpacing: "0.16em" }}>{metric.label}</p>
                 </div>
-                <p className="mt-4 text-2xl font-black text-white">{metric.value}</p>
-                <p className="mt-1.5 text-xs text-slate-300">{metric.helper}</p>
+                <p className="font-black text-white" style={{ marginTop: 16, fontSize: 28, lineHeight: 1 }}>{metric.value}</p>
+                <p className="text-slate-300" style={{ marginTop: 8, fontSize: 12, lineHeight: 1.3 }}>{metric.helper}</p>
               </div>
             );
           })}
         </section>
 
-        <section className="mt-3.5 grid grid-cols-1 xl:grid-cols-[1.25fr_0.82fr_0.92fr] gap-3.5 pb-8">
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f] p-4">
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-300">Evolução do V-Score</p>
-            <div className="flex h-36 items-end gap-3 border-b border-white/10 pb-3">
+        <section className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.82fr_0.92fr] gap-3 pb-8" style={{ marginTop: 12 }}>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 14, fontSize: 11, letterSpacing: "0.2em" }}>Evolução do V-Score</p>
+            <div className="flex items-end gap-3 border-b border-white/10" style={{ height: 136, paddingBottom: 12 }}>
               {trend.map((value, index) => (
                 <div key={`${value}-${index}`} className="flex flex-1 flex-col items-center gap-2">
-                  <div className="w-full rounded-t-md bg-cyan-500/80" style={{ height: `${Math.max((value / maxTrend) * 105, 12)}px` }} />
+                  <div className="w-full rounded-t-md bg-cyan-500/80" style={{ height: `${Math.max((value / maxTrend) * 100, 12)}px` }} />
                   <span className="text-xs font-bold text-slate-300">{value}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f] p-4">
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-300">Distribuição do Período</p>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 14, fontSize: 11, letterSpacing: "0.2em" }}>Distribuição do Período</p>
             <div className="space-y-3.5">
               <div><p className="text-sm font-black text-emerald-300">{report.distribution.stable}% Estável</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-emerald-400" style={{ width: `${report.distribution.stable}%` }} /></div></div>
               <div><p className="text-sm font-black text-amber-300">{report.distribution.attention}% Atenção</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-amber-400" style={{ width: `${report.distribution.attention}%` }} /></div></div>
               <div><p className="text-sm font-black text-rose-300">{report.distribution.critical}% Crítico</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-rose-400" style={{ width: `${report.distribution.critical}%` }} /></div></div>
             </div>
           </div>
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f] p-4">
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-300">Comparativo de Performance</p>
-            <div className="grid grid-cols-3 items-end gap-4 h-36 border-b border-white/10 pb-4">
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 14, fontSize: 11, letterSpacing: "0.2em" }}>Comparativo de Performance</p>
+            <div className="grid grid-cols-3 items-end gap-4 border-b border-white/10" style={{ height: 136, paddingBottom: 14 }}>
               {[report.avg_v_score, 72.3, 85.1].map((value, index) => (
                 <div key={index} className="flex flex-col items-center gap-2">
                   <span className="text-xs font-bold text-white">{value}</span>
-                  <div className={`w-full rounded-t-md ${index === 0 ? "bg-cyan-500" : index === 1 ? "bg-slate-400" : "bg-emerald-400"}`} style={{ height: `${value * 0.95}px` }} />
+                  <div className={`w-full rounded-t-md ${index === 0 ? "bg-cyan-500" : index === 1 ? "bg-slate-400" : "bg-emerald-400"}`} style={{ height: `${value * 0.9}px` }} />
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-slate-300">Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal.</p>
+            <p className="text-slate-300" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.35 }}>Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal.</p>
           </div>
         </section>
       </div>
