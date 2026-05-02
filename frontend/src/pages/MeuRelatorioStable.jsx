@@ -5,7 +5,6 @@ import {
   BarChart3,
   Brain,
   Calendar,
-  Crown,
   Download,
   HeartPulse,
   Moon,
@@ -62,6 +61,7 @@ export default function MeuRelatorioStable() {
 
   const activePeriod = PERIODS.find((item) => item.value === period) || PERIODS[0];
   const premium = isPremiumPlan(plan);
+  const showPdfPremiumNote = Boolean(plan && !premium);
 
   const generatedAt = useMemo(
     () =>
@@ -202,23 +202,6 @@ export default function MeuRelatorioStable() {
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10 py-6 sm:py-8">
-        {!premium && (
-          <div className="mb-10 flex items-center justify-between gap-5 rounded-2xl border border-amber-500/35 bg-amber-500/[0.08] px-6 py-5 shadow-lg shadow-black/25">
-            <div className="flex items-center gap-5 min-w-0">
-              <div className="hidden sm:flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/10 text-amber-300">
-                <Crown className="h-7 w-7" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg font-black text-amber-300">Seu teste Premium terminou</p>
-                <p className="mt-1 text-sm sm:text-base text-slate-200">Assine o Plano Premium para continuar com PDF, relatorios completos e recursos avancados.</p>
-              </div>
-            </div>
-            <button className="shrink-0 rounded-2xl bg-amber-400 px-7 py-3 text-sm font-black text-black hover:bg-amber-300">
-              Fazer upgrade
-            </button>
-          </div>
-        )}
-
         <section className="grid grid-cols-1 xl:grid-cols-[1fr_auto] items-start gap-8 mb-12">
           <div>
             <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white">Relatório Executivo de Resiliência</h1>
@@ -253,7 +236,7 @@ export default function MeuRelatorioStable() {
                 <Download className="h-4 w-4" />
                 {exporting ? "Gerando..." : "Exportar PDF"}
               </button>
-              {!premium && <p className="max-w-[210px] text-center text-xs font-bold text-amber-300">Exportar PDF é exclusivo do Plano Premium</p>}
+              {showPdfPremiumNote && <p className="max-w-[210px] text-center text-xs font-bold text-amber-300">Exportar PDF é exclusivo do Plano Premium</p>}
             </div>
           </div>
         </section>
