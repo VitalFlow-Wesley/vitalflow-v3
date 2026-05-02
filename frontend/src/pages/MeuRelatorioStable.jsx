@@ -11,6 +11,7 @@ import {
   Shield,
   Sparkles,
   Target,
+  TrendingDown,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -52,6 +53,21 @@ const formatDate = (date) =>
     month: "2-digit",
     year: "numeric",
   });
+
+function SectionTitle({ children }) {
+  return <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 12, fontSize: 11, letterSpacing: "0.2em" }}>{children}</p>;
+}
+
+function MiniSparkline({ tone = "emerald" }) {
+  const color = tone === "rose" ? "bg-rose-400" : "bg-emerald-400";
+  return (
+    <div className="flex h-7 items-end gap-1 opacity-80">
+      {[30, 42, 34, 48, 39, 44, 36, 51].map((height, index) => (
+        <span key={index} className={`w-3 rounded-full ${color}`} style={{ height: `${height}%` }} />
+      ))}
+    </div>
+  );
+}
 
 export default function MeuRelatorioStable() {
   const [period, setPeriod] = useState("7d");
@@ -159,44 +175,22 @@ export default function MeuRelatorioStable() {
 
   const trend = report.trend.length ? report.trend : fallbackReport.trend;
   const maxTrend = Math.max(...trend, 100);
+  const coveragePercent = Math.round((report.coverage / Math.max(activePeriod.days, 1)) * 100);
 
   const summaryCards = [
-    {
-      icon: Activity,
-      label: "Status Geral",
-      title: "Estabilidade no período",
-      helper: "Manter constância de recuperação",
-      tone: "text-amber-300",
-    },
-    {
-      icon: HeartPulse,
-      label: "Principal Risco",
-      title: "sobrecarga fisiológica",
-      helper: "Sinais consistentes de sobrecarga",
-      tone: "text-rose-300",
-    },
-    {
-      icon: Sparkles,
-      label: "Provável Causa",
-      title: "Baixa recuperação + esforço acumulado",
-      helper: "Sono irregular e carga acumulada elevada",
-      tone: "text-purple-300",
-    },
-    {
-      icon: Shield,
-      label: "Nível de Confiança",
-      title: `${report.confidence}%`,
-      helper: "Confiabilidade moderada",
-      tone: "text-emerald-300",
-    },
+    { icon: Activity, label: "Status Geral", title: "Estabilidade", helper: "Manter constância", tone: "text-amber-300" },
+    { icon: HeartPulse, label: "Principal Risco", title: "sobrecarga cardiovascular", helper: "Sinais consistentes", tone: "text-rose-300" },
+    { icon: Sparkles, label: "Provável Causa", title: "Baixa recuperação", helper: "Esforço acumulado", tone: "text-purple-300" },
+    { icon: Shield, label: "Nível de Confiança", title: `${report.confidence}%`, helper: "Confiabilidade moderada", tone: "text-emerald-300" },
   ];
 
   const metrics = [
-    { icon: BarChart3, label: "Leituras", value: report.total_analyses, helper: "base biométrica analisada" },
-    { icon: Activity, label: "V-Score", value: report.avg_v_score, helper: "faixa moderada de resiliência" },
-    { icon: Target, label: "Cobertura", value: `${report.coverage}/${activePeriod.days}`, helper: "dias monitorados" },
-    { icon: TrendingUp, label: "Melhor Dia", value: report.best_day, helper: "pico de recuperação" },
-    { icon: Zap, label: "Pior Dia", value: report.worst_day, helper: "maior queda" },
+    { icon: Shield, label: "Confiabilidade", value: `${report.confidence}%`, helper: "Qualidade dos dados", tone: "text-emerald-300" },
+    { icon: Activity, label: "V-Score Médio", value: report.avg_v_score, helper: "Faixa moderada", tone: "text-amber-300" },
+    { icon: Target, label: "Cobertura", value: `${coveragePercent}%`, helper: `${report.coverage} de ${activePeriod.days} dias válidos`, tone: "text-purple-300" },
+    { icon: Calendar, label: "Dias Monitorados", value: report.coverage, helper: "Base de tendência", tone: "text-purple-300" },
+    { icon: TrendingUp, label: "Melhor Dia", value: report.best_day, helper: "Pico de recuperação", tone: "text-emerald-300" },
+    { icon: Zap, label: "Pior Dia", value: report.worst_day, helper: "Maior queda", tone: "text-rose-300" },
   ];
 
   return (
@@ -251,28 +245,28 @@ export default function MeuRelatorioStable() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 xl:grid-cols-[2.12fr_0.9fr] gap-3">
-          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.035]" style={{ padding: 16 }}>
-            <p className="font-bold uppercase text-cyan-200" style={{ marginBottom: 10, fontSize: 11, letterSpacing: "0.22em" }}>Resumo Executivo</p>
+        <section className="grid grid-cols-1 xl:grid-cols-[2.12fr_0.9fr] items-start gap-3">
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.035]" style={{ padding: 14 }}>
             <div className="grid grid-cols-1 2xl:grid-cols-[1fr_1.45fr] gap-4 items-start">
               <div>
-                <p className="font-semibold text-white" style={{ fontSize: 15, lineHeight: 1.45 }}>
+                <p className="font-bold uppercase text-cyan-200" style={{ marginBottom: 10, fontSize: 11, letterSpacing: "0.22em" }}>Resumo Executivo</p>
+                <p className="font-semibold text-white" style={{ fontSize: 14, lineHeight: 1.45 }}>
                   <span className="text-amber-300">Sua resiliência apresentou comportamento estável</span>, com V-Score médio de{" "}
                   <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em sem destaques.
                 </p>
-                <p className="text-slate-300" style={{ marginTop: 10, fontSize: 12 }}>Cobertura do período: {report.coverage}/{activePeriod.days} dias monitorados.</p>
+                <p className="text-slate-300" style={{ marginTop: 9, fontSize: 12 }}>Cobertura do período: {report.coverage}/{activePeriod.days} dias monitorados.</p>
               </div>
               <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5">
                 {summaryCards.map((card) => {
                   const Icon = card.icon;
                   return (
-                    <div key={card.label} className="rounded-lg border border-white/[0.08] bg-white/[0.025]" style={{ minHeight: 112, padding: 12 }}>
+                    <div key={card.label} className="rounded-lg border border-white/[0.08] bg-white/[0.025]" style={{ minHeight: 92, padding: 10 }}>
                       <div className="flex items-center gap-2 text-slate-200">
                         <Icon className={`h-3.5 w-3.5 ${card.tone}`} />
-                        <p className="font-bold uppercase" style={{ fontSize: 9, letterSpacing: "0.14em", lineHeight: 1.2 }}>{card.label}</p>
+                        <p className="font-bold uppercase" style={{ fontSize: 9, letterSpacing: "0.13em", lineHeight: 1.2 }}>{card.label}</p>
                       </div>
-                      <p className={`font-black leading-tight ${card.tone}`} style={{ marginTop: 12, fontSize: card.label === "Nível de Confiança" ? 27 : 12 }}>{card.title}</p>
-                      <p className="leading-relaxed text-slate-300" style={{ marginTop: 8, fontSize: 11 }}>{card.helper}</p>
+                      <p className={`font-black leading-tight ${card.tone}`} style={{ marginTop: 9, fontSize: card.label === "Nível de Confiança" ? 25 : 12 }}>{card.title}</p>
+                      <p className="leading-relaxed text-slate-300" style={{ marginTop: 6, fontSize: 10.5 }}>{card.helper}</p>
                     </div>
                   );
                 })}
@@ -280,8 +274,8 @@ export default function MeuRelatorioStable() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
-            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 14, fontSize: 11, letterSpacing: "0.22em" }}>Interpretação do Período</p>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 14 }}>
+            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 12, fontSize: 11, letterSpacing: "0.22em" }}>Interpretação do Período</p>
             <div className="space-y-3">
               {[
                 [TrendingUp, "Estabilidade detectada no período", "Seu V-Score se manteve relativamente estável em relação ao início do período.", "text-cyan-300", "bg-cyan-500/10"],
@@ -290,12 +284,12 @@ export default function MeuRelatorioStable() {
                 [Moon, "Recuperação inconsistente", "Sono irregular e variabilidade reduzida afetam sua capacidade de recuperação.", "text-emerald-300", "bg-emerald-500/10"],
               ].map(([Icon, title, body, tone, bg]) => (
                 <div key={title} className="flex gap-3">
-                  <div className={`flex shrink-0 items-center justify-center rounded-lg border border-white/[0.07] ${bg} ${tone}`} style={{ width: 36, height: 36 }}>
+                  <div className={`flex shrink-0 items-center justify-center rounded-lg border border-white/[0.07] ${bg} ${tone}`} style={{ width: 34, height: 34 }}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-black text-white" style={{ fontSize: 13, lineHeight: 1.25 }}>{title}</p>
-                    <p className="leading-relaxed text-slate-300" style={{ marginTop: 3, fontSize: 11 }}>{body}</p>
+                    <p className="font-black text-white" style={{ fontSize: 12.5, lineHeight: 1.2 }}>{title}</p>
+                    <p className="leading-relaxed text-slate-300" style={{ marginTop: 3, fontSize: 10.5 }}>{body}</p>
                   </div>
                 </div>
               ))}
@@ -303,53 +297,128 @@ export default function MeuRelatorioStable() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3" style={{ marginTop: 12 }}>
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3" style={{ marginTop: 12 }}>
           {metrics.map((metric) => {
             const Icon = metric.icon;
             return (
-              <div key={metric.label} className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16, minHeight: 118 }}>
+              <div key={metric.label} className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 14, minHeight: 112 }}>
                 <div className="flex items-center gap-2.5">
-                  <Icon className="h-4 w-4 text-cyan-300" />
-                  <p className="font-bold uppercase text-slate-300" style={{ fontSize: 10, letterSpacing: "0.16em" }}>{metric.label}</p>
+                  <Icon className={`h-4 w-4 ${metric.tone}`} />
+                  <p className="font-bold uppercase text-slate-300" style={{ fontSize: 9.5, letterSpacing: "0.15em" }}>{metric.label}</p>
                 </div>
-                <p className="font-black text-white" style={{ marginTop: 16, fontSize: 28, lineHeight: 1 }}>{metric.value}</p>
-                <p className="text-slate-300" style={{ marginTop: 8, fontSize: 12, lineHeight: 1.3 }}>{metric.helper}</p>
+                <p className={`font-black ${metric.tone || "text-white"}`} style={{ marginTop: 14, fontSize: 25, lineHeight: 1 }}>{metric.value}</p>
+                <p className="text-slate-300" style={{ marginTop: 7, fontSize: 11, lineHeight: 1.3 }}>{metric.helper}</p>
               </div>
             );
           })}
         </section>
 
-        <section className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.82fr_0.92fr] gap-3 pb-8" style={{ marginTop: 12 }}>
+        <section className="grid grid-cols-1 xl:grid-cols-[1.35fr_0.8fr_0.9fr] gap-3" style={{ marginTop: 12 }}>
           <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
-            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 14, fontSize: 11, letterSpacing: "0.2em" }}>Evolução do V-Score</p>
-            <div className="flex items-end gap-3 border-b border-white/10" style={{ height: 136, paddingBottom: 12 }}>
+            <SectionTitle>Evolução do V-Score</SectionTitle>
+            <div className="flex items-end gap-3 border-b border-white/10" style={{ height: 132, paddingBottom: 10 }}>
               {trend.map((value, index) => (
-                <div key={`${value}-${index}`} className="flex flex-1 flex-col items-center gap-2">
-                  <div className="w-full rounded-t-md bg-cyan-500/80" style={{ height: `${Math.max((value / maxTrend) * 100, 12)}px` }} />
-                  <span className="text-xs font-bold text-slate-300">{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
-            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 14, fontSize: 11, letterSpacing: "0.2em" }}>Distribuição do Período</p>
-            <div className="space-y-3.5">
-              <div><p className="text-sm font-black text-emerald-300">{report.distribution.stable}% Estável</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-emerald-400" style={{ width: `${report.distribution.stable}%` }} /></div></div>
-              <div><p className="text-sm font-black text-amber-300">{report.distribution.attention}% Atenção</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-amber-400" style={{ width: `${report.distribution.attention}%` }} /></div></div>
-              <div><p className="text-sm font-black text-rose-300">{report.distribution.critical}% Crítico</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-rose-400" style={{ width: `${report.distribution.critical}%` }} /></div></div>
-            </div>
-          </div>
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
-            <p className="font-bold uppercase text-neutral-300" style={{ marginBottom: 14, fontSize: 11, letterSpacing: "0.2em" }}>Comparativo de Performance</p>
-            <div className="grid grid-cols-3 items-end gap-4 border-b border-white/10" style={{ height: 136, paddingBottom: 14 }}>
-              {[report.avg_v_score, 72.3, 85.1].map((value, index) => (
-                <div key={index} className="flex flex-col items-center gap-2">
+                <div key={`${value}-${index}`} className="flex flex-1 flex-col items-center gap-1.5">
                   <span className="text-xs font-bold text-white">{value}</span>
-                  <div className={`w-full rounded-t-md ${index === 0 ? "bg-cyan-500" : index === 1 ? "bg-slate-400" : "bg-emerald-400"}`} style={{ height: `${value * 0.9}px` }} />
+                  <div className="w-full rounded-t-md bg-cyan-500/80" style={{ height: `${Math.max((value / maxTrend) * 92, 12)}px` }} />
+                  <span className="text-[10px] text-slate-500">{index + 20}/04</span>
                 </div>
               ))}
             </div>
-            <p className="text-slate-300" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.35 }}>Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal.</p>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <SectionTitle>Distribuição do Período</SectionTitle>
+            <div className="space-y-3">
+              <div><p className="text-sm font-black text-emerald-300">{report.distribution.stable}% Estável</p><p className="text-[11px] text-slate-400">Maior parte do período</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-emerald-400" style={{ width: `${report.distribution.stable}%` }} /></div></div>
+              <div><p className="text-sm font-black text-amber-300">{report.distribution.attention}% Atenção</p><p className="text-[11px] text-slate-400">Sinais de sobrecarga</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-amber-400" style={{ width: `${report.distribution.attention}%` }} /></div></div>
+              <div><p className="text-sm font-black text-rose-300">{report.distribution.critical}% Crítico</p><p className="text-[11px] text-slate-400">Risco elevado presente</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-rose-400" style={{ width: `${report.distribution.critical}%` }} /></div></div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <SectionTitle>Comparativo de Performance</SectionTitle>
+            <div className="grid grid-cols-3 items-end gap-4 border-b border-white/10" style={{ height: 126, paddingBottom: 12 }}>
+              {[report.avg_v_score, 72.3, 85.1].map((value, index) => (
+                <div key={index} className="flex flex-col items-center gap-1.5">
+                  <span className="text-xs font-bold text-white">{value}</span>
+                  <div className={`w-full rounded-t-md ${index === 0 ? "bg-cyan-500" : index === 1 ? "bg-slate-400" : "bg-emerald-400"}`} style={{ height: `${value * 0.82}px` }} />
+                  <span className="text-[10px] text-slate-500">{index === 0 ? "Sua média" : index === 1 ? "Faixa etária" : "Sua meta"}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-slate-300" style={{ marginTop: 10, fontSize: 11, lineHeight: 1.35 }}>Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal.</p>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.55fr_0.7fr_0.95fr] gap-3" style={{ marginTop: 12 }}>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <SectionTitle>Sistemas Mais Impactados</SectionTitle>
+            {[
+              [HeartPulse, "Cardiovascular", 82, "Alto impacto", "bg-rose-400", "text-rose-300"],
+              [Brain, "Cognitivo", 68, "Impacto moderado", "bg-amber-400", "text-amber-300"],
+              [Activity, "Muscular", 56, "Impacto leve", "bg-yellow-400", "text-yellow-300"],
+            ].map(([Icon, label, value, helper, bar, tone]) => (
+              <div key={label} className="mb-3 last:mb-0 grid grid-cols-[110px_1fr_96px] items-center gap-3 text-xs">
+                <span className={`inline-flex items-center gap-2 ${tone}`}><Icon className="h-4 w-4" />{label}</span>
+                <span className="h-2.5 rounded-full bg-white/10"><span className={`block h-2.5 rounded-full ${bar}`} style={{ width: `${value}%` }} /></span>
+                <span className={tone}>{helper}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <SectionTitle>Comparativo do Período</SectionTitle>
+            {[
+              ["Vs início", "+2.1"],
+              ["Vs melhor leitura", "-3.0"],
+              ["Vs média pessoal", "+8%"],
+            ].map(([label, value]) => (
+              <div key={label} className="flex justify-between border-b border-white/10 py-2 text-xs last:border-b-0">
+                <span className="text-slate-400">{label}</span>
+                <span className="font-bold text-emerald-300">{value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <SectionTitle>Confiabilidade da Análise</SectionTitle>
+            {[
+              ["Cobertura biométrica", "Alta", "text-emerald-300"],
+              ["Qualidade dos sinais", "Boa", "text-emerald-300"],
+              ["Janela de sono", "Incompleta", "text-amber-300"],
+              ["Confiança", `${report.confidence}%`, "text-emerald-300"],
+            ].map(([label, value, tone]) => (
+              <div key={label} className="flex justify-between border-b border-white/10 py-1.5 text-xs last:border-b-0">
+                <span className="text-slate-400">{label}</span>
+                <span className={`font-bold ${tone}`}>{value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <SectionTitle>Insights de Longevidade</SectionTitle>
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <span className="text-lg font-black text-emerald-300">+3%</span>
+              <span className="text-sm text-slate-300">HRV (6 meses)</span>
+              <MiniSparkline />
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-lg font-black text-rose-300">-2%</span>
+              <span className="text-sm text-slate-300">FC Repouso (6 meses)</span>
+              <MiniSparkline tone="rose" />
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 xl:grid-cols-[1fr_0.28fr] gap-3 pb-8" style={{ marginTop: 12 }}>
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.035]" style={{ padding: 16 }}>
+            <SectionTitle>Conclusão Executiva</SectionTitle>
+            <p className="text-xs leading-relaxed text-slate-300">
+              Seu período apresentou sinais consistentes de estabilidade, com maior atenção à recuperação e ao controle de sobrecarga. A principal oportunidade está em manter sono regular, reduzir esforço acumulado e preservar constância nas próximas 24-48h.
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 16 }}>
+            <SectionTitle>Próximo Período</SectionTitle>
+            <p className="text-xs leading-relaxed text-slate-300">Continue monitorando para acompanhar sua evolução.</p>
           </div>
         </section>
       </div>
