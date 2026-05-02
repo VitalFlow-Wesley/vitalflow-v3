@@ -94,7 +94,7 @@ static_path = Path(__file__).parent / "static"
 if (static_path / "static").exists():
     app.mount(
         "/static",
-        StaticFiles(directory=str(static_path / "static"),
+        StaticFiles(directory=str(static_path / "static")),
         name="static",
     )
 
