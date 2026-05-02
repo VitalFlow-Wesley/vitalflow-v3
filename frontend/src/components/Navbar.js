@@ -13,7 +13,7 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050505]/95 backdrop-blur-xl">
+    <header className="relative z-40 border-b border-white/10 bg-[#050505]">
       <div className="flex h-16 items-center justify-between px-6">
         <button
           type="button"
