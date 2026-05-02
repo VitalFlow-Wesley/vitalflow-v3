@@ -74,6 +74,7 @@ if not hasattr(health_module, "_confidence_score"):
 
     health_module._confidence_score = _confidence_score
 
+from routes.report_override import router as report_override_router
 from routes.pdf_report import router as pdf_report_router
 from routes.health import router as health_router
 from routes.payments import router as payments_router
@@ -85,6 +86,7 @@ api_router.include_router(wearables_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(smartwatch_router)
 api_router.include_router(gamification_router)
+api_router.include_router(report_override_router)
 api_router.include_router(pdf_report_router)
 api_router.include_router(health_router)
 api_router.include_router(payments_router)
