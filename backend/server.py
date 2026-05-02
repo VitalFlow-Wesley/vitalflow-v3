@@ -65,6 +65,15 @@ from routes.wearables import router as wearables_router
 from routes.dashboard import router as dashboard_router
 from routes.smartwatch import router as smartwatch_router
 from routes.gamification import router as gamification_router
+import routes.health as health_module
+
+if not hasattr(health_module, "_confidence_score"):
+    def _confidence_score(monitored_days: int, expected_days: int) -> int:
+        coverage = round((monitored_days / expected_days) * 100) if expected_days else 0
+        return max(55, min(96, coverage + 10))
+
+    health_module._confidence_score = _confidence_score
+
 from routes.pdf_report import router as pdf_report_router
 from routes.health import router as health_router
 from routes.payments import router as payments_router
