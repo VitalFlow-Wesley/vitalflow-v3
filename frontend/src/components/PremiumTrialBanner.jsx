@@ -1,142 +1,150 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, Crown, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Crown, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
-const OFFER_ACCEPTED_KEY_PREFIX = "vitalflow:premium-trial-offer-accepted";
-const PREMIUM_TRIAL_DAYS = 30;
-
-const getIdentity = (user) => user?.id || user?.email || "guest";
-
-const getDaysRemaining = (expiresAt) => {
-  const expires = expiresAt ? new Date(expiresAt) : null;
-  if (!expires || Number.isNaN(expires.getTime())) return null;
-  return Math.max(0, Math.ceil((expires.getTime() - Date.now()) / 86400000));
-};
+const API_URL = (process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app").replace(/\/+$/, "");
 
 export default function PremiumTrialBanner() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const identity = getIdentity(user);
-  const storageKey = `${OFFER_ACCEPTED_KEY_PREFIX}:${identity}`;
-  const [offerAccepted, setOfferAccepted] = useState(() => {
+  const [plan, setPlan] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const loadPlan = async () => {
     try {
-      return localStorage.getItem(storageKey) === "1";
-    } catch {
-      return false;
-    }
-  });
+      const response = await fetch(`${API_URL}/api/billing/plan`, {
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (response.ok) setPlan(await response.json());
+    } catch {}
+  };
 
-  const plan = String(user?.plan || "").toLowerCase();
+  useEffect(() => {
+    loadPlan();
+  }, [user?.id]);
+
   const accountType = String(user?.account_type || "").toLowerCase();
-  const role = String(user?.nivel_acesso || user?.role || "").toLowerCase();
-  const daysRemaining = getDaysRemaining(user?.premium_expires_at);
-  const isPaidPremium =
-    Boolean(user?.is_premium) && !user?.premium_expires_at && plan === "premium";
-  const isCorporate =
-    accountType === "corporate" ||
-    Boolean(user?.is_b2b) ||
-    role.includes("admin") ||
-    role.includes("ceo");
-  const isTrialActive = daysRemaining !== null && daysRemaining > 0;
-  const isTrialExpired =
-    daysRemaining === 0 || (!user?.is_premium && Boolean(user?.premium_expires_at));
-
+  const isCorporate = accountType === "corporate" || Boolean(user?.is_b2b);
   const state = useMemo(() => {
-    if (isCorporate || isPaidPremium) return null;
-    if (isTrialActive) return "active";
-    if (isTrialExpired) return "expired";
-    return offerAccepted ? "accepted" : "offer";
-  }, [isCorporate, isPaidPremium, isTrialActive, isTrialExpired, offerAccepted]);
+    if (!plan || isCorporate || location.pathname === "/payment/success") return null;
+    if (plan.access_type === "premium") return "premium";
+    if (plan.access_type === "trial" && plan.trial_active) return "trial";
+    if (plan.trial_expired) return "expired";
+    if (plan.trial_available) return "offer";
+    return null;
+  }, [plan, isCorporate, location.pathname]);
 
-  if (!state || location.pathname === "/payment/success") return null;
+  if (!state) return null;
+
+  const createCheckout = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/billing/create-checkout`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan_id: "premium_monthly",
+          origin_url: window.location.origin,
+        }),
+      });
+      const data = await response.json();
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+    } catch {}
+    setLoading(false);
+  };
+
+  const startTrial = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/billing/start-trial`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (response.ok) {
+        setPlan(await response.json());
+        await refreshUser?.();
+      }
+    } catch {}
+    setLoading(false);
+  };
 
   const copy = {
     offer: {
       icon: Sparkles,
-      title: `Teste Premium de ${PREMIUM_TRIAL_DAYS} dias`,
-      description:
-        "Aceite o convite agora. O prazo só começa quando você parear seu primeiro wearable.",
-      action: "Aceitar teste",
-      onClick: () => {
-        try {
-          localStorage.setItem(storageKey, "1");
-        } catch {}
-        setOfferAccepted(true);
-        navigate("/devices");
-      },
+      title: `Experimente Premium grátis por ${plan?.trial_days || 30} dias`,
+      description: "Libere IA preditiva, exportação em PDF e relatórios completos durante o período de teste.",
+      action: "Começar teste grátis",
+      onClick: startTrial,
     },
-    accepted: {
+    trial: {
       icon: ShieldCheck,
-      title: "Teste Premium reservado",
-      description:
-        "Agora pareie seu wearable. Assim que o primeiro pareamento for concluído, os 30 dias começam a valer.",
-      action: "Parear wearable",
-      onClick: () => navigate("/devices"),
+      title: `Premium Trial ativo: ${plan?.trial_days_remaining || 0} dias restantes`,
+      description: "Você está usando todos os recursos Premium. Faça upgrade antes do fim para manter o acesso.",
+      action: "Fazer upgrade",
+      onClick: createCheckout,
     },
-    active: {
+    premium: {
       icon: Crown,
-      title: `Premium ativo: ${daysRemaining} dias restantes`,
-      description:
-        "Seu teste já começou. Aproveite relatórios, PDF e recursos avançados durante o período.",
+      title: "Plano Premium ativo",
+      description: "PDF, relatórios completos e IA preditiva liberados na sua conta.",
       action: "Ver relatório",
       onClick: () => navigate("/relatorio"),
     },
     expired: {
-      icon: Crown,
+      icon: LockKeyhole,
       title: "Seu teste Premium terminou",
-      description:
-        "Assine o Plano Premium para continuar com PDF, relatórios completos e recursos avançados.",
+      description: "IA preditiva, PDF e relatórios completos estão bloqueados. Faça upgrade para continuar.",
       action: "Fazer upgrade",
-      onClick: async () => {
-        try {
-          const response = await fetch(
-            `${process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app"}/api/billing/create-checkout`,
-            {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                plan_id: "premium_monthly",
-                origin_url: window.location.origin,
-              }),
-            }
-          );
-          const data = await response.json();
-          if (data?.url) {
-            window.location.href = data.url;
-            return;
-          }
-        } catch {}
-        navigate("/relatorio");
-      },
+      onClick: createCheckout,
     },
   }[state];
 
   const Icon = copy.icon;
+  const tone = state === "expired" ? "rose" : state === "premium" ? "emerald" : "amber";
+  const classes = {
+    amber: "border-amber-400/25 bg-amber-400/[0.08] text-amber-50",
+    emerald: "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-50",
+    rose: "border-rose-400/25 bg-rose-400/[0.08] text-rose-50",
+  }[tone];
+  const buttonClasses = {
+    amber: "bg-amber-400 text-black hover:bg-amber-300",
+    emerald: "bg-emerald-400 text-black hover:bg-emerald-300",
+    rose: "bg-rose-400 text-black hover:bg-rose-300",
+  }[tone];
+  const iconClasses = {
+    amber: "border-amber-400/25 bg-amber-400/10 text-amber-300",
+    emerald: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
+    rose: "border-rose-400/25 bg-rose-400/10 text-rose-300",
+  }[tone];
 
   return (
-    <section className="mb-2 rounded-xl border border-amber-400/25 bg-amber-400/[0.08] px-4 py-3 text-amber-50 shadow-[0_14px_34px_rgba(0,0,0,0.22)]">
+    <section className={`mb-2 rounded-xl border px-4 py-3 shadow-[0_14px_34px_rgba(0,0,0,0.22)] ${classes}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/25 bg-amber-400/10">
-            <Icon className="h-5 w-5 text-amber-300" />
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${iconClasses}`}>
+            <Icon className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-black text-amber-300">{copy.title}</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-200/85">
-              {copy.description}
-            </p>
+            <p className="text-sm font-black">{copy.title}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-200/85">{copy.description}</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={copy.onClick}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-black transition hover:bg-amber-300"
+          disabled={loading}
+          className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition disabled:opacity-60 ${buttonClasses}`}
         >
-          {copy.action}
+          {loading ? "Aguarde..." : copy.action}
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
