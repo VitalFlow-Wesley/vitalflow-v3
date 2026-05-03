@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timezone, timedelta
 from fastapi import Request, HTTPException
 from database import db
+from services.subscription_service import get_user_access_state
 
 JWT_ALGORITHM = "HS256"
 JWT_SECRET = os.environ.get('JWT_SECRET', 'default-secret-change-me')
@@ -44,6 +45,7 @@ def decode_token(token: str) -> dict | None:
     except Exception:
         return None
 
+
 async def get_current_colaborador(request: Request) -> dict:
     token = request.cookies.get("access_token")
     if not token:
@@ -63,6 +65,17 @@ async def get_current_colaborador(request: Request) -> dict:
             raise HTTPException(status_code=401, detail="Colaborador nao encontrado")
 
         colaborador.pop("password_hash", None)
+        access = get_user_access_state(colaborador)
+        colaborador["is_premium"] = access["has_premium_access"]
+        colaborador["has_premium_access"] = access["has_premium_access"]
+        colaborador["access_type"] = access["access_type"]
+        colaborador["plan"] = access["plan"]
+        colaborador["subscription_status"] = access["subscription_status"]
+        colaborador["trial_active"] = access["trial_active"]
+        colaborador["trial_expired"] = access["trial_expired"]
+        colaborador["trial_available"] = access["trial_available"]
+        colaborador["trial_days_remaining"] = access["trial_days_remaining"]
+        colaborador["premium_expires_at"] = access["premium_expires_at"]
         return colaborador
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expirado")
