@@ -126,7 +126,8 @@ export default function MeuRelatorioStable() {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - Math.max(activePeriod.days - 1, 0));
-    return `${formatDate(start)} a ${formatDate(end)} (${Math.min(activePeriod.days, report.total_analyses || activePeriod.days)} dias)`;
+    const monitoredDays = Math.min(activePeriod.days, report.total_analyses || activePeriod.days);
+    return `${formatDate(start)} a ${formatDate(end)} (${monitoredDays} ${monitoredDays === 1 ? "dia" : "dias"})`;
   }, [activePeriod.days, report.total_analyses]);
 
   useEffect(() => {
@@ -246,7 +247,7 @@ export default function MeuRelatorioStable() {
             <div className="grid grid-cols-1 2xl:grid-cols-[1fr_1.45fr] gap-3 items-start">
               <div>
                 <p className="font-bold uppercase text-cyan-200" style={{ marginBottom: 9, fontSize: 11, letterSpacing: "0.22em" }}>Resumo Executivo</p>
-                <p className="font-semibold text-white" style={{ fontSize: 14, lineHeight: 1.4 }}><span className="text-amber-300">Sua resiliência apresentou comportamento estável</span>, com V-Score médio de <span className="text-cyan-400">{report.avg_v_score}</span> e maior impacto fisiológico em sem destaques.</p>
+                <p className="font-semibold text-white" style={{ fontSize: 14, lineHeight: 1.4 }}><span className="text-amber-300">Sua resiliência apresentou comportamento estável</span>, com V-Score médio de <span className="text-cyan-400">{report.avg_v_score}</span> e sem destaque fisiológico relevante.</p>
                 <p className="text-slate-300" style={{ marginTop: 8, fontSize: 12 }}>Cobertura do período: {report.coverage}/{activePeriod.days} dias monitorados.</p>
               </div>
               <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
