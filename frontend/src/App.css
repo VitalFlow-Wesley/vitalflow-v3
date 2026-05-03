@@ -34,12 +34,29 @@
   #root .xl\:grid-cols-\[2\.12fr_0\.9fr\] {
     grid-template-columns: minmax(0, 2.05fr) minmax(430px, 0.95fr) !important;
     gap: 1.25rem !important;
-    align-items: start !important;
+    align-items: stretch !important;
+  }
+
+  #root .xl\:grid-cols-\[2\.12fr_0\.9fr\] > div:first-child,
+  #root .xl\:grid-cols-\[2\.12fr_0\.9fr\] > div:nth-child(2) {
+    min-height: 350px !important;
   }
 
   #root .xl\:grid-cols-\[2\.12fr_0\.9fr\] > div:first-child {
-    min-height: 350px !important;
     padding: 1.55rem !important;
+  }
+
+  #root .xl\:grid-cols-\[2\.12fr_0\.9fr\] > div:nth-child(2) {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 1.55rem !important;
+  }
+
+  #root .xl\:grid-cols-\[2\.12fr_0\.9fr\] > div:nth-child(2) > div {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
   }
 
   #root .xl\:grid-cols-\[2\.12fr_0\.9fr\] > div:first-child p.font-semibold.text-white {
