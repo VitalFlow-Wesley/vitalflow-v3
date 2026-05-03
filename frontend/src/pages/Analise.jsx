@@ -313,77 +313,47 @@ function TimelineModal({ open, onClose }) {
   if (!open) return null;
 
   const points = [
-    { date: "21/04", score: 61, title: "Queda relevante", desc: "Stress elevado e HRV abaixo do ideal", impact: -11, tone: "rose", time: "08:30", icon: "↓" },
-    { date: "22/04", score: 48, title: "Recuperação parcial", desc: "Melhora de HRV e sono", impact: 8, tone: "cyan", time: "10:15", icon: "≈" },
-    { date: "24/04", score: 36, title: "Carga cognitiva elevada", desc: "Aumento de stress mental", impact: -14, tone: "yellow", time: "14:45", icon: "◎" },
-    { date: "26/04", score: 47, title: "Estabilização", desc: "Sinais fisiológicos em equilíbrio", impact: 10, tone: "teal", time: "09:20", icon: "⚖" },
-    { date: "27/04", score: 74, title: "Recuperação ideal", desc: "Melhores indicadores do período", impact: 16, tone: "emerald", time: "11:30", icon: "♥" },
+    { date: "21/04", score: 61, title: "Queda relevante", desc: "Stress elevado e HRV abaixo do ideal", impact: -11, tone: "rose", time: "08:30" },
+    { date: "22/04", score: 48, title: "Recuperação parcial", desc: "Melhora de HRV e sono", impact: 8, tone: "cyan", time: "10:15" },
+    { date: "24/04", score: 36, title: "Carga cognitiva elevada", desc: "Aumento de stress mental", impact: -14, tone: "yellow", time: "14:45" },
+    { date: "26/04", score: 47, title: "Estabilização", desc: "Sinais fisiológicos em equilíbrio", impact: 10, tone: "teal", time: "09:20" },
+    { date: "27/04", score: 74, title: "Recuperação ideal", desc: "Melhores indicadores do período", impact: 16, tone: "emerald", time: "11:30" },
   ];
 
   const toneClass = {
-    rose: {
-      text: "text-rose-300",
-      bg: "bg-rose-400",
-      soft: "bg-rose-400/10",
-      border: "border-rose-300/25",
-      fill: "#fb7185",
-    },
-    cyan: {
-      text: "text-cyan-300",
-      bg: "bg-cyan-400",
-      soft: "bg-cyan-400/10",
-      border: "border-cyan-300/25",
-      fill: "#22d3ee",
-    },
-    yellow: {
-      text: "text-yellow-300",
-      bg: "bg-yellow-400",
-      soft: "bg-yellow-400/10",
-      border: "border-yellow-300/25",
-      fill: "#facc15",
-    },
-    teal: {
-      text: "text-teal-300",
-      bg: "bg-teal-400",
-      soft: "bg-teal-400/10",
-      border: "border-teal-300/25",
-      fill: "#2dd4bf",
-    },
-    emerald: {
-      text: "text-emerald-300",
-      bg: "bg-emerald-400",
-      soft: "bg-emerald-400/10",
-      border: "border-emerald-300/25",
-      fill: "#34d399",
-    },
+    rose: { text: "text-rose-300", bg: "bg-rose-400", soft: "bg-rose-400/8", border: "border-rose-300/20", fill: "#fb7185" },
+    cyan: { text: "text-cyan-300", bg: "bg-cyan-400", soft: "bg-cyan-400/8", border: "border-cyan-300/20", fill: "#22d3ee" },
+    yellow: { text: "text-yellow-300", bg: "bg-yellow-400", soft: "bg-yellow-400/8", border: "border-yellow-300/20", fill: "#facc15" },
+    teal: { text: "text-teal-300", bg: "bg-teal-400", soft: "bg-teal-400/8", border: "border-teal-300/20", fill: "#2dd4bf" },
+    emerald: { text: "text-emerald-300", bg: "bg-emerald-400", soft: "bg-emerald-400/8", border: "border-emerald-300/20", fill: "#34d399" },
   };
 
   const svgPoints = points.map((point, index) => ({
     ...point,
-    x: 18 + index * 18.5,
-    y: 100 - point.score,
+    x: 11 + index * 21,
+    y: 96 - point.score,
   }));
 
-  const path = svgPoints
+  const linePath = svgPoints
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
     .join(" ");
 
-  const areaPath = `${path} L ${svgPoints[svgPoints.length - 1].x} 102 L ${svgPoints[0].x} 102 Z`;
+  const areaPath = `${linePath} L ${svgPoints[svgPoints.length - 1].x} 98 L ${svgPoints[0].x} 98 Z`;
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-md">
-      <div className="flex max-h-[88vh] w-full max-w-7xl flex-col overflow-hidden rounded-[28px] border border-cyan-300/15 bg-[#07090c] shadow-[0_35px_140px_rgba(0,0,0,0.76)]">
-        <div className="flex items-start justify-between gap-4 border-b border-white/8 bg-gradient-to-r from-white/[0.045] via-cyan-300/[0.025] to-transparent px-7 py-5">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/8 text-cyan-300">
-              <Activity className="h-5 w-5" />
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/65 px-4 py-5 backdrop-blur-md">
+      <div className="flex max-h-[78vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-cyan-300/15 bg-[#07090c] shadow-[0_30px_120px_rgba(0,0,0,0.72)]">
+        <div className="flex items-center justify-between gap-4 border-b border-white/8 bg-white/[0.025] px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/18 bg-cyan-300/8 text-cyan-300">
+              <Activity className="h-4.5 w-4.5" />
             </div>
             <div>
-              <h3 className="text-xl font-black tracking-tight text-white">
+              <h3 className="text-lg font-black tracking-tight text-white">
                 Linha do Tempo Fisiológica
               </h3>
-              <p className="mt-2 max-w-4xl text-sm leading-6 text-white/52">
-                Visualização cronológica dos principais eventos do período, conectando queda, recuperação e estabilização do V-Score.
+              <p className="mt-1 text-xs leading-5 text-white/48">
+                Sequência dos eventos que explicam a evolução do V-Score no período.
               </p>
             </div>
           </div>
@@ -391,202 +361,163 @@ function TimelineModal({ open, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-white/70 transition hover:border-cyan-300/30 hover:bg-white/[0.07] hover:text-white"
+            aria-label="Fechar linha do tempo"
+            className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] p-2 text-white/70 transition hover:border-cyan-300/30 hover:bg-white/[0.07] hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-7 py-5 [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,.35)_rgba(255,255,255,.06)]">
-          <div className="grid gap-5 xl:grid-cols-[1.38fr_1fr]">
-            <section className="rounded-[24px] border border-white/10 bg-gradient-to-b from-white/[0.045] to-white/[0.018] p-5">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,.28)_rgba(255,255,255,.05)]">
+          <div className="grid gap-4 lg:grid-cols-[1.25fr_0.95fr]">
+            <section className="rounded-[22px] border border-white/10 bg-white/[0.025] p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[12px] font-black uppercase tracking-[0.30em] text-cyan-300">
+                  <p className="font-mono text-[11px] font-black uppercase tracking-[0.28em] text-cyan-300">
                     Evolução do V-Score
                   </p>
-                  <p className="mt-2 text-sm text-white/56">
-                    Curva interpretativa dos eventos fisiológicos
+                  <p className="mt-1 text-xs text-white/42">
+                    Curva interpretativa do período
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2 text-sm font-bold text-white/70"
-                >
+                <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs font-black text-white/58">
                   7 dias
-                  <ChevronDown className="h-4 w-4" />
-                </button>
+                </span>
               </div>
 
-              <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#05070a] p-5">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_15%,rgba(34,211,238,0.12),transparent_38%),radial-gradient(circle_at_85%_65%,rgba(52,211,153,0.11),transparent_34%)]" />
+              <div className="relative h-[255px] overflow-hidden rounded-[20px] border border-white/8 bg-[#05070a] p-4">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_42%_20%,rgba(34,211,238,0.10),transparent_36%),radial-gradient(circle_at_86%_75%,rgba(52,211,153,0.10),transparent_38%)]" />
 
-                <div className="relative h-[360px]">
-                  <div className="absolute left-0 top-4 h-[260px] w-full">
-                    <div className="absolute left-10 right-2 top-[28px] border-t border-dashed border-emerald-300/22" />
-                    <div className="absolute left-10 right-2 top-[118px] border-t border-dashed border-yellow-300/22" />
-                    <div className="absolute left-10 right-2 top-[206px] border-t border-dashed border-rose-300/20" />
+                <div className="absolute left-5 right-5 top-10 border-t border-dashed border-emerald-300/18" />
+                <div className="absolute left-5 right-5 top-[112px] border-t border-dashed border-yellow-300/18" />
+                <div className="absolute left-5 right-5 top-[180px] border-t border-dashed border-rose-300/16" />
 
-                    <div className="absolute left-0 top-[12px] space-y-[64px] text-xs font-black text-white/52">
-                      <p>100</p>
-                      <p>80</p>
-                      <p>60</p>
-                      <p>40</p>
-                      <p>20</p>
-                    </div>
+                <div className="absolute left-5 top-8 space-y-[58px] text-[11px] font-black uppercase tracking-[0.10em]">
+                  <p className="text-emerald-300">Recuperação</p>
+                  <p className="text-yellow-300">Atenção</p>
+                  <p className="text-rose-300">Queda</p>
+                </div>
 
-                    <div className="absolute left-14 top-[24px] text-[11px] font-black uppercase tracking-[0.12em] text-emerald-300">
-                      Recuperação
-                    </div>
-                    <div className="absolute left-14 top-[114px] text-[11px] font-black uppercase tracking-[0.12em] text-yellow-300">
-                      Atenção
-                    </div>
-                    <div className="absolute left-14 top-[202px] text-[11px] font-black uppercase tracking-[0.12em] text-rose-300">
-                      Queda
-                    </div>
+                <svg viewBox="0 0 100 100" className="absolute left-8 right-5 top-8 h-[158px] w-[calc(100%-52px)] overflow-visible">
+                  <defs>
+                    <linearGradient id="compactTimelineStroke" x1="0" x2="1" y1="0" y2="0">
+                      <stop offset="0%" stopColor="#fb7185" />
+                      <stop offset="42%" stopColor="#facc15" />
+                      <stop offset="72%" stopColor="#22d3ee" />
+                      <stop offset="100%" stopColor="#34d399" />
+                    </linearGradient>
+                    <linearGradient id="compactTimelineArea" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#34d399" stopOpacity="0.20" />
+                      <stop offset="55%" stopColor="#22d3ee" stopOpacity="0.08" />
+                      <stop offset="100%" stopColor="#fb7185" stopOpacity="0.02" />
+                    </linearGradient>
+                    <filter id="compactTimelineGlow">
+                      <feGaussianBlur stdDeviation="2.2" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
 
-                    <svg viewBox="0 0 100 105" className="absolute left-8 top-4 h-[245px] w-[calc(100%-40px)] overflow-visible">
-                      <defs>
-                        <linearGradient id="premiumTimelineStroke" x1="0" x2="1" y1="0" y2="0">
-                          <stop offset="0%" stopColor="#fb7185" />
-                          <stop offset="42%" stopColor="#facc15" />
-                          <stop offset="68%" stopColor="#22d3ee" />
-                          <stop offset="100%" stopColor="#34d399" />
-                        </linearGradient>
-                        <linearGradient id="premiumTimelineArea" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#34d399" stopOpacity="0.28" />
-                          <stop offset="52%" stopColor="#22d3ee" stopOpacity="0.10" />
-                          <stop offset="100%" stopColor="#fb7185" stopOpacity="0.03" />
-                        </linearGradient>
-                        <filter id="premiumTimelineGlow">
-                          <feGaussianBlur stdDeviation="2.8" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                      </defs>
+                  <path d={areaPath} fill="url(#compactTimelineArea)" />
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="url(#compactTimelineStroke)"
+                    strokeWidth="3.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    filter="url(#compactTimelineGlow)"
+                  />
 
-                      <path d={areaPath} fill="url(#premiumTimelineArea)" />
-                      <path
-                        d={path}
-                        fill="none"
-                        stroke="url(#premiumTimelineStroke)"
-                        strokeWidth="3.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        filter="url(#premiumTimelineGlow)"
+                  {svgPoints.map((point) => (
+                    <g key={`${point.date}-compact-point`}>
+                      <line
+                        x1={point.x}
+                        y1={point.y}
+                        x2={point.x}
+                        y2="98"
+                        stroke={toneClass[point.tone].fill}
+                        strokeOpacity="0.16"
+                        strokeWidth="1"
                       />
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        r="4.3"
+                        fill={toneClass[point.tone].fill}
+                        stroke="#05070a"
+                        strokeWidth="2"
+                      />
+                    </g>
+                  ))}
+                </svg>
 
-                      {svgPoints.map((point) => (
-                        <g key={`${point.date}-premium-point`}>
-                          <line
-                            x1={point.x}
-                            y1={point.y}
-                            x2={point.x}
-                            y2="102"
-                            stroke={toneClass[point.tone].fill}
-                            strokeOpacity="0.18"
-                            strokeWidth="1"
-                          />
-                          <circle
-                            cx={point.x}
-                            cy={point.y}
-                            r="4.5"
-                            fill={toneClass[point.tone].fill}
-                            stroke="#05070a"
-                            strokeWidth="2.2"
-                          />
-                        </g>
-                      ))}
-                    </svg>
-                  </div>
-
-                  <div className="absolute bottom-0 left-10 right-0 grid grid-cols-5 gap-3">
-                    {points.map((point) => (
-                      <div key={`${point.date}-premium-label`} className="text-center">
-                        <div className={`mx-auto mb-2 h-2.5 w-2.5 rounded-full ${toneClass[point.tone].bg}`} />
-                        <p className="text-sm font-black text-white/70">{point.date}</p>
-                        <p className="mx-auto mt-1 max-w-[95px] text-xs leading-4 text-white/50">
-                          {point.title}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                <div className="absolute bottom-4 left-6 right-5 grid grid-cols-5 gap-2">
+                  {points.map((point) => (
+                    <div key={`${point.date}-compact-label`} className="text-center">
+                      <div className={`mx-auto mb-1.5 h-2 w-2 rounded-full ${toneClass[point.tone].bg}`} />
+                      <p className="text-xs font-black text-white/60">{point.date}</p>
+                      <p className="mt-1 line-clamp-2 text-[10px] leading-3 text-white/38">
+                        {point.title}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                <div className="rounded-2xl border border-rose-300/15 bg-rose-300/8 p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-rose-300">
-                    Ponto mais baixo
-                  </p>
-                  <p className="mt-2 text-2xl font-black text-white">36</p>
-                  <p className="text-sm text-white/48">24/04</p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl border border-rose-300/12 bg-rose-300/7 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-rose-300">Ponto baixo</p>
+                  <p className="mt-1 text-xl font-black text-white">36</p>
+                  <p className="text-xs text-white/42">24/04</p>
                 </div>
 
-                <div className="rounded-2xl border border-emerald-300/15 bg-emerald-300/8 p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-300">
-                    Ponto mais alto
-                  </p>
-                  <p className="mt-2 text-2xl font-black text-white">74</p>
-                  <p className="text-sm text-white/48">27/04</p>
+                <div className="rounded-2xl border border-emerald-300/12 bg-emerald-300/7 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-300">Ponto alto</p>
+                  <p className="mt-1 text-xl font-black text-white">74</p>
+                  <p className="text-xs text-white/42">27/04</p>
                 </div>
 
-                <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/8 p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-cyan-300">
-                    Melhor recuperação
-                  </p>
-                  <p className="mt-2 text-2xl font-black text-white">+35%</p>
-                  <p className="text-sm text-white/48">24/04 → 27/04</p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-white/45">
-                    Tendência geral
-                  </p>
-                  <p className="mt-2 text-2xl font-black text-emerald-300">↗</p>
-                  <p className="text-sm font-bold text-emerald-300">Em recuperação</p>
+                <div className="rounded-2xl border border-cyan-300/12 bg-cyan-300/7 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">Tendência</p>
+                  <p className="mt-1 text-xl font-black text-emerald-300">↗</p>
+                  <p className="text-xs font-bold text-emerald-300">Recuperação</p>
                 </div>
               </div>
             </section>
 
-            <section className="rounded-[24px] border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.016] p-5">
-              <p className="font-mono text-[12px] font-black uppercase tracking-[0.30em] text-cyan-300">
+            <section className="rounded-[22px] border border-white/10 bg-white/[0.025] p-4">
+              <p className="font-mono text-[11px] font-black uppercase tracking-[0.28em] text-cyan-300">
                 Eventos fisiológicos
               </p>
 
-              <div className="mt-5 space-y-5">
-                {points.map((point, index) => {
+              <div className="mt-4 space-y-2.5">
+                {points.map((point) => {
                   const tone = toneClass[point.tone];
                   return (
-                    <div key={`${point.date}-event-premium`} className="grid grid-cols-[44px_1fr] gap-4">
-                      <div className="relative flex flex-col items-center">
-                        <div className={`z-10 flex h-11 w-11 items-center justify-center rounded-full border ${tone.border} ${tone.soft} ${tone.text} shadow-[0_0_28px_rgba(34,211,238,0.12)]`}>
-                          <span className="text-lg font-black">{point.icon}</span>
-                        </div>
-                        {index < points.length - 1 && (
-                          <div className="mt-2 h-14 w-px bg-gradient-to-b from-white/18 to-white/5" />
-                        )}
-                      </div>
-
-                      <div className="pb-1">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <p className="text-sm font-black text-white/70">{point.date}</p>
-                              <p className="text-xs text-white/36">{point.time}</p>
+                    <div
+                      key={`${point.date}-compact-event`}
+                      className="rounded-2xl border border-white/8 bg-black/16 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 gap-3">
+                          <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${tone.bg}`} />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-black text-white/62">{point.date}</p>
+                              <p className="text-xs text-white/35">{point.time}</p>
                             </div>
-                            <p className={`mt-2 text-sm font-black ${tone.text}`}>{point.title}</p>
+                            <p className={`mt-1 text-sm font-black ${tone.text}`}>{point.title}</p>
+                            <p className="mt-1 text-xs leading-5 text-white/50">{point.desc}</p>
                           </div>
-
-                          <span className={`rounded-full border px-3 py-1 text-xs font-black ${tone.border} ${tone.soft} ${tone.text}`}>
-                            Impacto: {point.impact > 0 ? "+" : ""}{point.impact}
-                          </span>
                         </div>
 
-                        <p className="mt-2 text-sm leading-6 text-white/62">{point.desc}</p>
+                        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black ${tone.border} ${tone.soft} ${tone.text}`}>
+                          {point.impact > 0 ? "+" : ""}{point.impact}
+                        </span>
                       </div>
                     </div>
                   );
@@ -595,37 +526,15 @@ function TimelineModal({ open, onClose }) {
             </section>
           </div>
 
-          <section className="mt-5 rounded-[24px] border border-white/10 bg-gradient-to-r from-white/[0.04] via-cyan-300/[0.035] to-emerald-300/[0.025] p-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="max-w-3xl">
-                <p className="font-mono text-[12px] font-black uppercase tracking-[0.22em] text-white/70">
-                  ✨ Leitura inteligente
-                </p>
-                <p className="mt-3 text-sm leading-7 text-white/62">
-                  O período começou com alta sobrecarga fisiológica, mas sua capacidade de recuperação evoluiu bem.
-                  <span className="font-bold text-white"> Você encerrou o período no seu melhor estado, com sinais claros de adaptação e equilíbrio.</span>
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-3 text-sm font-black text-cyan-200 transition hover:bg-cyan-300/15 xl:w-auto"
-              >
-                <Download className="h-4 w-4" />
-                Exportar linha do tempo
-              </button>
-            </div>
+          <section className="mt-4 rounded-[22px] border border-cyan-300/12 bg-cyan-300/5 p-4">
+            <p className="font-mono text-[11px] font-black uppercase tracking-[0.20em] text-cyan-200">
+              Leitura inteligente
+            </p>
+            <p className="mt-2 text-sm leading-6 text-white/58">
+              O período começou com sobrecarga fisiológica, mas evoluiu para recuperação progressiva.
+              <span className="font-bold text-white"> O fechamento do ciclo mostra adaptação e equilíbrio.</span>
+            </p>
           </section>
-        </div>
-
-        <div className="border-t border-white/8 bg-[#07090c] px-7 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-black transition hover:bg-cyan-200"
-          >
-            Fechar
-          </button>
         </div>
       </div>
     </div>
