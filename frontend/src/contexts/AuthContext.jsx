@@ -47,30 +47,50 @@ export function AuthProvider({ children }) {
 
   const normalizeUser = (data, billingPlan = null) => {
     const billingPlanName = String(billingPlan?.plan || "").toLowerCase();
+    const billingStatus = String(billingPlan?.subscription_status || "").toLowerCase();
+    const billingAccessType = String(billingPlan?.access_type || "").toLowerCase();
     const rawPlan = String(data?.plan || data?.subscription_plan || "").toLowerCase();
-    const billingIsPremium = Boolean(billingPlan?.is_premium) || billingPlanName === "premium";
+    const billingIsPremium = Boolean(
+      billingPlan?.has_premium_access ||
+        billingPlan?.is_premium ||
+        billingPlan?.premium ||
+        billingPlan?.features?.pdf_export ||
+        billingPlanName === "premium" ||
+        billingPlan?.tier === "premium" ||
+        billingStatus === "active" ||
+        billingStatus === "trialing" ||
+        (billingAccessType === "trial" && billingPlan?.trial_active)
+    );
     const resolvedPlan = billingIsPremium
-      ? "premium"
+      ? billingAccessType === "trial"
+        ? "trial"
+        : "premium"
       : rawPlan || (data?.is_premium ? "premium" : "free");
+    const hasPremiumAccess = Boolean(
+      billingIsPremium ||
+        data?.has_premium_access ||
+        data?.is_premium ||
+        resolvedPlan === "premium"
+    );
 
     return {
       ...data,
       id: data.id || data._id,
       role: data.nivel_acesso || data.role,
       nivel_acesso: data.nivel_acesso || data.role || "USER",
-
-      is_premium:
-        Boolean(data?.is_premium) ||
-        billingIsPremium ||
-        resolvedPlan === "premium",
-
-      plan: resolvedPlan,
-
-      subscription_status:
-        data?.subscription_status || billingPlan?.subscription_status,
-
+      is_premium: hasPremiumAccess,
+      has_premium_access: hasPremiumAccess,
+      access_type: billingAccessType || data?.access_type,
+      plan: hasPremiumAccess ? resolvedPlan : "free",
+      subscription_status: billingPlan?.subscription_status || data?.subscription_status,
+      trial_active: Boolean(billingPlan?.trial_active || data?.trial_active),
+      trial_expired: Boolean(billingPlan?.trial_expired || data?.trial_expired),
+      trial_available: Boolean(billingPlan?.trial_available || data?.trial_available),
+      trial_days_remaining: billingPlan?.trial_days_remaining ?? data?.trial_days_remaining,
+      premium_expires_at: billingPlan?.premium_expires_at || data?.premium_expires_at,
       is_b2b:
         Boolean(data?.is_b2b) ||
+        billingAccessType === "b2b" ||
         String(data?.account_type || "").toLowerCase() === "corporate",
     };
   };
