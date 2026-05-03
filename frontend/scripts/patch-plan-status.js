@@ -40,6 +40,10 @@ function patchReport() {
     /const isPremiumPlan = \(plan\) => \{[\s\S]*?\};\r?\n\r?\nconst formatDate/,
     replacement
   );
+  source = source.replace(
+    /const showPdfPremiumNote = Boolean\(plan && !premium\);/,
+    "const showPdfPremiumNote = false;"
+  );
 
   fs.writeFileSync(reportPath, source);
 }
@@ -60,4 +64,4 @@ function patchCssOverrides() {
 patchDashboard();
 patchReport();
 patchCssOverrides();
-console.log("Plan status, report premium checks, and stale CSS overrides patched for build.");
+console.log("Plan status, report premium checks, and stale PDF note patched for build.");
