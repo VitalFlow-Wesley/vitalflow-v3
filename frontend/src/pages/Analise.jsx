@@ -312,16 +312,25 @@ function CorrelationsModal({ open, onClose, correlations, status }) {
 function TimelineModal({ open, onClose }) {
   if (!open) return null;
 
+  const chartPoints = timeline.map(([date, title, desc, dot], index) => {
+    const y = [78, 52, 61, 74, 88][index] || 70;
+    return { date, title, desc, dot, x: 10 + index * 22, y };
+  });
+
+  const linePath = chartPoints
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${110 - point.y}`)
+    .join(" ");
+
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/65 px-4 py-6 backdrop-blur-md">
-      <div className="flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-cyan-300/20 bg-[#080a0c] shadow-[0_30px_120px_rgba(0,0,0,0.70)]">
-        <div className="flex items-start justify-between gap-4 border-b border-white/8 px-5 py-4">
+      <div className="flex max-h-[86vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-cyan-300/20 bg-[#080a0c] shadow-[0_30px_120px_rgba(0,0,0,0.70)]">
+        <div className="flex items-start justify-between gap-4 border-b border-white/8 px-6 py-5">
           <div className="min-w-0">
-            <h3 className="font-mono text-[13px] font-black uppercase tracking-[0.30em] text-cyan-300">
+            <h3 className="font-mono text-[13px] font-black uppercase tracking-[0.32em] text-cyan-300">
               Linha do tempo fisiológica
             </h3>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-white/55">
-              Evolução dos principais eventos fisiológicos detectados no período analisado.
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-white/55">
+              Visualização cronológica dos principais eventos do período, conectando queda, recuperação e estabilização do V-Score.
             </p>
           </div>
 
@@ -334,58 +343,137 @@ function TimelineModal({ open, onClose }) {
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,.45)_rgba(255,255,255,.06)]">
-          <div className="relative space-y-4">
-            <div className="absolute bottom-8 left-[72px] top-8 w-px bg-gradient-to-b from-rose-300/50 via-cyan-300/35 to-emerald-300/50" />
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,.45)_rgba(255,255,255,.06)]">
+          <div className="grid gap-5 xl:grid-cols-[1.45fr_1fr]">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[11px] font-black uppercase tracking-[0.28em] text-cyan-300">
+                    Evolução visual
+                  </p>
+                  <p className="mt-1 text-xs text-white/42">
+                    Curva interpretativa dos eventos fisiológicos.
+                  </p>
+                </div>
 
-            {timeline.map(([date, title, desc, dot], index) => {
-              const tone =
-                dot.includes("rose")
-                  ? "border-rose-300/20 bg-rose-300/8 text-rose-200"
-                  : dot.includes("yellow")
-                    ? "border-yellow-300/20 bg-yellow-300/8 text-yellow-200"
-                    : "border-cyan-300/20 bg-cyan-300/8 text-cyan-200";
+                <span className="rounded-full border border-emerald-300/20 bg-emerald-300/8 px-3 py-1 text-xs font-black text-emerald-200">
+                  7 dias
+                </span>
+              </div>
 
-              return (
-                <div
-                  key={`${date}-${title}-modal`}
-                  className="relative grid grid-cols-[58px_30px_1fr] gap-4"
-                >
-                  <div className="pt-4 text-sm font-black text-white/45">{date}</div>
+              <div className="relative h-[310px] overflow-hidden rounded-3xl border border-white/8 bg-[#050607] p-4">
+                <div className="absolute inset-x-4 top-[48px] border-t border-dashed border-emerald-300/25" />
+                <div className="absolute inset-x-4 top-[128px] border-t border-dashed border-yellow-300/22" />
+                <div className="absolute inset-x-4 top-[210px] border-t border-dashed border-rose-300/20" />
 
-                  <div className="relative flex justify-center pt-4">
-                    <span className={`z-10 h-4 w-4 rounded-full ${dot} ring-8 ring-[#080a0c]`} />
-                  </div>
+                <svg viewBox="0 0 100 120" className="absolute inset-x-6 top-10 h-[210px] w-[calc(100%-48px)] overflow-visible">
+                  <defs>
+                    <linearGradient id="timelineLineGradient" x1="0" x2="1" y1="0" y2="0">
+                      <stop offset="0%" stopColor="#fb7185" />
+                      <stop offset="45%" stopColor="#22d3ee" />
+                      <stop offset="100%" stopColor="#34d399" />
+                    </linearGradient>
+                    <filter id="timelineGlow">
+                      <feGaussianBlur stdDeviation="2.8" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition hover:border-cyan-300/20 hover:bg-white/[0.04]">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/35">
-                          Evento {String(index + 1).padStart(2, "0")}
-                        </p>
-                        <p className="mt-1 text-base font-black text-white">{title}</p>
-                      </div>
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="url(#timelineLineGradient)"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    filter="url(#timelineGlow)"
+                  />
 
-                      <span className={`w-fit rounded-full border px-3 py-1 text-xs font-black ${tone}`}>
-                        {date}
-                      </span>
-                    </div>
+                  {chartPoints.map((point) => (
+                    <g key={`${point.date}-dot`}>
+                      <circle
+                        cx={point.x}
+                        cy={110 - point.y}
+                        r="4.2"
+                        className={point.dot.replace("bg-", "fill-")}
+                        stroke="#080a0c"
+                        strokeWidth="2"
+                      />
+                    </g>
+                  ))}
+                </svg>
 
-                    <p className="mt-3 text-sm leading-6 text-white/60">{desc}</p>
-
-                    <div className="mt-4 rounded-xl border border-white/8 bg-black/20 px-3 py-2">
-                      <p className="text-xs leading-5 text-white/42">
-                        Leitura VitalFlow: este ponto representa uma mudança relevante na combinação entre V-Score, recuperação, carga fisiológica e estabilidade do período.
+                <div className="absolute inset-x-6 bottom-5 grid grid-cols-5 gap-2">
+                  {chartPoints.map((point) => (
+                    <div key={`${point.date}-label`} className="text-center">
+                      <div className={`mx-auto mb-2 h-2.5 w-2.5 rounded-full ${point.dot}`} />
+                      <p className="text-xs font-black text-white/58">{point.date}</p>
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-white/42">
+                        {point.title}
                       </p>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
+
+                <div className="absolute left-5 top-5 space-y-1">
+                  <p className="text-xs font-black text-emerald-300">Recuperação</p>
+                  <p className="text-xs font-black text-yellow-300">Atenção</p>
+                  <p className="text-xs font-black text-rose-300">Queda</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {timeline.map(([date, title, desc, dot], index) => {
+                const tone =
+                  dot.includes("rose")
+                    ? "border-rose-300/20 bg-rose-300/8 text-rose-200"
+                    : dot.includes("yellow")
+                      ? "border-yellow-300/20 bg-yellow-300/8 text-yellow-200"
+                      : "border-cyan-300/20 bg-cyan-300/8 text-cyan-200";
+
+                return (
+                  <div
+                    key={`${date}-${title}-compact`}
+                    className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition hover:border-cyan-300/20 hover:bg-white/[0.04]"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex flex-col items-center gap-2">
+                        <span className={`h-3.5 w-3.5 rounded-full ${dot} ring-4 ring-white/5`} />
+                        {index < timeline.length - 1 && <span className="h-10 w-px bg-white/12" />}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/35">
+                            Evento {String(index + 1).padStart(2, "0")}
+                          </p>
+                          <span className={`rounded-full border px-3 py-1 text-xs font-black ${tone}`}>
+                            {date}
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-base font-black text-white">{title}</p>
+                        <p className="mt-2 text-sm leading-6 text-white/58">{desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-3xl border border-cyan-300/12 bg-cyan-300/5 p-4">
+            <p className="text-sm leading-6 text-white/58">
+              Leitura VitalFlow: a linha mostra a transição entre queda fisiológica, recuperação parcial e estabilização. Esse formato ajuda a entender não apenas o evento isolado, mas a sequência que levou ao estado atual.
+            </p>
           </div>
         </div>
 
-        <div className="border-t border-white/8 bg-[#080a0c] px-5 py-4">
+        <div className="border-t border-white/8 bg-[#080a0c] px-6 py-4">
           <button
             type="button"
             onClick={onClose}
@@ -398,7 +486,6 @@ function TimelineModal({ open, onClose }) {
     </div>
   );
 }
-
 
 export default function Analise() {
   const [period, setPeriod] = useState("7 dias");
