@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute, { GestorRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
+import Analise from "./pages/Analise";
 import ConnectDevices from "./pages/ConnectDevices";
 import Profile from "./pages/Profile";
 import MeuRelatorioStable from "./pages/MeuRelatorioStable";
@@ -35,6 +36,7 @@ function App() {
 
             <Route element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/analise" element={<Analise />} />
               <Route path="/devices" element={<ConnectDevices />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/relatorio" element={<MeuRelatorioStable />} />
