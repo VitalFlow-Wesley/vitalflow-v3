@@ -44,6 +44,20 @@ function patchReport() {
   fs.writeFileSync(reportPath, source);
 }
 
+function patchCssOverrides() {
+  const cssPath = path.join(__dirname, "..", "src", "index.css");
+  let css = fs.readFileSync(cssPath, "utf8");
+
+  css = css.replace(/#root \.space-y-1\.text-white > div\.flex\.flex-wrap\.items-center\.gap-5\.rounded-xl > div:first-child > span \{[\s\S]*?\}\s*/g, "");
+  css = css.replace(/#root \.space-y-1\.text-white > div\.flex\.flex-wrap\.items-center\.gap-5\.rounded-xl > div:first-child > span::after \{[\s\S]*?\}\s*/g, "");
+  css = css.replace(/#root \[data-testid="export-pdf-btn"\] ~ div \{[\s\S]*?\}\s*/g, "");
+  css = css.replace(/#root \[data-testid="export-pdf-btn"\]:has\(svg\.lucide-lock\) \{[\s\S]*?\}\s*/g, "");
+  css = css.replace(/#root \[data-testid="export-pdf-btn"\]:has\(svg\.lucide-lock\)::after \{[\s\S]*?\}\s*/g, "");
+
+  fs.writeFileSync(cssPath, css);
+}
+
 patchDashboard();
 patchReport();
-console.log("Plan status and report premium checks patched for build.");
+patchCssOverrides();
+console.log("Plan status, report premium checks, and stale CSS overrides patched for build.");
