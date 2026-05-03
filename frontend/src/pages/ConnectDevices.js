@@ -184,12 +184,9 @@ function GoogleMaster() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <button className="flex items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-3 text-sm font-bold text-white">
+      <div>
+        <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-3 text-sm font-bold text-white">
           <RefreshCcw size={16} /> Sincronizar agora
-        </button>
-        <button className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white">
-          <Settings2 size={16} /> Gerenciar dados
         </button>
       </div>
     </div>
