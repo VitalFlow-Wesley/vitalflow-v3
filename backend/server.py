@@ -65,6 +65,7 @@ from routes.wearables import router as wearables_router
 from routes.dashboard import router as dashboard_router
 from routes.smartwatch import router as smartwatch_router
 from routes.gamification import router as gamification_router
+from services.subscription_service import get_user_access_state
 import routes.health as health_module
 
 if not hasattr(health_module, "_confidence_score"):
@@ -73,6 +74,13 @@ if not hasattr(health_module, "_confidence_score"):
         return max(55, min(96, coverage + 10))
 
     health_module._confidence_score = _confidence_score
+
+
+def _subscription_pdf_access(colaborador: dict) -> bool:
+    return bool(get_user_access_state(colaborador).get("has_premium_access"))
+
+
+health_module._is_pdf_export_allowed = _subscription_pdf_access
 
 from routes.report_override import router as report_override_router
 from routes.pdf_report import router as pdf_report_router
