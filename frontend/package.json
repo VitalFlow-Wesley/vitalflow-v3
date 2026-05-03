@@ -59,6 +59,7 @@
   },
   "scripts": {
     "start": "craco start",
+    "prebuild": "node scripts/patch-plan-status.js",
     "build": "DISABLE_ESLINT_PLUGIN=true craco build",
     "test": "craco test"
   },
