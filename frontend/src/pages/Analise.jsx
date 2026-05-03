@@ -313,11 +313,11 @@ function TimelineModal({ open, onClose }) {
   if (!open) return null;
 
   const points = [
-    { date: "21/04", score: 61, title: "Queda relevante", desc: "Stress elevado e HRV abaixo do ideal", impact: -11, tone: "rose" },
-    { date: "22/04", score: 48, title: "Recuperação parcial", desc: "Melhora de HRV e sono", impact: 8, tone: "cyan" },
-    { date: "24/04", score: 36, title: "Carga cognitiva elevada", desc: "Aumento de stress mental", impact: -14, tone: "yellow" },
-    { date: "26/04", score: 47, title: "Estabilização", desc: "Sinais fisiológicos em equilíbrio", impact: 10, tone: "teal" },
-    { date: "27/04", score: 74, title: "Recuperação ideal", desc: "Melhores indicadores do período", impact: 16, tone: "emerald" },
+    { date: "21/04", score: 61, title: "Queda relevante", desc: "Stress elevado e HRV abaixo do ideal", impact: -11, tone: "rose", time: "08:30" },
+    { date: "22/04", score: 48, title: "Recuperação parcial", desc: "Melhora de HRV e sono", impact: 8, tone: "cyan", time: "10:15" },
+    { date: "24/04", score: 36, title: "Carga cognitiva elevada", desc: "Aumento de stress mental", impact: -14, tone: "yellow", time: "14:45" },
+    { date: "26/04", score: 47, title: "Estabilização", desc: "Sinais fisiológicos em equilíbrio", impact: 10, tone: "teal", time: "09:20" },
+    { date: "27/04", score: 74, title: "Recuperação ideal", desc: "Melhores indicadores do período", impact: 16, tone: "emerald", time: "11:30" },
   ];
 
   const toneClass = {
@@ -330,78 +330,89 @@ function TimelineModal({ open, onClose }) {
 
   const svgPoints = points.map((point, index) => ({
     ...point,
-    x: 10 + index * 22.5,
-    y: 82 - point.score * 0.52,
+    x: 12 + index * 21,
+    y: 96 - point.score,
   }));
 
   const linePath = svgPoints
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
     .join(" ");
 
+  const areaPath = `${linePath} L ${svgPoints[svgPoints.length - 1].x} 98 L ${svgPoints[0].x} 98 Z`;
+
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-4 py-5 backdrop-blur-md">
-      <div className="w-full max-w-3xl overflow-hidden rounded-[22px] border border-cyan-300/14 bg-[#080a0c] shadow-[0_28px_100px_rgba(0,0,0,0.72)]">
-        <div className="flex items-center justify-between gap-3 border-b border-white/8 px-5 py-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <Activity className="h-4 w-4 text-cyan-300" />
-              <h3 className="text-base font-black tracking-tight text-white">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/65 px-4 py-5 backdrop-blur-md">
+      <div className="flex max-h-[82vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-cyan-300/15 bg-[#07090c] shadow-[0_30px_120px_rgba(0,0,0,0.72)]">
+        <div className="flex items-center justify-between gap-4 border-b border-white/8 bg-white/[0.025] px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/18 bg-cyan-300/8 text-cyan-300">
+              <Activity className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black tracking-tight text-white">
                 Linha do Tempo Fisiológica
               </h3>
+              <p className="mt-1 text-xs leading-5 text-white/48">
+                Evolução primeiro. Eventos abaixo explicando cada ponto da curva.
+              </p>
             </div>
-            <p className="mt-1 text-xs text-white/45">
-              Evolução do V-Score e eventos críticos do período.
-            </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
             aria-label="Fechar linha do tempo"
-            className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] p-2 text-white/65 transition hover:border-cyan-300/25 hover:text-white"
+            className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] p-2 text-white/70 transition hover:border-cyan-300/30 hover:bg-white/[0.07] hover:text-white"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-5">
-          <section className="rounded-[20px] border border-white/10 bg-white/[0.025] p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,.28)_rgba(255,255,255,.05)]">
+          <section className="rounded-[22px] border border-white/10 bg-white/[0.025] p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="font-mono text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300">
+                <p className="font-mono text-[11px] font-black uppercase tracking-[0.28em] text-cyan-300">
                   Evolução do V-Score
                 </p>
-                <p className="mt-1 text-[11px] text-white/38">Curva resumida</p>
+                <p className="mt-1 text-xs text-white/42">
+                  Curva interpretativa do período
+                </p>
               </div>
 
-              <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[11px] font-black text-white/56">
+              <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs font-black text-white/58">
                 7 dias
               </span>
             </div>
 
-            <div className="relative h-[175px] overflow-hidden rounded-[18px] border border-white/8 bg-[#05070a]">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(34,211,238,0.08),transparent_40%),radial-gradient(circle_at_82%_78%,rgba(52,211,153,0.08),transparent_45%)]" />
+            <div className="relative h-[285px] overflow-hidden rounded-[20px] border border-white/8 bg-[#05070a] p-4">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_42%_20%,rgba(34,211,238,0.10),transparent_36%),radial-gradient(circle_at_86%_75%,rgba(52,211,153,0.10),transparent_38%)]" />
 
-              <div className="absolute left-4 right-4 top-8 border-t border-dashed border-emerald-300/14" />
-              <div className="absolute left-4 right-4 top-[80px] border-t border-dashed border-yellow-300/14" />
-              <div className="absolute left-4 right-4 top-[132px] border-t border-dashed border-rose-300/12" />
+              <div className="absolute left-5 right-5 top-12 border-t border-dashed border-emerald-300/18" />
+              <div className="absolute left-5 right-5 top-[128px] border-t border-dashed border-yellow-300/18" />
+              <div className="absolute left-5 right-5 top-[205px] border-t border-dashed border-rose-300/16" />
 
-              <div className="absolute left-4 top-6 space-y-[36px] text-[9px] font-black uppercase tracking-[0.08em]">
+              <div className="absolute left-5 top-10 space-y-[67px] text-[11px] font-black uppercase tracking-[0.10em]">
                 <p className="text-emerald-300">Recuperação</p>
                 <p className="text-yellow-300">Atenção</p>
                 <p className="text-rose-300">Queda</p>
               </div>
 
-              <svg viewBox="0 0 100 92" className="absolute left-7 right-4 top-6 h-[112px] w-[calc(100%-44px)] overflow-visible">
+              <svg viewBox="0 0 100 100" className="absolute left-8 right-5 top-10 h-[175px] w-[calc(100%-52px)] overflow-visible">
                 <defs>
-                  <linearGradient id="vfTimelineStrokeSmall" x1="0" x2="1" y1="0" y2="0">
+                  <linearGradient id="verticalTimelineStroke" x1="0" x2="1" y1="0" y2="0">
                     <stop offset="0%" stopColor="#fb7185" />
-                    <stop offset="45%" stopColor="#facc15" />
+                    <stop offset="42%" stopColor="#facc15" />
                     <stop offset="72%" stopColor="#22d3ee" />
                     <stop offset="100%" stopColor="#34d399" />
                   </linearGradient>
-                  <filter id="vfTimelineGlowSmall">
-                    <feGaussianBlur stdDeviation="1.2" result="blur" />
+                  <linearGradient id="verticalTimelineArea" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#34d399" stopOpacity="0.20" />
+                    <stop offset="55%" stopColor="#22d3ee" stopOpacity="0.08" />
+                    <stop offset="100%" stopColor="#fb7185" stopOpacity="0.02" />
+                  </linearGradient>
+                  <filter id="verticalTimelineGlow">
+                    <feGaussianBlur stdDeviation="2.2" result="blur" />
                     <feMerge>
                       <feMergeNode in="blur" />
                       <feMergeNode in="SourceGraphic" />
@@ -409,106 +420,123 @@ function TimelineModal({ open, onClose }) {
                   </filter>
                 </defs>
 
+                <path d={areaPath} fill="url(#verticalTimelineArea)" />
                 <path
                   d={linePath}
                   fill="none"
-                  stroke="url(#vfTimelineStrokeSmall)"
-                  strokeWidth="2.15"
+                  stroke="url(#verticalTimelineStroke)"
+                  strokeWidth="3.4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  filter="url(#vfTimelineGlowSmall)"
+                  filter="url(#verticalTimelineGlow)"
                 />
 
                 {svgPoints.map((point) => (
-                  <g key={`${point.date}-small-point`}>
+                  <g key={`${point.date}-vertical-point`}>
+                    <line
+                      x1={point.x}
+                      y1={point.y}
+                      x2={point.x}
+                      y2="98"
+                      stroke={toneClass[point.tone].fill}
+                      strokeOpacity="0.16"
+                      strokeWidth="1"
+                    />
                     <circle
                       cx={point.x}
                       cy={point.y}
-                      r="3.1"
+                      r="4.3"
                       fill={toneClass[point.tone].fill}
                       stroke="#05070a"
-                      strokeWidth="1.6"
+                      strokeWidth="2"
                     />
                   </g>
                 ))}
               </svg>
 
-              <div className="absolute bottom-3 left-7 right-5 grid grid-cols-5 gap-2">
+              <div className="absolute bottom-5 left-8 right-6 grid grid-cols-5 gap-2">
                 {points.map((point) => (
-                  <div key={`${point.date}-small-label`} className="text-center">
-                    <div className={`mx-auto mb-1 h-1.5 w-1.5 rounded-full ${toneClass[point.tone].bg}`} />
-                    <p className="text-[11px] font-black text-white/55">{point.date}</p>
+                  <div key={`${point.date}-vertical-label`} className="text-center">
+                    <div className={`mx-auto mb-1.5 h-2 w-2 rounded-full ${toneClass[point.tone].bg}`} />
+                    <p className="text-xs font-black text-white/60">{point.date}</p>
+                    <p className="mt-1 line-clamp-2 text-[10px] leading-3 text-white/38">
+                      {point.title}
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
-              <div className="rounded-full border border-rose-300/14 bg-rose-300/7 px-3 py-1.5 text-[11px]">
-                <span className="font-black text-rose-300">↓ Ponto baixo</span>
-                <span className="mx-1.5 font-black text-white">36</span>
-                <span className="text-white/42">24/04</span>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-2xl border border-rose-300/12 bg-rose-300/7 p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-rose-300">Ponto baixo</p>
+                <p className="mt-1 text-xl font-black text-white">36</p>
+                <p className="text-xs text-white/42">24/04</p>
               </div>
 
-              <div className="rounded-full border border-emerald-300/14 bg-emerald-300/7 px-3 py-1.5 text-[11px]">
-                <span className="font-black text-emerald-300">↑ Ponto alto</span>
-                <span className="mx-1.5 font-black text-white">74</span>
-                <span className="text-white/42">27/04</span>
+              <div className="rounded-2xl border border-emerald-300/12 bg-emerald-300/7 p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-300">Ponto alto</p>
+                <p className="mt-1 text-xl font-black text-white">74</p>
+                <p className="text-xs text-white/42">27/04</p>
               </div>
 
-              <div className="rounded-full border border-cyan-300/14 bg-cyan-300/7 px-3 py-1.5 text-[11px]">
-                <span className="font-black text-cyan-300">↗ Tendência</span>
-                <span className="ml-1.5 font-black text-emerald-300">Recuperação</span>
+              <div className="rounded-2xl border border-cyan-300/12 bg-cyan-300/7 p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">Tendência</p>
+                <p className="mt-1 text-xl font-black text-emerald-300">↗</p>
+                <p className="text-xs font-bold text-emerald-300">Recuperação</p>
               </div>
             </div>
           </section>
 
-          <section className="mt-3 rounded-[20px] border border-white/10 bg-white/[0.025] p-4">
-            <div className="mb-3 flex items-end justify-between gap-3">
+          <section className="mt-4 rounded-[22px] border border-white/10 bg-white/[0.025] p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="font-mono text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300">
+                <p className="font-mono text-[11px] font-black uppercase tracking-[0.28em] text-cyan-300">
                   Eventos fisiológicos
                 </p>
-                <p className="mt-1 text-[11px] text-white/38">Pontos que explicam a curva</p>
+                <p className="mt-1 text-xs text-white/42">
+                  Detalhes dos pontos marcados no gráfico
+                </p>
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-5">
               {points.map((point) => {
                 const tone = toneClass[point.tone];
                 return (
                   <div
-                    key={`${point.date}-small-event`}
-                    className="rounded-2xl border border-white/8 bg-black/16 px-3 py-2.5"
+                    key={`${point.date}-bottom-event`}
+                    className="min-h-[132px] rounded-2xl border border-white/8 bg-black/16 p-3"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`h-2 w-2 shrink-0 rounded-full ${tone.bg}`} />
-                          <p className="text-xs font-black text-white/60">{point.date}</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tone.bg}`} />
+                        <div>
+                          <p className="text-sm font-black text-white/66">{point.date}</p>
+                          <p className="text-[11px] text-white/34">{point.time}</p>
                         </div>
-                        <p className={`mt-1.5 text-sm font-black leading-5 ${tone.text}`}>
-                          {point.title}
-                        </p>
-                        <p className="mt-1 text-[11px] leading-4 text-white/43">{point.desc}</p>
                       </div>
 
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black ${tone.border} ${tone.soft} ${tone.text}`}>
+                      <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black ${tone.border} ${tone.soft} ${tone.text}`}>
                         {point.impact > 0 ? "+" : ""}{point.impact}
                       </span>
                     </div>
+
+                    <p className={`mt-3 text-sm font-black leading-5 ${tone.text}`}>{point.title}</p>
+                    <p className="mt-2 text-xs leading-5 text-white/50">{point.desc}</p>
                   </div>
                 );
               })}
             </div>
           </section>
 
-          <section className="mt-3 rounded-[20px] border border-cyan-300/12 bg-cyan-300/5 px-4 py-3">
-            <p className="font-mono text-[10px] font-black uppercase tracking-[0.20em] text-cyan-200">
+          <section className="mt-4 rounded-[22px] border border-cyan-300/12 bg-cyan-300/5 p-4">
+            <p className="font-mono text-[11px] font-black uppercase tracking-[0.20em] text-cyan-200">
               Leitura inteligente
             </p>
-            <p className="mt-1.5 text-xs leading-5 text-white/55">
-              O período começou com sobrecarga, mas fechou em recuperação progressiva e maior equilíbrio.
+            <p className="mt-2 text-sm leading-6 text-white/58">
+              O período começou com sobrecarga fisiológica, mas evoluiu para recuperação progressiva.
+              <span className="font-bold text-white"> O fechamento do ciclo mostra adaptação e equilíbrio.</span>
             </p>
           </section>
         </div>
