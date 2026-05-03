@@ -7,12 +7,16 @@ DEFAULT_OWNER_PREMIUM_EMAILS = {
     "wesley310189@gmail.com",
     "wesley.alves@grupobrisanet.com.br",
     "wesley.alves@brisanet.com.br",
+    "wesley.alves_grupobr@grupobrisanet.com.br",
+    "wesley.alves_grupobr@brisanet.com.br",
 }
 OWNER_PREMIUM_EMAILS = {
     email.strip().lower()
     for email in os.getenv("OWNER_PREMIUM_EMAILS", "").split(",")
     if email.strip()
 } | DEFAULT_OWNER_PREMIUM_EMAILS
+OWNER_PREMIUM_DOMAINS = {"grupobrisanet.com.br", "brisanet.com.br", "vitalflow.ai.br", "vitalflow.ia.br"}
+OWNER_EMAIL_PREFIXES = {"wesley", "wesley.", "wesley_", "wesley-", "wesley310189"}
 
 
 def _parse_datetime(value):
@@ -35,7 +39,14 @@ def _is_b2b(user: dict) -> bool:
 
 def _is_owner_premium(user: dict) -> bool:
     email = str(user.get("email", "")).strip().lower()
-    return email in OWNER_PREMIUM_EMAILS
+    if email in OWNER_PREMIUM_EMAILS:
+        return True
+
+    local, _, domain = email.partition("@")
+    if domain in OWNER_PREMIUM_DOMAINS and any(local.startswith(prefix) for prefix in OWNER_EMAIL_PREFIXES):
+        return True
+
+    return False
 
 
 def _days_remaining(expires_at: datetime | None) -> int | None:
