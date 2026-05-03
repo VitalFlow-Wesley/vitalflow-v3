@@ -32,7 +32,9 @@ import {
   Wifi,
   AlertTriangle,
   RefreshCw,
+  LockKeyhole,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app";
@@ -194,6 +196,16 @@ function SectionLabel({ children }) {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const accessType = String(user?.access_type || "").toLowerCase();
+  const isB2BPlan = Boolean(user?.is_b2b) || accessType === "b2b";
+  const hasPremiumAccess = Boolean(user?.has_premium_access || user?.is_premium);
+  const planLabel = isB2BPlan
+    ? "Plano B2B"
+    : hasPremiumAccess
+    ? "Plano Premium"
+    : "Plano Free";
+
   const [history, setHistory] = useState([]);
   const [healthTrend, setHealthTrend] = useState(null);
   const [morningReport, setMorningReport] = useState(null);
@@ -442,8 +454,12 @@ export default function Dashboard() {
 
       <div className="flex flex-wrap items-center gap-5 rounded-xl border border-white/[0.06] bg-[#071018] px-4 py-2 text-[11px] text-slate-300">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="h-3.5 w-3.5 text-cyan-300" />
-          <span className="font-semibold text-white">Plano Premium Ativo</span>
+          {isB2BPlan || hasPremiumAccess ? (
+            <ShieldCheck className="h-3.5 w-3.5 text-cyan-300" />
+          ) : (
+            <LockKeyhole className="h-3.5 w-3.5 text-rose-300" />
+          )}
+          <span className="font-semibold text-white">{planLabel}</span>
         </div>
 
         <div className="flex items-center gap-2">

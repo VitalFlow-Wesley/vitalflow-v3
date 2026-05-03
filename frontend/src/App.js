@@ -5,6 +5,7 @@ import ProtectedRoute, { GestorRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Analise from "./pages/Analise";
 import ConnectDevices from "./pages/ConnectDevices";
+import DeviceHistory from "./pages/DeviceHistory";
 import Profile from "./pages/Profile";
 import MeuRelatorioStable from "./pages/MeuRelatorioStable";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -38,6 +39,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/analise" element={<Analise />} />
               <Route path="/devices" element={<ConnectDevices />} />
+          <Route path="/devices/history" element={<DeviceHistory />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/relatorio" element={<MeuRelatorioStable />} />
               <Route path="/payment/success" element={<PaymentSuccess />} />

@@ -35,13 +35,24 @@ const fallbackReport = {
 
 const isPremiumPlan = (plan) => {
   if (!plan) return false;
+  const subscriptionStatus = String(plan.subscription_status || "").toLowerCase();
+  const accessType = String(plan.access_type || "").toLowerCase();
+  const planName = String(plan.plan || "").toLowerCase();
+  const tier = String(plan.tier || "").toLowerCase();
+
   return Boolean(
-    plan.is_premium ||
+    plan.has_premium_access ||
+      plan.features?.pdf_export ||
+      plan.is_premium ||
       plan.isPremium ||
       plan.premium ||
-      plan.plan === "premium" ||
-      plan.tier === "premium" ||
-      plan.subscription_status === "active"
+      accessType === "premium" ||
+      accessType === "b2b" ||
+      (accessType === "trial" && plan.trial_active) ||
+      planName === "premium" ||
+      tier === "premium" ||
+      subscriptionStatus === "active" ||
+      subscriptionStatus === "trialing"
   );
 };
 
@@ -68,41 +79,88 @@ function MiniSparkline({ tone = "emerald" }) {
 }
 
 function TrendLineChart({ values }) {
+  const [hovered, setHovered] = useState(null);
   const safeValues = values.length > 1 ? values : fallbackReport.trend;
-  const max = Math.max(...safeValues, 100);
-  const min = Math.min(...safeValues, 50);
-  const spread = Math.max(max - min, 1);
+  const chart = { left: 8, right: 96, top: 10, bottom: 82 };
   const points = safeValues.map((value, index) => {
-    const x = 8 + (index * 84) / Math.max(safeValues.length - 1, 1);
-    const y = 84 - ((value - min) / spread) * 58;
-    return { value, x, y, label: `${20 + index}/04` };
+    const x = chart.left + (index * (chart.right - chart.left)) / Math.max(safeValues.length - 1, 1);
+    const y = chart.bottom - (Math.max(0, Math.min(100, value)) / 100) * (chart.bottom - chart.top);
+    return { value, x, y, label: String(20 + index) + "/04" };
   });
-  const path = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const path = points.map((point) => point.x + "," + point.y).join(" " );
+  const fillPath = chart.left + "," + chart.bottom + " " + path + " " + chart.right + "," + chart.bottom;
+  const lowest = points.reduce((current, point) => (point.value < current.value ? point : current), points[0]);
+  const highest = points.reduce((current, point) => (point.value > current.value ? point : current), points[0]);
+  const last = points[points.length - 1];
+  const activePoint = hovered || null;
+  const annotations = [
+    { point: lowest, label: "Carga de treino alta", color: "#fb7185", anchor: "middle" },
+    { point: highest, label: "Noite bem dormida", color: "#34d399", anchor: "middle" },
+    { point: last, label: "Dia de descanso", color: "#fbbf24", anchor: "end" },
+  ];
+  const getTone = (point) => point.value < 65 ? { label: "Crítico", color: "#fb7185" } : point.value > 88 ? { label: "Pico de recuperação", color: "#34d399" } : { label: "Estável", color: "#22d3ee" };
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-white/[0.04] bg-cyan-500/[0.025]" style={{ height: 156 }}>
+    <div className="relative overflow-hidden rounded-xl border border-cyan-400/10 bg-[#071115]" style={{ height: 188 }}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(34,211,238,0.10),transparent_34%)]" />
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
         <defs>
           <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.34" />
+            <stop offset="72%" stopColor="#22d3ee" stopOpacity="0.10" />
             <stop offset="100%" stopColor="#22d3ee" stopOpacity="0.02" />
           </linearGradient>
         </defs>
-        {[24, 46, 68, 90].map((y) => (
-          <line key={y} x1="6" x2="94" y1={y} y2={y} stroke="rgba(255,255,255,0.08)" strokeWidth="0.45" vectorEffect="non-scaling-stroke" />
+        {[0, 25, 50, 75, 100].map((value) => {
+          const y = chart.bottom - (value / 100) * (chart.bottom - chart.top);
+          return <line key={value} x1={chart.left} x2={chart.right} y1={y} y2={y} stroke="rgba(255,255,255,0.08)" strokeWidth="0.45" vectorEffect="non-scaling-stroke" />;
+        })}
+        {points.map((point) => (
+          <line key={point.label} x1={point.x} x2={point.x} y1={chart.top} y2={chart.bottom} stroke="rgba(255,255,255,0.035)" strokeWidth="0.35" vectorEffect="non-scaling-stroke" />
         ))}
-        <polygon points={`8,92 ${path} 92,92`} fill="url(#trendFill)" />
-        <polyline points={path} fill="none" stroke="#22d3ee" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-        {points.map((point, index) => (
-          <circle key={index} cx={point.x} cy={point.y} r="1.8" fill={point.value < 65 ? "#fb7185" : point.value > 88 ? "#34d399" : "#22d3ee"} vectorEffect="non-scaling-stroke" />
+        {annotations.map(({ point, color }) => (
+          <line key={"marker-" + point.label} x1={point.x} x2={point.x} y1={point.y} y2={chart.bottom} stroke={color} strokeDasharray="2 2" strokeOpacity="0.72" strokeWidth="0.7" vectorEffect="non-scaling-stroke" />
         ))}
+        <polygon points={fillPath} fill="url(#trendFill)" />
+        <polyline points={path} fill="none" stroke="#22d3ee" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        {points.map((point) => {
+          const isLow = point.value === lowest.value;
+          const isHigh = point.value === highest.value;
+          const isActive = activePoint?.label === point.label;
+          return (
+            <circle key={"dot-" + point.label} cx={point.x} cy={point.y} r={isActive ? "2.8" : isLow || isHigh ? "2.15" : "1.75"} fill={isLow ? "#fb7185" : isHigh ? "#34d399" : "#22d3ee"} stroke="#071115" strokeWidth="0.85" vectorEffect="non-scaling-stroke" />
+          );
+        })}
+        {points.map((point, index) => {
+          const prev = points[index - 1];
+          const next = points[index + 1];
+          const left = prev ? (prev.x + point.x) / 2 : chart.left;
+          const right = next ? (next.x + point.x) / 2 : chart.right;
+          return <rect key={"hit-" + point.label} x={left} y={chart.top} width={right - left} height={chart.bottom - chart.top} fill="transparent" onMouseEnter={() => setHovered(point)} onMouseMove={() => setHovered(point)} onMouseLeave={() => setHovered(null)} />;
+        })}
       </svg>
-      <div className="absolute inset-x-4 top-3 flex justify-between text-[10px] font-bold text-slate-200">
-        {points.map((point) => <span key={`v-${point.label}`}>{point.value}</span>)}
+
+      <div className="absolute inset-y-5 left-3 flex flex-col justify-between text-[10px] font-semibold text-slate-500 pointer-events-none">
+        {[100, 75, 50, 25, 0].map((value) => <span key={value}>{value}</span>)}
       </div>
-      <div className="absolute inset-x-4 bottom-3 flex justify-between text-[10px] text-slate-500">
+      <div className="absolute left-12 right-8 top-4 flex justify-between text-[11px] font-black text-slate-100 pointer-events-none">
+        {points.map((point) => <span key={"v-" + point.label}>{point.value}</span>)}
+      </div>
+      <div className="absolute left-12 right-8 bottom-9 flex justify-between text-[11px] text-slate-400 pointer-events-none">
         {points.map((point) => <span key={point.label}>{point.label}</span>)}
       </div>
+      <div className="absolute left-12 right-8 bottom-3 h-7 pointer-events-none">
+        {annotations.map(({ point, label, color, anchor }) => (
+          <span key={label} className="absolute max-w-[76px] text-[9px] font-bold leading-[1.05]" style={{ left: (((point.x - chart.left) / (chart.right - chart.left)) * 100) + "%", transform: anchor === "end" ? "translateX(-100%)" : "translateX(-50%)", color, textAlign: anchor === "end" ? "right" : "center" }}>{label}</span>
+        ))}
+      </div>
+      {activePoint && (
+        <div className="pointer-events-none absolute z-10 w-[72px] rounded-md border border-cyan-300/15 bg-[#071115]/90 px-1.5 py-1 text-[9px] shadow-[0_6px_14px_rgba(0,0,0,0.26)] backdrop-blur" style={{ left: (((activePoint.x - chart.left) / (chart.right - chart.left)) * 100) + "%", top: Math.max(8, activePoint.y * 1.95 - 18), transform: activePoint.x > 78 ? "translateX(-100%)" : activePoint.x < 22 ? "translateX(0)" : "translateX(-50%)" }}>
+          <div className="text-[8px] font-bold uppercase tracking-[0.08em] text-slate-400">{activePoint.label}</div>
+          <div className="mt-0 flex items-baseline gap-0.5"><span className="text-base font-black text-white">{activePoint.value}</span><span className="text-[8px] text-slate-400">V-Score</span></div>
+          <div className="mt-0 text-[8px] font-bold leading-none" style={{ color: getTone(activePoint).color }}>{getTone(activePoint).label}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -115,7 +173,7 @@ export default function MeuRelatorioStable() {
 
   const activePeriod = PERIODS.find((item) => item.value === period) || PERIODS[0];
   const premium = isPremiumPlan(plan);
-  const showPdfPremiumNote = Boolean(plan && !premium);
+  const showPdfPremiumNote = false;
 
   const generatedAt = useMemo(
     () => new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }),
@@ -280,15 +338,15 @@ export default function MeuRelatorioStable() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3" style={{ marginTop: 10 }}>
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-2" style={{ marginTop: 8 }}>
           {metrics.map((metric) => {
             const Icon = metric.icon;
-            return <div key={metric.label} className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 13, minHeight: 105 }}><div className="flex items-center gap-2.5"><Icon className={`h-4 w-4 ${metric.tone}`} /><p className="font-bold uppercase text-slate-300" style={{ fontSize: 9.5, letterSpacing: "0.15em" }}>{metric.label}</p></div><p className={`font-black ${metric.tone || "text-white"}`} style={{ marginTop: 12, fontSize: 25, lineHeight: 1 }}>{metric.value}</p><p className="text-slate-300" style={{ marginTop: 6, fontSize: 11, lineHeight: 1.3 }}>{metric.helper}</p></div>;
+            return <div key={metric.label} className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 11, minHeight: 88 }}><div className="flex items-center gap-2.5"><Icon className={`h-4 w-4 ${metric.tone}`} /><p className="font-bold uppercase text-slate-300" style={{ fontSize: 9.5, letterSpacing: "0.15em" }}>{metric.label}</p></div><p className={`font-black ${metric.tone || "text-white"}`} style={{ marginTop: 8, fontSize: 22, lineHeight: 1 }}>{metric.value}</p><p className="text-slate-300" style={{ marginTop: 5, fontSize: 10.5, lineHeight: 1.25 }}>{metric.helper}</p></div>;
           })}
         </section>
 
         <section className="grid grid-cols-1 xl:grid-cols-[1.35fr_0.8fr_0.9fr] gap-3" style={{ marginTop: 10 }}>
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 15 }}><SectionTitle>Evolução do V-Score</SectionTitle><TrendLineChart values={trend} /></div>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 13 }}><SectionTitle>Evolução do V-Score</SectionTitle><TrendLineChart values={trend} /></div>
           <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 15 }}><SectionTitle>Distribuição do Período</SectionTitle><div className="space-y-3"><div><p className="text-sm font-black text-emerald-300">{report.distribution.stable}% Estável</p><p className="text-[11px] text-slate-400">Maior parte do período</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-emerald-400" style={{ width: `${report.distribution.stable}%` }} /></div></div><div><p className="text-sm font-black text-amber-300">{report.distribution.attention}% Atenção</p><p className="text-[11px] text-slate-400">Sinais de sobrecarga</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-amber-400" style={{ width: `${report.distribution.attention}%` }} /></div></div><div><p className="text-sm font-black text-rose-300">{report.distribution.critical}% Crítico</p><p className="text-[11px] text-slate-400">Risco elevado presente</p><div className="mt-2 h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-rose-400" style={{ width: `${report.distribution.critical}%` }} /></div></div></div></div>
           <div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 15 }}><SectionTitle>Comparativo de Performance</SectionTitle><div className="grid grid-cols-3 items-end gap-4 border-b border-white/10" style={{ height: 126, paddingBottom: 12 }}>{[report.avg_v_score, 72.3, 85.1].map((value, index) => <div key={index} className="flex flex-col items-center gap-1.5"><span className="text-xs font-bold text-white">{value}</span><div className={`w-full rounded-t-md ${index === 0 ? "bg-cyan-500" : index === 1 ? "bg-slate-400" : "bg-emerald-400"}`} style={{ height: `${value * 0.82}px` }} /><span className="text-[10px] text-slate-500">{index === 0 ? "Sua média" : index === 1 ? "Faixa etária" : "Sua meta"}</span></div>)}</div><p className="text-slate-300" style={{ marginTop: 10, fontSize: 11, lineHeight: 1.35 }}>Seu V-Score está acima da média da faixa etária, mas ainda abaixo da sua meta pessoal.</p></div>
         </section>
