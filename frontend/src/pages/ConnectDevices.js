@@ -323,9 +323,9 @@ function RecentActivity() {
         ))}
       </div>
 
-      <button onClick={() => (window.location.href = "/devices/history")} className="mt-3 flex items-center gap-1 text-xs font-medium text-cyan-400">
+      <a href="/devices/history" className="mt-3 flex items-center gap-1 text-xs font-medium text-cyan-400">
         Ver histórico completo <ArrowRight size={13} />
-      </button>
+      </a>
     </div>
   );
 }
