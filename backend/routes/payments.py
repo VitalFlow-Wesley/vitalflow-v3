@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Request, HTTPException
 from database import db
 from auth_utils import get_current_colaborador
+from routes.health import _is_pdf_export_allowed
 from emergentintegrations.payments.stripe.checkout import (
     StripeCheckout, CheckoutSessionRequest
 )
@@ -18,6 +19,56 @@ PLANS = {
     "premium_monthly": {"amount": 29.90, "currency": "brl", "label": "Premium Mensal"},
     "premium_yearly": {"amount": 299.90, "currency": "brl", "label": "Premium Anual"},
 }
+
+
+def get_user_access_state(colaborador: dict) -> dict:
+    """Return the canonical billing state used by premium-gated screens."""
+    has_premium_access = _is_pdf_export_allowed(colaborador)
+    premium_expires_at = colaborador.get("premium_expires_at")
+
+    return {
+        "has_premium_access": has_premium_access,
+        "is_premium": has_premium_access,
+        "premium": has_premium_access,
+        "plan": "premium" if has_premium_access else "free",
+        "tier": "premium" if has_premium_access else "free",
+        "subscription_status": "active" if has_premium_access else "inactive",
+        "premium_expires_at": premium_expires_at,
+        "trial_expired": not has_premium_access,
+    }
+
+
+@router.get("/billing/plan")
+async def get_billing_plan(request: Request):
+    """Expose the current user's plan to the frontend."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        access = get_user_access_state(colaborador)
+
+        if access["has_premium_access"] and not colaborador.get("is_premium"):
+            await db.colaboradores.update_one(
+                {"id": colaborador["id"]},
+                {"$set": {
+                    "is_premium": True,
+                    "subscription_status": "active",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+
+        return {
+            **access,
+            "label": "Premium" if access["has_premium_access"] else "Gratuito",
+            "features": {
+                "pdf_export": access["has_premium_access"],
+                "complete_reports": access["has_premium_access"],
+                "advanced_insights": access["has_premium_access"],
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting billing plan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/billing/create-checkout")
@@ -114,6 +165,7 @@ async def get_checkout_status(session_id: str, request: Request):
                 {"$set": {
                     "is_premium": True,
                     "premium_expires_at": None,
+                    "subscription_status": "active",
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 }}
             )
@@ -171,6 +223,7 @@ async def stripe_webhook(request: Request):
                         {"$set": {
                             "is_premium": True,
                             "premium_expires_at": None,
+                            "subscription_status": "active",
                             "updated_at": datetime.now(timezone.utc).isoformat(),
                         }}
                     )
