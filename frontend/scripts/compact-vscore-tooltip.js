@@ -60,7 +60,31 @@ source = source
   .replace(
     /className="mt-0\.5 text-\[10px\] font-bold"/g,
     'className="mt-0 text-[8px] font-bold leading-none"'
+  )
+  .replace(
+    /style=\{\{ height: 208 \}\}/g,
+    "style={{ height: 188 }}"
+  )
+  .replace(
+    /<div className="rounded-xl border border-white\/\[0\.08\] bg-\[#0b0d0f\]" style=\{\{ padding: 15 \}\}><SectionTitle>Evolução do V-Score<\/SectionTitle>/g,
+    '<div className="rounded-xl border border-white/[0.08] bg-[#0b0d0f]" style={{ padding: 13 }}><SectionTitle>Evolução do V-Score</SectionTitle>'
+  )
+  .replace(
+    /<section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3" style=\{\{ marginTop: 10 \}\}>/g,
+    '<section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-2" style={{ marginTop: 8 }}>'
+  )
+  .replace(
+    /style=\{\{ padding: 13, minHeight: 105 \}\}/g,
+    "style={{ padding: 11, minHeight: 88 }}"
+  )
+  .replace(
+    /style=\{\{ marginTop: 12, fontSize: 25, lineHeight: 1 \}\}/g,
+    "style={{ marginTop: 8, fontSize: 22, lineHeight: 1 }}"
+  )
+  .replace(
+    /style=\{\{ marginTop: 6, fontSize: 11, lineHeight: 1\.3 \}\}/g,
+    "style={{ marginTop: 5, fontSize: 10.5, lineHeight: 1.25 }}"
   );
 
 fs.writeFileSync(reportPath, source);
-console.log("V-Score tooltip compacted for build.");
+console.log("V-Score tooltip, chart spacing, and metric cards compacted for build.");
