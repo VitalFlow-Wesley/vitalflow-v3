@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 TRIAL_DAYS = 30
+OWNER_PREMIUM_EMAILS = {"wesley@vitalflow.ai.br", "wesley310189@gmail.com"}
 
 
 def _parse_datetime(value):
@@ -21,6 +22,10 @@ def _is_b2b(user: dict) -> bool:
     return bool(user.get("is_b2b", False)) or account_type in {"corporate", "empresa", "business"}
 
 
+def _is_owner_premium(user: dict) -> bool:
+    return str(user.get("email", "")).lower() in OWNER_PREMIUM_EMAILS
+
+
 def _days_remaining(expires_at: datetime | None) -> int | None:
     if not expires_at:
         return None
@@ -32,6 +37,26 @@ def get_trial_window(now: datetime | None = None) -> tuple[str, str]:
     start = now or datetime.now(timezone.utc)
     end = start + timedelta(days=TRIAL_DAYS)
     return start.isoformat(), end.isoformat()
+
+
+def _premium_state(user: dict, access_type: str, trial_start_date=None, trial_end_date=None, premium_expires_at=None) -> dict:
+    return {
+        "has_premium_access": True,
+        "is_premium": True,
+        "premium": True,
+        "access_type": access_type,
+        "plan": "premium",
+        "tier": "premium",
+        "subscription_status": "active",
+        "trial_active": False,
+        "trial_expired": False,
+        "trial_available": False,
+        "trial_days": TRIAL_DAYS,
+        "trial_days_remaining": None,
+        "trial_start_date": trial_start_date,
+        "trial_end_date": trial_end_date,
+        "premium_expires_at": premium_expires_at,
+    }
 
 
 def get_user_access_state(user: dict) -> dict:
@@ -46,47 +71,18 @@ def get_user_access_state(user: dict) -> dict:
     premium_end = _parse_datetime(premium_expires_at)
     has_trial_history = bool(trial_start_date or trial_end_date)
 
+    if _is_owner_premium(user):
+        return _premium_state(user, "premium", trial_start_date, trial_end_date, premium_expires_at)
+
     if _is_b2b(user):
-        return {
-            "has_premium_access": True,
-            "is_premium": True,
-            "premium": True,
-            "access_type": "b2b",
-            "plan": "premium",
-            "tier": "premium",
-            "subscription_status": subscription_status or "active",
-            "trial_active": False,
-            "trial_expired": False,
-            "trial_available": False,
-            "trial_days": TRIAL_DAYS,
-            "trial_days_remaining": None,
-            "trial_start_date": trial_start_date,
-            "trial_end_date": trial_end_date,
-            "premium_expires_at": premium_expires_at,
-        }
+        return _premium_state(user, "b2b", trial_start_date, trial_end_date, premium_expires_at)
 
     paid_status = subscription_status in {"active", "ativo"}
     paid_plan = plan == "premium" and subscription_status not in {"trialing", "trial", "trial_expired"}
     paid_not_expired = premium_end is None or now <= premium_end
 
     if (paid_status or paid_plan or (is_premium_flag and plan == "premium")) and paid_not_expired:
-        return {
-            "has_premium_access": True,
-            "is_premium": True,
-            "premium": True,
-            "access_type": "premium",
-            "plan": "premium",
-            "tier": "premium",
-            "subscription_status": "active",
-            "trial_active": False,
-            "trial_expired": False,
-            "trial_available": False,
-            "trial_days": TRIAL_DAYS,
-            "trial_days_remaining": None,
-            "trial_start_date": trial_start_date,
-            "trial_end_date": trial_end_date,
-            "premium_expires_at": premium_expires_at,
-        }
+        return _premium_state(user, "premium", trial_start_date, trial_end_date, premium_expires_at)
 
     is_trial_plan = plan == "trial" or subscription_status in {"trialing", "trial"}
     if is_trial_plan or trial_end:
