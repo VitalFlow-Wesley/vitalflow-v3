@@ -1,7 +1,18 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 TRIAL_DAYS = 30
-OWNER_PREMIUM_EMAILS = {"wesley@vitalflow.ai.br", "wesley310189@gmail.com"}
+DEFAULT_OWNER_PREMIUM_EMAILS = {
+    "wesley@vitalflow.ai.br",
+    "wesley310189@gmail.com",
+    "wesley.alves@grupobrisanet.com.br",
+    "wesley.alves@brisanet.com.br",
+}
+OWNER_PREMIUM_EMAILS = {
+    email.strip().lower()
+    for email in os.getenv("OWNER_PREMIUM_EMAILS", "").split(",")
+    if email.strip()
+} | DEFAULT_OWNER_PREMIUM_EMAILS
 
 
 def _parse_datetime(value):
@@ -23,7 +34,8 @@ def _is_b2b(user: dict) -> bool:
 
 
 def _is_owner_premium(user: dict) -> bool:
-    return str(user.get("email", "")).lower() in OWNER_PREMIUM_EMAILS
+    email = str(user.get("email", "")).strip().lower()
+    return email in OWNER_PREMIUM_EMAILS
 
 
 def _days_remaining(expires_at: datetime | None) -> int | None:
