@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Request, HTTPException
 from database import db
 from auth_utils import get_current_colaborador
-from routes.health import _is_pdf_export_allowed
+from services.subscription_service import get_trial_window, get_user_access_state
 from emergentintegrations.payments.stripe.checkout import (
     StripeCheckout, CheckoutSessionRequest
 )
@@ -21,20 +21,12 @@ PLANS = {
 }
 
 
-def get_user_access_state(colaborador: dict) -> dict:
-    """Return the canonical billing state used by premium-gated screens."""
-    has_premium_access = _is_pdf_export_allowed(colaborador)
-    premium_expires_at = colaborador.get("premium_expires_at")
-
+def _features(enabled: bool) -> dict:
     return {
-        "has_premium_access": has_premium_access,
-        "is_premium": has_premium_access,
-        "premium": has_premium_access,
-        "plan": "premium" if has_premium_access else "free",
-        "tier": "premium" if has_premium_access else "free",
-        "subscription_status": "active" if has_premium_access else "inactive",
-        "premium_expires_at": premium_expires_at,
-        "trial_expired": not has_premium_access,
+        "pdf_export": enabled,
+        "complete_reports": enabled,
+        "advanced_insights": enabled,
+        "predictive_ai": enabled,
     }
 
 
@@ -44,30 +36,62 @@ async def get_billing_plan(request: Request):
     try:
         colaborador = await get_current_colaborador(request)
         access = get_user_access_state(colaborador)
-
-        if access["has_premium_access"] and not colaborador.get("is_premium"):
-            await db.colaboradores.update_one(
-                {"id": colaborador["id"]},
-                {"$set": {
-                    "is_premium": True,
-                    "subscription_status": "active",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }}
-            )
+        enabled = access["has_premium_access"]
 
         return {
             **access,
-            "label": "Premium" if access["has_premium_access"] else "Gratuito",
-            "features": {
-                "pdf_export": access["has_premium_access"],
-                "complete_reports": access["has_premium_access"],
-                "advanced_insights": access["has_premium_access"],
-            },
+            "label": "Premium" if enabled else "Gratuito",
+            "features": _features(enabled),
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting billing plan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/billing/start-trial")
+async def start_premium_trial(request: Request):
+    """Start the one-time 30 day Premium trial for personal users."""
+    try:
+        colaborador = await get_current_colaborador(request)
+        access = get_user_access_state(colaborador)
+
+        if access["access_type"] == "b2b":
+            raise HTTPException(status_code=400, detail="Usuarios B2B ja possuem acesso corporativo.")
+
+        if access["access_type"] == "premium":
+            raise HTTPException(status_code=400, detail="Voce ja e Premium.")
+
+        if not access["trial_available"]:
+            raise HTTPException(status_code=400, detail="Teste Premium ja utilizado nesta conta.")
+
+        now = datetime.now(timezone.utc)
+        trial_start, trial_end = get_trial_window(now)
+        await db.colaboradores.update_one(
+            {"id": colaborador["id"]},
+            {"$set": {
+                "is_premium": True,
+                "plan": "trial",
+                "subscription_status": "trialing",
+                "trial_start_date": trial_start,
+                "trial_end_date": trial_end,
+                "premium_expires_at": trial_end,
+                "updated_at": now.isoformat(),
+            }}
+        )
+
+        updated = await db.colaboradores.find_one({"id": colaborador["id"]}, {"_id": 0})
+        new_access = get_user_access_state(updated or colaborador)
+        return {
+            **new_access,
+            "label": "Premium Trial",
+            "features": _features(new_access["has_premium_access"]),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting premium trial: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -89,7 +113,7 @@ async def create_checkout_session(request: Request):
 
         access = get_user_access_state(colaborador)
 
-        if access["has_premium_access"]:
+        if access["access_type"] in {"premium", "b2b"}:
             raise HTTPException(status_code=400, detail="Voce ja e Premium.")
 
         host_url = str(request.base_url).rstrip("/")
@@ -114,7 +138,6 @@ async def create_checkout_session(request: Request):
 
         session = await stripe_checkout.create_checkout_session(checkout_request)
 
-        # Registrar transacao pendente
         transaction = {
             "id": str(uuid.uuid4()),
             "session_id": session.session_id,
@@ -147,8 +170,6 @@ async def get_checkout_status(session_id: str, request: Request):
         stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
         status = await stripe_checkout.get_checkout_status(session_id)
-
-        # Atualizar transacao
         tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
 
         if status.payment_status == "paid" and tx and tx.get("payment_status") != "paid":
@@ -159,13 +180,13 @@ async def get_checkout_status(session_id: str, request: Request):
                     "paid_at": datetime.now(timezone.utc).isoformat(),
                 }}
             )
-            # Ativar Premium
             await db.colaboradores.update_one(
                 {"id": colaborador["id"]},
                 {"$set": {
                     "is_premium": True,
-                    "premium_expires_at": None,
+                    "plan": "premium",
                     "subscription_status": "active",
+                    "premium_expires_at": None,
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 }}
             )
@@ -222,8 +243,9 @@ async def stripe_webhook(request: Request):
                         {"id": colab_id},
                         {"$set": {
                             "is_premium": True,
-                            "premium_expires_at": None,
+                            "plan": "premium",
                             "subscription_status": "active",
+                            "premium_expires_at": None,
                             "updated_at": datetime.now(timezone.utc).isoformat(),
                         }}
                     )
