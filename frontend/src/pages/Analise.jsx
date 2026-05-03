@@ -1,0 +1,342 @@
+import { useMemo, useState } from "react";
+import {
+  Activity,
+  Brain,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Download,
+  HeartPulse,
+  Info,
+  Moon,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const vScoreData = [
+  { date: "21/04", score: 78, media: 76, ideal: 88 },
+  { date: "22/04", score: 42, media: 76, ideal: 88 },
+  { date: "23/04", score: 58, media: 76, ideal: 88 },
+  { date: "24/04", score: 49, media: 76, ideal: 88 },
+  { date: "25/04", score: 70, media: 76, ideal: 88 },
+  { date: "26/04", score: 93, media: 76, ideal: 88 },
+  { date: "27/04", score: 96, media: 76, ideal: 88 },
+];
+
+const drivers = [
+  { label: "HRV", icon: HeartPulse, impact: 88, contribution: "+18%", tone: "positive" },
+  { label: "Sono", icon: Moon, impact: 46, contribution: "-12%", tone: "negative" },
+  { label: "Stress", icon: Zap, impact: 34, contribution: "-8%", tone: "negative" },
+  { label: "Atividade", icon: Activity, impact: 31, contribution: "+6%", tone: "positive" },
+  { label: "Recuperação", icon: Target, impact: 52, contribution: "+14%", tone: "positive" },
+];
+
+const correlations = [
+  { icon: Moon, text: "Sono ruim → queda média de 11 pontos no dia seguinte", color: "text-indigo-300" },
+  { icon: Zap, text: "Stress alto → HRV reduz em média 14%", color: "text-yellow-300" },
+  { icon: HeartPulse, text: "Atividade leve → melhora de recuperação em 9%", color: "text-emerald-300" },
+  { icon: Activity, text: "Dias com caminhada >2km → menor carga cognitiva", color: "text-cyan-300" },
+];
+
+const impactMap = [
+  ["Cardiovascular", "Sobrecarga moderada", "text-yellow-300", HeartPulse],
+  ["Cognitivo", "Alta demanda", "text-orange-300", Brain],
+  ["Muscular", "Estável", "text-emerald-300", Activity],
+  ["Recuperação autonômica", "Parcial", "text-yellow-300", Zap],
+  ["Sistema imune", "Estável", "text-emerald-300", ShieldCheck],
+];
+
+const idealWindows = [
+  ["08h – 11h", "Melhor foco cognitivo"],
+  ["15h – 18h", "Melhor tolerância fisiológica"],
+  ["22h – 00h", "Janela ideal de recuperação"],
+];
+
+const quality = [
+  ["Cobertura biométrica", "Alta", "text-emerald-300"],
+  ["Consistência do sinal", "Boa", "text-emerald-300"],
+  ["Janela de sono", "Parcial", "text-yellow-300"],
+  ["Confiabilidade do modelo", "87%", "text-cyan-300"],
+];
+
+const timeline = [
+  ["21/04", "Queda relevante", "Stress elevado e HRV abaixo do ideal", "bg-rose-400"],
+  ["22/04", "Recuperação parcial", "Melhora de HRV e sono", "bg-cyan-400"],
+  ["24/04", "Carga cognitiva elevada", "Aumento de stress mental", "bg-yellow-400"],
+  ["26/04", "Estabilização", "Sinais fisiológicos em equilíbrio", "bg-teal-400"],
+  ["27/04", "Recuperação ideal", "Melhores indicadores do período", "bg-emerald-400"],
+];
+
+const insights = [
+  [HeartPulse, "Seu HRV respondeu melhor após dias com atividade leve."],
+  [Zap, "Seu stress tem maior impacto no período da tarde."],
+  [Moon, "Seu sono foi o principal limitador da recuperação."],
+  [TrendingUp, "Sua estabilidade aumentou nas últimas 48h."],
+];
+
+const comparisons = [
+  ["Vs. média dos últimos 7 dias", "+8%", 74, "positive"],
+  ["Vs. média dos últimos 30 dias", "+12%", 82, "positive"],
+  ["Vs. sua melhor semana", "-5%", 48, "negative"],
+  ["Vs. padrão ideal", "+15%", 66, "positive"],
+];
+
+function Card({ children, className = "" }) {
+  return (
+    <section className={`rounded-2xl border border-white/8 bg-[#101214]/85 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.22)] ${className}`}>
+      {children}
+    </section>
+  );
+}
+
+function SectionTitle({ children, info = true }) {
+  return (
+    <div className="mb-4 flex items-center gap-2">
+      <h2 className="font-mono text-[12px] font-extrabold uppercase tracking-[0.34em] text-cyan-300">{children}</h2>
+      {info && <Info className="h-3.5 w-3.5 text-white/38" />}
+    </div>
+  );
+}
+
+function ProgressBar({ value, tone = "positive" }) {
+  return (
+    <div className="h-2 w-full rounded-full bg-white/10">
+      <div
+        className={`h-full rounded-full ${tone === "negative" ? "bg-rose-400" : "bg-emerald-400"}`}
+        style={{ width: `${value}%` }}
+      />
+    </div>
+  );
+}
+
+export default function Analise() {
+  const [period, setPeriod] = useState("7 dias");
+  const confidence = useMemo(() => 87, []);
+
+  return (
+    <div className="space-y-4 pb-8">
+      <header className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">Análise</h1>
+          <p className="mt-1 text-sm font-medium text-white/50">Entenda em profundidade o que está impactando seu estado fisiológico.</p>
+
+          <div className="mt-4 inline-flex items-center overflow-hidden rounded-xl border border-white/8 bg-[#101214] text-sm text-white/62">
+            <span className="px-4 py-2">Período analisado</span>
+            <button className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-5 py-2 font-semibold text-white/86">
+              21/04/2024 – 27/04/2024 ({period})
+              <CalendarDays className="h-4 w-4 text-white/45" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2 text-sm font-semibold text-white/72">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            Análise concluída hoje, 09:41
+          </div>
+          <button className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-white/82 transition hover:border-cyan-400/25 hover:text-cyan-200">
+            <Download className="h-4 w-4" />
+            Exportar análise
+          </button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <Card className="xl:col-span-5">
+          <div className="grid gap-5 md:grid-cols-[1fr_170px] md:items-center">
+            <div>
+              <SectionTitle info={false}>Resumo analítico</SectionTitle>
+              <p className="text-base font-semibold leading-relaxed text-white/82">
+                Seu organismo apresentou estabilidade com recuperação progressiva nas últimas 48h.
+              </p>
+              <p className="mt-4 text-sm leading-7 text-white/58">
+                Os principais vetores de impacto no período foram carga cardiovascular, variação de sono, oscilação de HRV e recuperação cognitiva parcial.
+              </p>
+            </div>
+            <div className="relative mx-auto flex h-36 w-36 items-center justify-center rounded-full border-[10px] border-emerald-400/90 bg-emerald-400/5 shadow-[0_0_35px_rgba(16,185,129,0.15)]">
+              <div className="text-center">
+                <div className="text-3xl font-black text-white">{confidence}%</div>
+                <div className="mt-1 text-xs font-medium leading-tight text-white/55">Confiabilidade<br />da análise</div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="xl:col-span-3">
+          <SectionTitle>Drivers do V-Score</SectionTitle>
+          <div className="space-y-3">
+            {drivers.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="grid grid-cols-[105px_1fr_48px] items-center gap-3 text-sm">
+                  <div className="flex items-center gap-2 text-white/72">
+                    <Icon className={`h-4 w-4 ${item.tone === "negative" ? "text-rose-300" : "text-emerald-300"}`} />
+                    {item.label}
+                  </div>
+                  <ProgressBar value={item.impact} tone={item.tone} />
+                  <span className={`text-right font-black ${item.tone === "negative" ? "text-rose-300" : "text-emerald-300"}`}>{item.contribution}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-5 text-xs text-white/50">Impacto no V-Score dos últimos 7 dias</p>
+        </Card>
+
+        <Card className="xl:col-span-4">
+          <SectionTitle>Correlações detectadas</SectionTitle>
+          <div className="divide-y divide-white/7">
+            {correlations.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.text} className="flex items-start gap-3 py-2 first:pt-0 last:pb-0">
+                  <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${item.color}`} />
+                  <p className="text-sm leading-6 text-white/74">{item.text}</p>
+                </div>
+              );
+            })}
+          </div>
+          <button className="mt-3 w-full text-right text-xs font-black text-cyan-300">Ver todas as correlações →</button>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <Card className="xl:col-span-8">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <SectionTitle info={false}>Evolução do V-Score</SectionTitle>
+            <button onClick={() => setPeriod(period === "7 dias" ? "30 dias" : "7 dias")} className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-white/60">
+              {period} <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="h-[235px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={vScoreData} margin={{ top: 10, right: 12, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="scoreGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#20f5d0" stopOpacity={0.42} />
+                    <stop offset="80%" stopColor="#20f5d0" stopOpacity={0.03} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="rgba(255,255,255,0.07)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.48)", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fill: "rgba(255,255,255,0.48)", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: "#101214", border: "1px solid rgba(255,255,255,.10)", borderRadius: 14 }} labelStyle={{ color: "#fff" }} />
+                <Area type="monotone" dataKey="score" stroke="#20f5d0" strokeWidth={3} fill="url(#scoreGradient)" dot={{ r: 4, fill: "#20f5d0", stroke: "#07100f", strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="media" stroke="#eab308" strokeDasharray="6 6" strokeWidth={1.6} fillOpacity={0} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="xl:col-span-4">
+          <SectionTitle>Timeline fisiológica</SectionTitle>
+          <div className="space-y-0">
+            {timeline.map(([date, title, desc, dot], index) => (
+              <div key={`${date}-${title}`} className="grid grid-cols-[54px_18px_1fr] gap-3">
+                <div className="pt-0.5 text-sm font-semibold text-white/55">{date}</div>
+                <div className="relative flex justify-center">
+                  <span className={`mt-1.5 h-2.5 w-2.5 rounded-full ${dot} ring-4 ring-white/5`} />
+                  {index < timeline.length - 1 && <span className="absolute top-5 h-full w-px bg-white/14" />}
+                </div>
+                <div className="pb-4">
+                  <p className="text-sm font-bold text-white/75">{title}</p>
+                  <p className="text-xs leading-5 text-white/48">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="w-full text-right text-xs font-black text-cyan-300">Ver linha do tempo completa →</button>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <Card className="xl:col-span-3">
+          <SectionTitle>Mapa de impacto fisiológico</SectionTitle>
+          <div className="space-y-3">
+            {impactMap.map(([name, status, color, Icon]) => (
+              <div key={name} className="flex items-center justify-between gap-3 text-sm">
+                <span className="flex items-center gap-2 text-white/60"><Icon className="h-4 w-4 text-cyan-300/70" />{name}</span>
+                <span className={`font-black ${color}`}>{status}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="xl:col-span-3">
+          <SectionTitle>Janelas ideais detectadas</SectionTitle>
+          <div className="space-y-4">
+            {idealWindows.map(([time, desc]) => (
+              <div key={time} className="flex gap-3">
+                <Clock3 className="mt-0.5 h-5 w-5 text-emerald-300" />
+                <div>
+                  <p className="font-black text-white/78">{time}</p>
+                  <p className="text-xs text-white/48">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="xl:col-span-3">
+          <SectionTitle>Qualidade da análise</SectionTitle>
+          <div className="space-y-3">
+            {quality.map(([name, status, color]) => (
+              <div key={name} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-white/58">{name}</span>
+                <span className={`font-black ${color}`}>{status}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="xl:col-span-3">
+          <SectionTitle>Comparativo com você</SectionTitle>
+          <div className="space-y-3">
+            {comparisons.map(([label, value, width, tone]) => (
+              <div key={label} className="grid grid-cols-[1fr_78px_45px] items-center gap-3 text-sm">
+                <span className="text-white/58">{label}</span>
+                <ProgressBar value={width} tone={tone} />
+                <span className={`text-right font-black ${tone === "negative" ? "text-rose-300" : "text-emerald-300"}`}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <Card className="xl:col-span-7">
+          <SectionTitle>Insights automáticos</SectionTitle>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {insights.map(([Icon, text]) => (
+              <div key={text} className="rounded-2xl border border-white/7 bg-white/[0.025] p-3">
+                <Icon className="mb-3 h-6 w-6 text-cyan-300" />
+                <p className="text-xs leading-5 text-white/60">{text}</p>
+              </div>
+            ))}
+          </div>
+          <button className="mt-3 w-full text-right text-xs font-black text-cyan-300">Ver todos os insights →</button>
+        </Card>
+
+        <Card className="relative overflow-hidden xl:col-span-5">
+          <SectionTitle>Conclusão analítica</SectionTitle>
+          <p className="max-w-[88%] text-sm leading-7 text-white/64">
+            Seu período mostra estabilidade fisiológica com recuperação progressiva. A principal limitação continua sendo a irregularidade de sono, enquanto HRV e carga cardiovascular já demonstram melhora. O cenário atual favorece manutenção com progressão leve.
+          </p>
+          <Sparkles className="absolute bottom-5 right-6 h-24 w-24 text-emerald-300/12" />
+        </Card>
+      </div>
+    </div>
+  );
+}
