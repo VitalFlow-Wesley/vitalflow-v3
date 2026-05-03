@@ -1,13 +1,10 @@
 from pathlib import Path
 import logging
-import os
 
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
-from database import db
 
 # --- LOGGING ---
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +18,7 @@ app = FastAPI(
 )
 
 api_router = APIRouter(prefix="/api")
+
 
 # --- HEALTHCHECK / STATUS ---
 @api_router.get("/")
@@ -38,16 +36,15 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:3001",
-    "https://www.vitalflow.ia.br",
     "http://127.0.0.1:3001",
-    "https://vitalflow-api-1hjc.onrender.com",
-    "https://vitalflow.up.railway.app",
+    "https://www.vitalflow.ia.br",
     "https://vitalflow.ia.br",
     "https://api.vitalflow.ia.br",
+    "https://vitalflow-api-1hjc.onrender.com",
+    "https://vitalflow.up.railway.app",
     "https://vitalflow-v3-git-main-vitalflow-wesleys-projects.vercel.app",
     "https://vitalflow-v3.vercel.app",
 ]
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,6 +55,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # --- IMPORTACAO DAS ROTAS ---
 from routes.auth import router as auth_router
 from routes.analysis import router as analysis_router
@@ -67,6 +65,7 @@ from routes.smartwatch import router as smartwatch_router
 from routes.gamification import router as gamification_router
 from services.subscription_service import get_user_access_state
 import routes.health as health_module
+
 
 if not hasattr(health_module, "_confidence_score"):
     def _confidence_score(monitored_days: int, expected_days: int) -> int:
@@ -87,6 +86,7 @@ from routes.pdf_report import router as pdf_report_router
 from routes.health import router as health_router
 from routes.payments import router as payments_router
 
+
 # --- REGISTRO DAS ROTAS ---
 api_router.include_router(auth_router)
 api_router.include_router(analysis_router)
@@ -100,6 +100,7 @@ api_router.include_router(health_router)
 api_router.include_router(payments_router)
 
 app.include_router(api_router)
+
 
 # --- ROTA RAIZ ---
 @app.get("/")
@@ -116,6 +117,7 @@ if (static_path / "static").exists():
         StaticFiles(directory=str(static_path / "static")),
         name="static",
     )
+
 
 # --- CATCH-ALL PARA O FRONTEND REACT ---
 @app.get("/{full_path:path}")

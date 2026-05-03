@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Brain,
@@ -14,6 +14,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  X,
   Zap,
 } from "lucide-react";
 import {
@@ -25,6 +26,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
 const vScoreData = [
   { date: "21/04", score: 78, media: 76, ideal: 88 },
@@ -44,12 +48,62 @@ const drivers = [
   { label: "Recuperação", icon: Target, impact: 52, contribution: "+14%", tone: "positive" },
 ];
 
-const correlations = [
-  { icon: Moon, text: "Sono ruim → queda média de 11 pontos no dia seguinte", color: "text-indigo-300" },
-  { icon: Zap, text: "Stress alto → HRV reduz em média 14%", color: "text-yellow-300" },
-  { icon: HeartPulse, text: "Atividade leve → melhora de recuperação em 9%", color: "text-emerald-300" },
-  { icon: Activity, text: "Dias com caminhada >2km → menor carga cognitiva", color: "text-cyan-300" },
+const fallbackCorrelations = [
+  {
+    icon: Moon,
+    type: "sleep_vs_score",
+    text: "Sono ruim → queda média de 11 pontos no dia seguinte",
+    color: "text-indigo-300",
+    confidence: 0.84,
+    impact: -11,
+    detail:
+      "Quando a qualidade do sono fica abaixo do ideal, o V-Score tende a cair no dia seguinte. O sistema cruza sono, recuperação e variação do score.",
+  },
+  {
+    icon: Zap,
+    type: "stress_vs_hrv",
+    text: "Stress alto → HRV reduz em média 14%",
+    color: "text-yellow-300",
+    confidence: 0.79,
+    impact: -14,
+    detail:
+      "Picos de stress elevam a carga fisiológica e reduzem a variabilidade cardíaca, indicando menor recuperação autonômica.",
+  },
+  {
+    icon: HeartPulse,
+    type: "activity_vs_recovery",
+    text: "Atividade leve → melhora de recuperação em 9%",
+    color: "text-emerald-300",
+    confidence: 0.76,
+    impact: 9,
+    detail:
+      "Dias com movimento leve tendem a favorecer recuperação progressiva, sem gerar sobrecarga cardiovascular relevante.",
+  },
+  {
+    icon: Activity,
+    type: "walking_vs_cognitive",
+    text: "Dias com caminhada >2km → menor carga cognitiva",
+    color: "text-cyan-300",
+    confidence: 0.74,
+    impact: 7,
+    detail:
+      "O sistema identificou associação entre caminhada leve e menor carga cognitiva no período analisado.",
+  },
 ];
+
+const correlationIconMap = {
+  moon: Moon,
+  zap: Zap,
+  heart: HeartPulse,
+  activity: Activity,
+};
+
+const correlationColorMap = {
+  moon: "text-indigo-300",
+  zap: "text-yellow-300",
+  heart: "text-emerald-300",
+  activity: "text-cyan-300",
+};
 
 const impactMap = [
   ["Cardiovascular", "Sobrecarga moderada", "text-yellow-300", HeartPulse],
@@ -96,7 +150,9 @@ const comparisons = [
 
 function Card({ children, className = "" }) {
   return (
-    <section className={`rounded-2xl border border-white/8 bg-[#101214]/85 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.22)] ${className}`}>
+    <section
+      className={`rounded-2xl border border-white/8 bg-[#101214]/85 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.22)] ${className}`}
+    >
       {children}
     </section>
   );
@@ -105,7 +161,9 @@ function Card({ children, className = "" }) {
 function SectionTitle({ children, info = true }) {
   return (
     <div className="mb-4 flex items-center gap-2">
-      <h2 className="font-mono text-[12px] font-extrabold uppercase tracking-[0.34em] text-cyan-300">{children}</h2>
+      <h2 className="font-mono text-[12px] font-extrabold uppercase tracking-[0.34em] text-cyan-300">
+        {children}
+      </h2>
       {info && <Info className="h-3.5 w-3.5 text-white/38" />}
     </div>
   );
@@ -115,23 +173,316 @@ function ProgressBar({ value, tone = "positive" }) {
   return (
     <div className="h-2 w-full rounded-full bg-white/10">
       <div
-        className={`h-full rounded-full ${tone === "negative" ? "bg-rose-400" : "bg-emerald-400"}`}
-        style={{ width: `${value}%` }}
+        className={`h-full rounded-full ${
+          tone === "negative" ? "bg-rose-400" : "bg-emerald-400"
+        }`}
+        style={{ width: `${Math.max(0, Math.min(100, value || 0))}%` }}
       />
     </div>
   );
 }
 
+function normalizeCorrelation(item) {
+  const iconKey = item?.icon || "activity";
+  const Icon = correlationIconMap[iconKey] || Activity;
+  const color = correlationColorMap[iconKey] || "text-cyan-300";
+  const label = item?.label || "Correlação detectada";
+  const insight = item?.insight || "padrão fisiológico identificado";
+
+  return {
+    icon: Icon,
+    color,
+    text: `${label} → ${insight}`,
+    confidence: item?.confidence,
+    impact: item?.impact,
+    type: item?.type || `${label}-${insight}`,
+    detail:
+      item?.detail ||
+      "Correlação calculada a partir do cruzamento entre sinais biométricos, comportamento recente e variação do V-Score no período.",
+  };
+}
+
+function CorrelationsModal({ open, onClose, correlations, status }) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/65 px-4 py-6 backdrop-blur-md">
+      <div className="flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-cyan-300/20 bg-[#080a0c] shadow-[0_30px_120px_rgba(0,0,0,0.70)]">
+        <div className="flex items-start justify-between gap-4 border-b border-white/8 px-5 py-4">
+          <div className="min-w-0">
+            <h3 className="font-mono text-[13px] font-black uppercase tracking-[0.30em] text-cyan-300">
+              Todas as correlações
+            </h3>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-white/55">
+              Relações entre sono, stress, HRV, atividade e recuperação.
+            </p>
+            {status === "fallback" && (
+              <p className="mt-2 rounded-xl border border-yellow-300/15 bg-yellow-300/8 px-3 py-2 text-xs font-semibold text-yellow-200/90">
+                Usando exemplo padrão até o histórico real gerar correlações suficientes.
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] p-2 text-white/70 transition hover:border-cyan-300/30 hover:text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,.45)_rgba(255,255,255,.06)]">
+          <div className="space-y-3">
+            {correlations.map((item, index) => {
+              const Icon = item.icon;
+              const confidenceLabel =
+                item.confidence !== undefined
+                  ? `${Math.round(Number(item.confidence) * 100)}%`
+                  : "Modelo";
+
+              return (
+                <div
+                  key={item.type || item.text}
+                  className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition hover:border-cyan-300/20 hover:bg-white/[0.04]"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-black/25">
+                      <Icon className={`h-5 w-5 ${item.color}`} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/35">
+                            Correlação {String(index + 1).padStart(2, "0")}
+                          </p>
+                          <p className="mt-1 text-[15px] font-black leading-6 text-white">
+                            {item.text}
+                          </p>
+                        </div>
+
+                        <span className="w-fit shrink-0 rounded-full border border-cyan-300/20 bg-cyan-300/8 px-3 py-1 text-xs font-black text-cyan-200">
+                          {confidenceLabel}
+                        </span>
+                      </div>
+
+                      <p className="mt-3 text-sm leading-6 text-white/58">
+                        {item.detail}
+                      </p>
+
+                      {item.impact !== undefined && (
+                        <div className="mt-3 flex items-center justify-between rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+                          <span className="text-xs font-bold text-white/42">
+                            Impacto estimado
+                          </span>
+                          <span
+                            className={`text-sm font-black ${
+                              Number(item.impact) < 0 ? "text-rose-300" : "text-emerald-300"
+                            }`}
+                          >
+                            {Number(item.impact) > 0 ? "+" : ""}
+                            {item.impact}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-white/8 bg-[#080a0c] px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-black transition hover:bg-cyan-200"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function TimelineModal({ open, onClose }) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/65 px-4 py-6 backdrop-blur-md">
+      <div className="flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-cyan-300/20 bg-[#080a0c] shadow-[0_30px_120px_rgba(0,0,0,0.70)]">
+        <div className="flex items-start justify-between gap-4 border-b border-white/8 px-5 py-4">
+          <div className="min-w-0">
+            <h3 className="font-mono text-[13px] font-black uppercase tracking-[0.30em] text-cyan-300">
+              Linha do tempo fisiológica
+            </h3>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-white/55">
+              Evolução dos principais eventos fisiológicos detectados no período analisado.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] p-2 text-white/70 transition hover:border-cyan-300/30 hover:text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [scrollbar-color:rgba(103,232,249,.45)_rgba(255,255,255,.06)]">
+          <div className="relative space-y-4">
+            <div className="absolute bottom-8 left-[72px] top-8 w-px bg-gradient-to-b from-rose-300/50 via-cyan-300/35 to-emerald-300/50" />
+
+            {timeline.map(([date, title, desc, dot], index) => {
+              const tone =
+                dot.includes("rose")
+                  ? "border-rose-300/20 bg-rose-300/8 text-rose-200"
+                  : dot.includes("yellow")
+                    ? "border-yellow-300/20 bg-yellow-300/8 text-yellow-200"
+                    : "border-cyan-300/20 bg-cyan-300/8 text-cyan-200";
+
+              return (
+                <div
+                  key={`${date}-${title}-modal`}
+                  className="relative grid grid-cols-[58px_30px_1fr] gap-4"
+                >
+                  <div className="pt-4 text-sm font-black text-white/45">{date}</div>
+
+                  <div className="relative flex justify-center pt-4">
+                    <span className={`z-10 h-4 w-4 rounded-full ${dot} ring-8 ring-[#080a0c]`} />
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition hover:border-cyan-300/20 hover:bg-white/[0.04]">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-white/35">
+                          Evento {String(index + 1).padStart(2, "0")}
+                        </p>
+                        <p className="mt-1 text-base font-black text-white">{title}</p>
+                      </div>
+
+                      <span className={`w-fit rounded-full border px-3 py-1 text-xs font-black ${tone}`}>
+                        {date}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 text-sm leading-6 text-white/60">{desc}</p>
+
+                    <div className="mt-4 rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+                      <p className="text-xs leading-5 text-white/42">
+                        Leitura VitalFlow: este ponto representa uma mudança relevante na combinação entre V-Score, recuperação, carga fisiológica e estabilidade do período.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-white/8 bg-[#080a0c] px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-black transition hover:bg-cyan-200"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function Analise() {
   const [period, setPeriod] = useState("7 dias");
+  const [correlations, setCorrelations] = useState(fallbackCorrelations);
+  const [correlationsStatus, setCorrelationsStatus] = useState("idle");
+  const [showCorrelationsModal, setShowCorrelationsModal] = useState(false);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
   const confidence = useMemo(() => 87, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCorrelations() {
+      try {
+        setCorrelationsStatus("loading");
+
+        const token = localStorage.getItem("vf_token");
+        const periodParam = period === "30 dias" ? "30d" : "7d";
+
+        const response = await fetch(
+          `${BACKEND_URL}/api/analysis/correlations?period=${periodParam}`,
+          {
+            credentials: "include",
+            headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Falha ao carregar correlações");
+        }
+
+        const data = await response.json();
+        const dynamicCorrelations = Array.isArray(data?.correlations)
+          ? data.correlations.map(normalizeCorrelation)
+          : [];
+
+        if (active && dynamicCorrelations.length > 0) {
+          setCorrelations(dynamicCorrelations);
+          setCorrelationsStatus("success");
+        } else if (active) {
+          setCorrelations(fallbackCorrelations);
+          setCorrelationsStatus("fallback");
+        }
+      } catch (error) {
+        console.warn("Erro ao carregar correlações:", error);
+
+        if (active) {
+          setCorrelations(fallbackCorrelations);
+          setCorrelationsStatus("fallback");
+        }
+      }
+    }
+
+    loadCorrelations();
+
+    return () => {
+      active = false;
+    };
+  }, [period]);
 
   return (
     <div className="space-y-4 pb-8">
+      <CorrelationsModal
+        open={showCorrelationsModal}
+        onClose={() => setShowCorrelationsModal(false)}
+        correlations={correlations}
+        status={correlationsStatus}
+      />
+
+      <TimelineModal
+        open={showTimelineModal}
+        onClose={() => setShowTimelineModal(false)}
+      />
+
       <header className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">Análise</h1>
-          <p className="mt-1 text-sm font-medium text-white/50">Entenda em profundidade o que está impactando seu estado fisiológico.</p>
+          <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
+            Análise
+          </h1>
+          <p className="mt-1 text-sm font-medium text-white/50">
+            Entenda em profundidade o que está impactando seu estado fisiológico.
+          </p>
 
           <div className="mt-4 inline-flex items-center overflow-hidden rounded-xl border border-white/8 bg-[#101214] text-sm text-white/62">
             <span className="px-4 py-2">Período analisado</span>
@@ -163,13 +514,18 @@ export default function Analise() {
                 Seu organismo apresentou estabilidade com recuperação progressiva nas últimas 48h.
               </p>
               <p className="mt-4 text-sm leading-7 text-white/58">
-                Os principais vetores de impacto no período foram carga cardiovascular, variação de sono, oscilação de HRV e recuperação cognitiva parcial.
+                Os principais vetores de impacto no período foram carga cardiovascular,
+                variação de sono, oscilação de HRV e recuperação cognitiva parcial.
               </p>
             </div>
             <div className="relative mx-auto flex h-36 w-36 items-center justify-center rounded-full border-[10px] border-emerald-400/90 bg-emerald-400/5 shadow-[0_0_35px_rgba(16,185,129,0.15)]">
               <div className="text-center">
                 <div className="text-3xl font-black text-white">{confidence}%</div>
-                <div className="mt-1 text-xs font-medium leading-tight text-white/55">Confiabilidade<br />da análise</div>
+                <div className="mt-1 text-xs font-medium leading-tight text-white/55">
+                  Confiabilidade
+                  <br />
+                  da análise
+                </div>
               </div>
             </div>
           </div>
@@ -181,34 +537,65 @@ export default function Analise() {
             {drivers.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.label} className="grid grid-cols-[105px_1fr_48px] items-center gap-3 text-sm">
+                <div
+                  key={item.label}
+                  className="grid grid-cols-[105px_1fr_48px] items-center gap-3 text-sm"
+                >
                   <div className="flex items-center gap-2 text-white/72">
-                    <Icon className={`h-4 w-4 ${item.tone === "negative" ? "text-rose-300" : "text-emerald-300"}`} />
+                    <Icon
+                      className={`h-4 w-4 ${
+                        item.tone === "negative" ? "text-rose-300" : "text-emerald-300"
+                      }`}
+                    />
                     {item.label}
                   </div>
                   <ProgressBar value={item.impact} tone={item.tone} />
-                  <span className={`text-right font-black ${item.tone === "negative" ? "text-rose-300" : "text-emerald-300"}`}>{item.contribution}</span>
+                  <span
+                    className={`text-right font-black ${
+                      item.tone === "negative" ? "text-rose-300" : "text-emerald-300"
+                    }`}
+                  >
+                    {item.contribution}
+                  </span>
                 </div>
               );
             })}
           </div>
-          <p className="mt-5 text-xs text-white/50">Impacto no V-Score dos últimos 7 dias</p>
+          <p className="mt-5 text-xs text-white/50">
+            Impacto no V-Score dos últimos 7 dias
+          </p>
         </Card>
 
         <Card className="xl:col-span-4">
-          <SectionTitle>Correlações detectadas</SectionTitle>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <SectionTitle>Correlações detectadas</SectionTitle>
+            {correlationsStatus === "loading" && (
+              <span className="text-[11px] font-bold text-white/38">Atualizando...</span>
+            )}
+          </div>
+
           <div className="divide-y divide-white/7">
-            {correlations.map((item) => {
+            {correlations.slice(0, 4).map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.text} className="flex items-start gap-3 py-2 first:pt-0 last:pb-0">
+                <div
+                  key={item.type || item.text}
+                  className="flex items-start gap-3 py-2 first:pt-0 last:pb-0"
+                >
                   <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${item.color}`} />
                   <p className="text-sm leading-6 text-white/74">{item.text}</p>
                 </div>
               );
             })}
           </div>
-          <button className="mt-3 w-full text-right text-xs font-black text-cyan-300">Ver todas as correlações →</button>
+
+          <button
+            type="button"
+            onClick={() => setShowCorrelationsModal(true)}
+            className="mt-3 w-full text-right text-xs font-black text-cyan-300 transition hover:text-cyan-100"
+          >
+            Ver todas as correlações →
+          </button>
         </Card>
       </div>
 
@@ -216,7 +603,10 @@ export default function Analise() {
         <Card className="xl:col-span-8">
           <div className="mb-3 flex items-center justify-between gap-3">
             <SectionTitle info={false}>Evolução do V-Score</SectionTitle>
-            <button onClick={() => setPeriod(period === "7 dias" ? "30 dias" : "7 dias")} className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-white/60">
+            <button
+              onClick={() => setPeriod(period === "7 dias" ? "30 dias" : "7 dias")}
+              className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-white/60"
+            >
               {period} <ChevronDown className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -230,11 +620,43 @@ export default function Analise() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.07)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.48)", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fill: "rgba(255,255,255,0.48)", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: "#101214", border: "1px solid rgba(255,255,255,.10)", borderRadius: 14 }} labelStyle={{ color: "#fff" }} />
-                <Area type="monotone" dataKey="score" stroke="#20f5d0" strokeWidth={3} fill="url(#scoreGradient)" dot={{ r: 4, fill: "#20f5d0", stroke: "#07100f", strokeWidth: 2 }} />
-                <Area type="monotone" dataKey="media" stroke="#eab308" strokeDasharray="6 6" strokeWidth={1.6} fillOpacity={0} dot={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "rgba(255,255,255,0.48)", fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fill: "rgba(255,255,255,0.48)", fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "#101214",
+                    border: "1px solid rgba(255,255,255,.10)",
+                    borderRadius: 14,
+                  }}
+                  labelStyle={{ color: "#fff" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#20f5d0"
+                  strokeWidth={3}
+                  fill="url(#scoreGradient)"
+                  dot={{ r: 4, fill: "#20f5d0", stroke: "#07100f", strokeWidth: 2 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="media"
+                  stroke="#eab308"
+                  strokeDasharray="6 6"
+                  strokeWidth={1.6}
+                  fillOpacity={0}
+                  dot={false}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -248,7 +670,9 @@ export default function Analise() {
                 <div className="pt-0.5 text-sm font-semibold text-white/55">{date}</div>
                 <div className="relative flex justify-center">
                   <span className={`mt-1.5 h-2.5 w-2.5 rounded-full ${dot} ring-4 ring-white/5`} />
-                  {index < timeline.length - 1 && <span className="absolute top-5 h-full w-px bg-white/14" />}
+                  {index < timeline.length - 1 && (
+                    <span className="absolute top-5 h-full w-px bg-white/14" />
+                  )}
                 </div>
                 <div className="pb-4">
                   <p className="text-sm font-bold text-white/75">{title}</p>
@@ -257,7 +681,13 @@ export default function Analise() {
               </div>
             ))}
           </div>
-          <button className="w-full text-right text-xs font-black text-cyan-300">Ver linha do tempo completa →</button>
+          <button
+            type="button"
+            onClick={() => setShowTimelineModal(true)}
+            className="w-full text-right text-xs font-black text-cyan-300 transition hover:text-cyan-100"
+          >
+            Ver linha do tempo completa →
+          </button>
         </Card>
       </div>
 
@@ -267,7 +697,10 @@ export default function Analise() {
           <div className="space-y-3">
             {impactMap.map(([name, status, color, Icon]) => (
               <div key={name} className="flex items-center justify-between gap-3 text-sm">
-                <span className="flex items-center gap-2 text-white/60"><Icon className="h-4 w-4 text-cyan-300/70" />{name}</span>
+                <span className="flex items-center gap-2 text-white/60">
+                  <Icon className="h-4 w-4 text-cyan-300/70" />
+                  {name}
+                </span>
                 <span className={`font-black ${color}`}>{status}</span>
               </div>
             ))}
@@ -308,7 +741,13 @@ export default function Analise() {
               <div key={label} className="grid grid-cols-[1fr_78px_45px] items-center gap-3 text-sm">
                 <span className="text-white/58">{label}</span>
                 <ProgressBar value={width} tone={tone} />
-                <span className={`text-right font-black ${tone === "negative" ? "text-rose-300" : "text-emerald-300"}`}>{value}</span>
+                <span
+                  className={`text-right font-black ${
+                    tone === "negative" ? "text-rose-300" : "text-emerald-300"
+                  }`}
+                >
+                  {value}
+                </span>
               </div>
             ))}
           </div>
@@ -326,13 +765,17 @@ export default function Analise() {
               </div>
             ))}
           </div>
-          <button className="mt-3 w-full text-right text-xs font-black text-cyan-300">Ver todos os insights →</button>
+          <button className="mt-3 w-full text-right text-xs font-black text-cyan-300">
+            Ver todos os insights →
+          </button>
         </Card>
 
         <Card className="relative overflow-hidden xl:col-span-5">
           <SectionTitle>Conclusão analítica</SectionTitle>
           <p className="max-w-[88%] text-sm leading-7 text-white/64">
-            Seu período mostra estabilidade fisiológica com recuperação progressiva. A principal limitação continua sendo a irregularidade de sono, enquanto HRV e carga cardiovascular já demonstram melhora. O cenário atual favorece manutenção com progressão leve.
+            Seu período mostra estabilidade fisiológica com recuperação progressiva. A principal
+            limitação continua sendo a irregularidade de sono, enquanto HRV e carga cardiovascular já
+            demonstram melhora. O cenário atual favorece manutenção com progressão leve.
           </p>
           <Sparkles className="absolute bottom-5 right-6 h-24 w-24 text-emerald-300/12" />
         </Card>

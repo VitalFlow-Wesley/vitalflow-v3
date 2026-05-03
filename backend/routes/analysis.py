@@ -862,3 +862,192 @@ async def sync_wearable_data(request: Request):
     except Exception as e:
         logger.error(f"Error syncing wearable data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================
+# CORRELAÇÕES INTELIGENTES DA ABA ANÁLISE
+# Endpoint: GET /api/analysis/correlations?period=7d
+# ============================================================
+
+
+def _analysis_avg(values):
+    values = [v for v in values if v is not None]
+    return round(sum(values) / len(values), 1) if values else 0
+
+
+def _analysis_float(value, default=0.0):
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def _get_signal(item, key, default=0.0):
+    real_data = item.get("real_data") or {}
+    input_data = item.get("input_data") or {}
+
+    if key in item:
+        return _analysis_float(item.get(key), default)
+
+    if isinstance(real_data, dict) and key in real_data:
+        return _analysis_float(real_data.get(key), default)
+
+    if isinstance(input_data, dict) and key in input_data:
+        return _analysis_float(input_data.get(key), default)
+
+    return default
+
+
+def generate_correlations(days):
+    if len(days) < 3:
+        return [
+            {
+                "type": "limited_data",
+                "icon": "moon",
+                "label": "Dados insuficientes",
+                "insight": "continue sincronizando para detectar correlações reais",
+                "impact": 0,
+                "confidence": 0.55,
+            }
+        ]
+
+    correlations = []
+
+    # Sono ruim x queda do V-Score no dia seguinte
+    poor_sleep_impacts = []
+    for i in range(len(days) - 1):
+        today = days[i]
+        tomorrow = days[i + 1]
+
+        if today["sleep_score"] < 70:
+            poor_sleep_impacts.append(today["v_score"] - tomorrow["v_score"])
+
+    if poor_sleep_impacts:
+        drop = round(sum(poor_sleep_impacts) / len(poor_sleep_impacts), 1)
+        correlations.append({
+            "type": "sleep_vs_score",
+            "icon": "moon",
+            "label": "Sono ruim",
+            "insight": f"queda média de {abs(int(drop))} pontos no dia seguinte",
+            "impact": -abs(drop),
+            "confidence": min(0.94, round(0.68 + (len(poor_sleep_impacts) * 0.05), 2)),
+        })
+
+    # Stress alto x queda de HRV
+    stress_days = [d for d in days if d["stress"] > 70 and d["hrv"] > 0]
+    normal_days = [d for d in days if d["stress"] <= 70 and d["hrv"] > 0]
+
+    if stress_days and normal_days:
+        baseline_hrv = _analysis_avg([d["hrv"] for d in normal_days]) or 1
+        high_stress_hrv = _analysis_avg([d["hrv"] for d in stress_days])
+        delta = round(((baseline_hrv - high_stress_hrv) / baseline_hrv) * 100, 1)
+
+        correlations.append({
+            "type": "stress_vs_hrv",
+            "icon": "zap",
+            "label": "Stress alto",
+            "insight": f"HRV reduz em média {abs(int(delta))}%",
+            "impact": -abs(delta),
+            "confidence": 0.82,
+        })
+
+    # Atividade leve x recuperação
+    active_days = [d for d in days if d["steps"] >= 2000]
+    sedentary_days = [d for d in days if d["steps"] < 2000]
+
+    if active_days and sedentary_days:
+        active_recovery = _analysis_avg([d["recovery"] for d in active_days])
+        sedentary_recovery = _analysis_avg([d["recovery"] for d in sedentary_days])
+        gain = round(active_recovery - sedentary_recovery, 1)
+
+        correlations.append({
+            "type": "activity_vs_recovery",
+            "icon": "heart",
+            "label": "Atividade leve",
+            "insight": f"melhora de recuperação em {abs(int(gain))}%",
+            "impact": gain,
+            "confidence": 0.78,
+        })
+
+        # Caminhada x carga cognitiva
+        active_cognitive = _analysis_avg([d["cognitive_load"] for d in active_days])
+        sedentary_cognitive = _analysis_avg([d["cognitive_load"] for d in sedentary_days])
+
+        if active_cognitive <= sedentary_cognitive:
+            correlations.append({
+                "type": "walking_vs_cognitive",
+                "icon": "activity",
+                "label": "Dias com caminhada >2km",
+                "insight": "menor carga cognitiva",
+                "impact": round(sedentary_cognitive - active_cognitive, 1),
+                "confidence": 0.74,
+            })
+
+    correlations = [c for c in correlations if c["confidence"] >= 0.65]
+    correlations.sort(key=lambda x: (x["confidence"], abs(x["impact"])), reverse=True)
+
+    return correlations[:4]
+
+
+@router.get("/analysis/correlations")
+async def get_analysis_correlations(request: Request, period: str = "7d"):
+    try:
+        colaborador = await get_current_colaborador(request)
+
+        period_map = {"7d": 7, "30d": 30, "6m": 180}
+        days_back = period_map.get(period, 7)
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days_back)).isoformat()
+
+        analyses = await db.analyses.find(
+            {
+                "colaborador_id": colaborador["id"],
+                "timestamp": {"$gte": cutoff},
+                "$or": [
+                    {"data_mode": "real"},
+                    {"has_real_data": True},
+                    {"source": "google_fit"},
+                    {"source": "google_fit_auto"},
+                    {"source": "google_health_connect"},
+                ],
+            },
+            {"_id": 0},
+        ).sort("timestamp", 1).to_list(180)
+
+        normalized = []
+
+        for item in analyses:
+            v_score = _analysis_float(item.get("v_score"), 0)
+            hrv = _get_signal(item, "hrv", 0)
+            steps = _get_signal(item, "steps", 0)
+            sleep_hours = _get_signal(item, "sleep_hours", 0)
+            stress_score = _analysis_float(item.get("stress_score"), 0)
+            recovery_score = _analysis_float(item.get("recovery_score"), 0)
+
+            sleep_score = min(100, round((sleep_hours / 8) * 100, 1)) if sleep_hours > 0 else 0
+            stress = 100 - stress_score if stress_score > 0 else max(0, 100 - v_score)
+            recovery = recovery_score if recovery_score > 0 else v_score
+            cognitive_load = _get_signal(item, "cognitive_load", 50)
+
+            normalized.append({
+                "timestamp": item.get("timestamp"),
+                "v_score": v_score,
+                "sleep_score": sleep_score,
+                "stress": stress,
+                "hrv": hrv,
+                "steps": steps,
+                "recovery": recovery,
+                "cognitive_load": cognitive_load,
+            })
+
+        return {
+            "period": period,
+            "total_days": len(normalized),
+            "correlations": generate_correlations(normalized),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error generating correlations: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
