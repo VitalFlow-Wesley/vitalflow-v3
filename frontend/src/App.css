@@ -28,55 +28,53 @@
 
 .data-glow-red {
   filter: drop-shadow(0 0 12px rgba(244, 63, 94, 0.5));
-}/* cache bust Sun Apr 12 21:06:42 UTC 2026 */
+}
 
 @media (min-width: 1280px) {
-  #root .space-y-6.pt-6 > div:first-child {
-    grid-template-columns: minmax(0, 1.9fr) minmax(330px, 0.8fr) !important;
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] {
+    grid-template-columns: minmax(0, 1.95fr) minmax(330px, 0.75fr) !important;
+    gap: 1.25rem !important;
     align-items: start !important;
   }
 
-  #root .space-y-6.pt-6 > div:first-child > div:first-child {
-    min-height: 430px !important;
-    padding: 2rem !important;
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child {
+    min-height: 470px !important;
+    padding: 2.25rem !important;
   }
 
-  #root .space-y-6.pt-6 > div:first-child > div:first-child > div {
-    grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr) !important;
-    gap: 1.5rem !important;
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child > div[class*="xl:grid-cols-[1fr_1.15fr]"] {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) !important;
+    gap: 1.75rem !important;
     height: 100% !important;
   }
 
-  #root .space-y-6.pt-6 > div:first-child > div:first-child .flex.items-start {
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child > div > div:first-child {
     align-items: center !important;
   }
 
-  #root .space-y-6.pt-6 > div:first-child > div:first-child p.text-white {
-    max-width: none !important;
-    font-size: 1.9rem !important;
-    line-height: 1.18 !important;
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child p[class*="text-white"] {
+    font-size: 2.15rem !important;
+    line-height: 1.16 !important;
   }
 
-  #root .space-y-6.pt-6 > div:first-child > div:first-child p.text-sm.text-slate-300 {
-    margin-top: 1.35rem !important;
-    font-size: 0.95rem !important;
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child p[class*="text-slate-300"] {
+    margin-top: 1.4rem !important;
+    font-size: 1rem !important;
   }
 
-  #root .space-y-6.pt-6 > div:first-child > div:first-child .grid.grid-cols-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 1.15rem !important;
-    align-content: stretch !important;
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child div[class*="grid-cols-2"] {
+    gap: 1.25rem !important;
   }
 
-  #root .space-y-6.pt-6 > div:first-child > div:first-child .grid.grid-cols-2 > div {
-    min-height: 150px !important;
-    padding: 1.25rem !important;
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child div[class*="grid-cols-2"] > div {
+    min-height: 165px !important;
+    padding: 1.35rem !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
   }
 
-  #root .space-y-6.pt-6 > div:first-child > div:nth-child(2) {
+  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:nth-child(2) {
     align-self: start !important;
   }
 }
