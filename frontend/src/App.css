@@ -31,42 +31,42 @@
 }
 
 @media (min-width: 1280px) {
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] {
     grid-template-columns: minmax(0, 1.95fr) minmax(330px, 0.75fr) !important;
     gap: 1.25rem !important;
     align-items: start !important;
   }
 
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] > div:first-child {
     min-height: 470px !important;
     padding: 2.25rem !important;
   }
 
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child > div[class*="xl:grid-cols-[1fr_1.15fr]"] {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] > div:first-child > .xl\:grid-cols-\[1fr_1\.15fr\] {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) !important;
     gap: 1.75rem !important;
     height: 100% !important;
   }
 
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child > div > div:first-child {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] > div:first-child > div > div:first-child {
     align-items: center !important;
   }
 
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child p[class*="text-white"] {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] > div:first-child p.text-white {
     font-size: 2.15rem !important;
     line-height: 1.16 !important;
   }
 
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child p[class*="text-slate-300"] {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] > div:first-child p.text-sm.text-slate-300 {
     margin-top: 1.4rem !important;
     font-size: 1rem !important;
   }
 
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child div[class*="grid-cols-2"] {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] > div:first-child .grid.grid-cols-2 {
     gap: 1.25rem !important;
   }
 
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:first-child div[class*="grid-cols-2"] > div {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] > div:first-child .grid.grid-cols-2 > div {
     min-height: 165px !important;
     padding: 1.35rem !important;
     display: flex !important;
@@ -74,7 +74,7 @@
     justify-content: center !important;
   }
 
-  #root div[class*="xl:grid-cols-[1.7fr_0.9fr]"] > div:nth-child(2) {
+  #root .xl\:grid-cols-\[1\.7fr_0\.9fr\] > div:nth-child(2) {
     align-self: start !important;
   }
 }
