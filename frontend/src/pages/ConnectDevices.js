@@ -210,7 +210,7 @@ if (showHistory) {
       <section className="grid grid-cols-[1fr_0.9fr_1.05fr] gap-3">
         <CollectedData />
         <SyncQuality />
-        <RecentActivity />
+        <RecentActivity onOpenHistory={() => setShowHistory(true)} />
       </section>
 
       <section className="flex items-center justify-between rounded-xl border border-emerald-500/10 bg-[#07140f] px-5 py-3">
@@ -417,7 +417,7 @@ function Row({ label, value }) {
   );
 }
 
-function RecentActivity() {
+function RecentActivity({ onOpenHistory }) {
   return (
     <div className="rounded-xl border border-white/5 bg-[#090f14] p-4">
       <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-400">
