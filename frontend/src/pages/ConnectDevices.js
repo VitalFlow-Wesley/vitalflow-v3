@@ -11,21 +11,20 @@ import {
   Footprints,
   Droplets,
   RefreshCcw,
-  Settings2,
-  Bell,
-  Apple,
-  Watch,
-  Zap,
-  Info,
-  ArrowRight,
-,
-  ArrowLeft,
   CheckCircle2,
+  Info,
   TriangleAlert,
   AlertCircle,
   Calendar,
   Download,
-  Moon} from "lucide-react";
+  Moon,
+  Watch,
+  Bell,
+  Apple,
+  Zap,
+  ArrowRight,
+  ArrowLeft,
+} from "lucide-react";
 
 const comingSoon = [
   {
