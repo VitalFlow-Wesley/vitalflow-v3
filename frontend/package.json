@@ -59,7 +59,7 @@
   },
   "scripts": {
     "start": "craco start",
-    "prebuild": "node scripts/patch-plan-status.js && node scripts/compact-vscore-tooltip.js",
+    "prebuild": "node scripts/patch-plan-status.js && node scripts/compact-vscore-tooltip.js && node scripts/stack-dashboard-metrics.js",
     "build": "DISABLE_ESLINT_PLUGIN=true craco build",
     "test": "craco test"
   },
