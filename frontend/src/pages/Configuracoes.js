@@ -156,18 +156,26 @@ function ProfileCard() {
       </div>
 
       <div className="divide-y divide-white/5">
-        {actions.map(({ label, icon: Icon }) => (
-          <button
-            key={label}
-            className="flex w-full items-center justify-between py-3 text-sm text-zinc-300 transition hover:text-cyan-300"
-          >
-            <span className="flex items-center gap-3">
-              <Icon size={17} className="text-zinc-500" />
-              {label}
-            </span>
-            <ChevronRight size={17} className="text-zinc-500" />
-          </button>
-        ))}
+        {actions.map(({ label, icon: Icon }) => {
+          const isLogout = label === "Encerrar sessão";
+
+          return (
+            <button
+              key={label}
+              className={
+                isLogout
+                  ? "flex w-full items-center justify-between py-3 text-sm text-red-400 transition hover:text-red-300"
+                  : "flex w-full items-center justify-between py-3 text-sm text-zinc-300 transition hover:text-cyan-300"
+              }
+            >
+              <span className="flex items-center gap-3">
+                <Icon size={17} className={isLogout ? "text-red-400" : "text-zinc-500"} />
+                {label}
+              </span>
+              <ChevronRight size={17} className={isLogout ? "text-red-400" : "text-zinc-500"} />
+            </button>
+          );
+        })}
       </div>
     </Card>
   );

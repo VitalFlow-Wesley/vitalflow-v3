@@ -20,8 +20,7 @@ export default function RecentActivity() {
               <p className="text-sm font-medium text-white">{title}</p>
               <p className="text-xs text-zinc-400">{desc}</p>
             </div>
-            <div className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-400" />
-          </div>
+            
         ))}
       </div>
     </section>

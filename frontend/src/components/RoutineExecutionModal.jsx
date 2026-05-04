@@ -367,10 +367,7 @@ export default function RoutineExecutionModal({
           >
             <div className="absolute inset-3 rounded-full border border-white/5" />
             <div className="absolute inset-8 rounded-full border border-white/10" />
-            <div
-              className={`w-16 h-16 rounded-full ${theme.progress} opacity-90 blur-[1px]`}
-            />
-          </div>
+            
 
           <p className={`mt-6 text-3xl font-black ${theme.title}`}>{label}</p>
           <p className="mt-2 text-sm text-neutral-400">{getSupportText()}</p>
@@ -511,11 +508,7 @@ export default function RoutineExecutionModal({
             </div>
 
             <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden mb-6">
-              <div
-                className={`h-full ${theme.progress} transition-all duration-1000`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+              
 
             {routineType === "breathing" && breathingSteps.length > 0 ? (
               <div className="grid grid-cols-4 gap-2 mb-6">

@@ -64,8 +64,7 @@ const FirstAccessFlow = ({ user, onComplete }) => {
       >
         {/* Progress */}
         <div className="h-1 bg-neutral-800 w-full">
-          <div className={`h-full bg-cyan-500 transition-all duration-500 ${step === "password" ? "w-1/2" : "w-full"}`} />
-        </div>
+          
 
         <div className="p-8">
           {step === "password" ? (

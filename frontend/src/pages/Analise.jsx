@@ -172,13 +172,7 @@ function SectionTitle({ children, info = true }) {
 function ProgressBar({ value, tone = "positive" }) {
   return (
     <div className="h-2 w-full rounded-full bg-white/10">
-      <div
-        className={`h-full rounded-full ${
-          tone === "negative" ? "bg-rose-400" : "bg-emerald-400"
-        }`}
-        style={{ width: `${Math.max(0, Math.min(100, value || 0))}%` }}
-      />
-    </div>
+      
   );
 }
 

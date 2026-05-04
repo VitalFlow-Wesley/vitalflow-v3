@@ -659,35 +659,13 @@ const MeuRelatorio = () => {
               ))}
             </div>
 
-            <button
-              onClick={handleExportPdf}
-              disabled={exporting || !hasData}
-              data-testid="export-pdf-btn"
-              className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
-                canExportPdf
-                  ? "bg-cyan-500 hover:bg-cyan-400 text-black"
-                  : "bg-neutral-800 text-slate-300 border border-white/[0.07]"
-              }`}
-            >
-              {canExportPdf ? (
-                <>
-                  <Download className="w-4 h-4" />
-                  {exporting ? "Gerando..." : "Exportar PDF"}
-                </>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4" />
-                  PDF Premium
-                </>
-              )}
-            </button>
+            
           </div>
         </div>
 
         {loading && !report ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-          </div>
+            
         ) : !hasData ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1096,11 +1074,7 @@ const MeuRelatorio = () => {
                         <span className="text-slate-300">{item.status}</span>
                       </div>
                       <div className="h-3 rounded-full bg-[#050505]/70 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r ${item.color}`}
-                          style={{ width: `${item.percent}%` }}
-                        />
-                      </div>
+                        
                     </div>
                   ))}
                 </div>

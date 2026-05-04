@@ -407,35 +407,13 @@ const MeuRelatorio = () => {
             </div>
 
             {/* Export PDF */}
-            <button
-              onClick={handleExportPdf}
-              disabled={exporting || !hasData}
-              data-testid="export-pdf-btn"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                canExportPdf
-                  ? "bg-cyan-500 hover:bg-cyan-400 text-black"
-                  : "bg-neutral-800 text-neutral-500 border border-white/10"
-              }`}
-            >
-              {canExportPdf ? (
-                <>
-                  <Download className="w-4 h-4" />
-                  {exporting ? "Gerando..." : "Exportar PDF"}
-                </>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4" />
-                  PDF Premium
-                </>
-              )}
-            </button>
+            
           </div>
         </div>
 
         {loading && !report ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-          </div>
+            
         ) : !hasData ? (
           /* Empty state */
           <motion.div

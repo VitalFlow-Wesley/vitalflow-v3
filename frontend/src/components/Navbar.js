@@ -55,14 +55,7 @@ export default function Navbar() {
             Gestor
           </button>
 
-          <button
-            type="button"
-            onClick={() => navigate("/profile")}
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-white transition hover:border-cyan-400/25 hover:bg-white/[0.06]"
-          >
-            <User className="h-4 w-4" />
-            WESLEY
-          </button>
+          
         </div>
       </div>
     </header>

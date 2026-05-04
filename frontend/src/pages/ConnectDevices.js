@@ -441,22 +441,7 @@ function RecentActivity({ onOpenHistory }) {
         ))}
       </div>
 
-      <button onClick={onOpenHistory} className="mt-3 flex items-center gap-1 text-xs font-medium text-cyan-400">Ver histórico completo <ArrowRight size={13} /></button>
-    </div>
-  );
-}
-
-
-function DeviceHistoryView({ onBack }) {
-  return (
-    <div className="w-full px-5 pb-8 pt-5 text-white">
-      <button
-        onClick={onBack}
-        className="mb-5 flex items-center gap-2 text-sm text-zinc-400 transition hover:text-cyan-300"
-      >
-        <ArrowLeft size={16} />
-        Voltar
-      </button>
+      
 
       <div className="mb-5">
         <h1 className="text-3xl font-bold leading-tight">Histórico de Atividades</h1>

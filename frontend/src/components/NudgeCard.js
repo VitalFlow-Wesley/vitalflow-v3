@@ -239,36 +239,7 @@ const NudgeCard = ({ analysis, onPointsEarned }) => {
           </div>
         </div>
 
-        <div className="w-full xl:w-[240px]">
-          <button
-            onClick={handleFollow}
-            disabled={followed || loading}
-            data-testid="follow-nudge-btn"
-            className={`
-              w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2
-              transition-all duration-200 text-black
-              ${
-                followed
-                  ? "bg-neutral-700 text-neutral-300 cursor-default"
-                  : visual.button
-              }
-            `}
-          >
-            {followed ? (
-              <>
-                <Check className="w-4 h-4" />
-                Concluído
-              </>
-            ) : loading ? (
-              "Registrando..."
-            ) : (
-              <>
-                Iniciar Agora
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </div>
+        
       </div>
     </motion.div>
   );

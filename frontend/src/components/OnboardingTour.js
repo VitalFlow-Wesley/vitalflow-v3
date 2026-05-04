@@ -191,27 +191,7 @@ const OnboardingTour = ({ onComplete }) => {
               >
                 Pular tour
               </button>
-              <button
-                onClick={handleNext}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 ${
-                  current.isFinal
-                    ? "bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-black shadow-lg shadow-cyan-500/20"
-                    : "bg-white/10 hover:bg-white/20 text-white"
-                }`}
-                data-testid="onboarding-next"
-              >
-                {current.isFinal ? (
-                  <>
-                    <Smartphone className="w-4 h-4" />
-                    Conectar Dispositivo
-                  </>
-                ) : (
-                  <>
-                    Proximo
-                    <ChevronRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+              
             </div>
           </div>
         </motion.div>
