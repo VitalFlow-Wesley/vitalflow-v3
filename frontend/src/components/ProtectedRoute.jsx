@@ -1,3 +1,4 @@
+import React from "react";
 import { useAuth, ROLE_LEVELS } from '@/contexts/AuthContext';
 import { Navigate } from "react-router-dom";
 
@@ -14,7 +15,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   if (!user || user === false) {
-    return <Navigate to="/login" replace />;
+    return React.createElement(Navigate, { to: "/login", replace: true });
   }
   return children;
 };
@@ -28,7 +29,7 @@ export const GestorRoute = ({ children }) => {
     );
   }
   if (!user || user === false) {
-    return <Navigate to="/login" replace />;
+    return React.createElement(Navigate, { to: "/login", replace: true });
   }
   const nivel = ROLE_LEVELS[user.nivel_acesso] || 99;
   if (nivel > 7) {
