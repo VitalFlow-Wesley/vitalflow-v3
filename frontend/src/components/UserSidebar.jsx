@@ -1,91 +1,165 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Activity,
   TrendingUp,
-  Repeat,
+  CalendarCheck,
   Smartphone,
   FileText,
   Settings,
-  Menu,
+  BarChart3,
+  ShieldCheck,
 } from "lucide-react";
+import { useAuth, ROLE_LEVELS } from "../contexts/AuthContext";
 
-const navItems = [
-  { label: "Dashboard", path: "/", icon: LayoutDashboard },
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+function getRoleLevel(user) {
+  const role = normalize(user?.role);
+  const nivelAcesso = normalize(user?.nivel_acesso);
+
+  const mapped =
+    ROLE_LEVELS?.[role] ??
+    ROLE_LEVELS?.[nivelAcesso] ??
+    ROLE_LEVELS?.[user?.role] ??
+    ROLE_LEVELS?.[user?.nivel_acesso];
+
+  if (typeof mapped === "number") return mapped;
+
+  const numeric =
+    Number(user?.role_level) ||
+    Number(user?.nivel) ||
+    Number(user?.access_level) ||
+    Number(user?.nivelPermissao);
+
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 99;
+}
+
+function isB2BAccount(user) {
+  const accountType = normalize(
+    user?.account_type ||
+      user?.accountType ||
+      user?.tipo_conta ||
+      user?.tipoConta ||
+      user?.plan_type ||
+      user?.plano_tipo ||
+      user?.segmento
+  );
+
+  return (
+    accountType.includes("b2b") ||
+    accountType.includes("empresa") ||
+    accountType.includes("corporativo") ||
+    Boolean(
+      user?.company_id ||
+        user?.empresa_id ||
+        user?.organization_id ||
+        user?.organizacao_id ||
+        user?.tenant_id ||
+        user?.cnpj
+    )
+  );
+}
+
+function canShowGestor(user) {
+  const role = normalize(user?.role || user?.nivel_acesso || user?.cargo);
+  const level = getRoleLevel(user);
+
+  const isManagerRole =
+    role.includes("gestor") ||
+    role.includes("supervisor") ||
+    role.includes("admin") ||
+    role.includes("owner") ||
+    level <= 7;
+
+  return isB2BAccount(user) && isManagerRole;
+}
+
+const baseItems = [
+  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { label: "Análise", path: "/analise", icon: Activity },
   { label: "Tendências", path: "/tendencias", icon: TrendingUp },
-  { label: "Rotinas", path: "/rotinas", icon: Repeat },
+  { label: "Rotinas", path: "/rotinas", icon: CalendarCheck },
   { label: "Dispositivos", path: "/devices", icon: Smartphone },
-  { label: "Relatório", path: "/relatorio", icon: FileText },
-  { label: "Configurações", path: "/profile", icon: Settings },
+  { label: "Relatório", path: "/report", icon: FileText },
 ];
 
-export default function UserSidebar({ collapsed, onToggle }) {
-  const navigate = useNavigate();
+export default function UserSidebar({ collapsed = false }) {
   const location = useLocation();
+  const { user } = useAuth();
 
-  const isActive = (path) => {
-    if (path === "/") return location.pathname === "/";
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
-  };
+  const items = canShowGestor(user)
+    ? [
+        ...baseItems,
+        {
+          label: "Gestor",
+          path: "/gestor-dashboard",
+          icon: BarChart3,
+          gestorOnly: true,
+        },
+        { label: "Configurações", path: "/profile", icon: Settings },
+      ]
+    : [...baseItems, { label: "Configurações", path: "/profile", icon: Settings }];
 
   return (
     <aside
-      className={`hidden lg:flex h-[calc(100vh-64px)] shrink-0 flex-col border-r border-white/5 bg-[#050505] transition-all duration-300 ${
-        collapsed ? "w-[68px]" : "w-[176px]"
-      }`}
+      className={
+        collapsed
+          ? "fixed left-0 top-0 z-30 flex h-screen w-20 flex-col border-r border-white/5 bg-[#05070a] px-3 py-5"
+          : "fixed left-0 top-0 z-30 flex h-screen w-44 flex-col border-r border-white/5 bg-[#05070a] px-4 py-5"
+      }
     >
-      <div className="flex h-full flex-col p-2">
-        <div className="mb-2 flex items-center justify-start">
-          <button
-            type="button"
-            onClick={onToggle}
-            title={collapsed ? "Abrir menu" : "Fechar menu"}
-            className="rounded-xl border border-white/10 bg-[#101214] p-2 text-white/70 transition hover:border-cyan-400/25 hover:bg-white/[0.04] hover:text-cyan-300"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
+      <div className="mb-8 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
+          <ShieldCheck size={24} />
         </div>
 
-        <nav className="space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-
-            return (
-              <button
-                key={item.label}
-                type="button"
-                title={collapsed ? item.label : undefined}
-                onClick={() => navigate(item.path)}
-                className={`group relative flex w-full items-center gap-2.5 rounded-xl border px-2 py-2 text-left transition-all ${
-                  collapsed ? "justify-center" : "justify-start"
-                } ${
-                  active
-                    ? "border-cyan-400/25 bg-gradient-to-r from-cyan-500/14 to-violet-500/12 text-white shadow-[inset_3px_0_0_0_#22d3ee]"
-                    : "border-transparent text-white/58 hover:border-white/8 hover:bg-white/[0.04] hover:text-white"
-                }`}
-              >
-                <Icon
-                  className={`h-4 w-4 shrink-0 ${
-                    active ? "text-cyan-300" : "text-white/50 group-hover:text-cyan-200"
-                  }`}
-                />
-
-                {!collapsed && (
-                  <span className="text-[13px] font-semibold">{item.label}</span>
-                )}
-
-                {collapsed && (
-                  <span className="pointer-events-none absolute left-[54px] z-50 whitespace-nowrap rounded-xl border border-white/10 bg-[#101214] px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-2xl transition group-hover:opacity-100">
-                    {item.label}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        {!collapsed && (
+          <div>
+            <p className="text-lg font-bold text-white">VitalFlow</p>
+            <p className="text-[10px] text-emerald-300">Plano Premium</p>
+          </div>
+        )}
       </div>
+
+      <nav className="flex flex-1 flex-col gap-2">
+        {items.map(({ label, path, icon: Icon, gestorOnly }) => {
+          const active =
+            location.pathname === path ||
+            (path !== "/dashboard" && location.pathname.startsWith(path));
+
+          return (
+            <Link
+              key={label}
+              to={path}
+              title={label}
+              className={
+                active
+                  ? "flex items-center gap-3 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-3 text-cyan-300"
+                  : gestorOnly
+                  ? "flex items-center gap-3 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.03] px-3 py-3 text-zinc-300 transition hover:bg-emerald-400/10 hover:text-emerald-300"
+                  : "flex items-center gap-3 rounded-xl px-3 py-3 text-zinc-400 transition hover:bg-white/[0.04] hover:text-cyan-300"
+              }
+            >
+              <Icon size={20} />
+              {!collapsed && <span className="text-sm font-medium">{label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {!collapsed && (
+        <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.03] p-3">
+          <div className="flex items-center gap-2 text-emerald-300">
+            <ShieldCheck size={16} />
+            <span className="text-xs font-bold">Plano Premium</span>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">Ativo</p>
+        </div>
+      )}
     </aside>
   );
 }
