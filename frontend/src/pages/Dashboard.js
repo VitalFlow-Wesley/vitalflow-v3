@@ -680,8 +680,8 @@ export default function Dashboard() {
       </div>
 
 
-      <div className="grid gap-2 xl:grid-cols-[1.1fr_0.9fr]">
-        <PremiumCard className="p-3">
+      <div className="grid gap-2">
+        <PremiumCard className="order-2 p-3">
           <div className="mb-3 flex items-center justify-between">
             <SectionLabel>Evolução do V-Score</SectionLabel>
             <span className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300">
@@ -689,7 +689,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className="h-[210px]">
+          <div className="h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={trendData}
@@ -740,10 +740,10 @@ export default function Dashboard() {
           </div>
         </PremiumCard>
 
-        <PremiumCard className="p-3">
+        <PremiumCard className="order-1 p-3">
           <SectionLabel>Métricas do momento</SectionLabel>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
             {metrics.map(([Icon, title, value, subtitle, color]) => (
               <div
                 key={title}

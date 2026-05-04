@@ -168,6 +168,10 @@ const historyActivities = [
 export default function ConnectDevices() {
   const [showHistory, setShowHistory] = useState(false);
 
+  if (showHistory) {
+    return <DeviceHistoryView onBack={() => setShowHistory(false)} />;
+  }
+
 if (showHistory) {
     return <DeviceHistoryView onBack={() => setShowHistory(false)} />;
   }
@@ -437,7 +441,7 @@ function RecentActivity({ onOpenHistory }) {
         ))}
       </div>
 
-      <button onClick={() => setShowHistory(true)} className="mt-3 flex items-center gap-1 text-xs font-medium text-cyan-400">Ver histórico completo <ArrowRight size={13} /></button>
+      <button onClick={onOpenHistory} className="mt-3 flex items-center gap-1 text-xs font-medium text-cyan-400">Ver histórico completo <ArrowRight size={13} /></button>
     </div>
   );
 }
