@@ -168,7 +168,7 @@ const historyActivities = [
 export default function ConnectDevices() {
   const [showHistory, setShowHistory] = useState(false);
 
-  if (showHistory) {
+if (showHistory) {
     return <DeviceHistoryView onBack={() => setShowHistory(false)} />;
   }
 
