@@ -15,7 +15,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   if (!user || user === false) {
-    return React.createElement(Navigate, { to: "/login", replace: true });
+    return <Navigate to="/login" replace />;
   }
   return children;
 };
@@ -29,7 +29,7 @@ export const GestorRoute = ({ children }) => {
     );
   }
   if (!user || user === false) {
-    return React.createElement(Navigate, { to: "/login", replace: true });
+    return <Navigate to="/login" replace />;
   }
   const nivel = ROLE_LEVELS[user.nivel_acesso] || 99;
   if (nivel > 7) {

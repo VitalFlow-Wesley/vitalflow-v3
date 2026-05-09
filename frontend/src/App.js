@@ -1,6 +1,9 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SimulationProvider } from "./contexts/SimulationContext";
+import { SimulationBanner } from "./components/SimulationBanner";
+import Simulador from "./pages/Simulador";
 import ProtectedRoute, { GestorRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Analise from "./pages/Analise";
@@ -27,7 +30,9 @@ import RelatorioMensal from "./pages/RelatorioMensal";
 
 function App() {
   return (
-    <div className="App bg-neutral-950 min-h-screen">
+    <SimulationProvider>
+      <SimulationBanner />
+      <div className="App bg-neutral-950 min-h-screen">
       <AuthProvider>
         <BrowserRouter>
           <Routes>
@@ -56,12 +61,14 @@ function App() {
               <Route path="relatorios/risco" element={<RelatorioRisco />} />
               <Route path="relatorios/mensal" element={<RelatorioMensal />} />
             </Route>
-          </Routes>
+            <Route path="/simulador" element={<Simulador />} />
+              </Routes>
         </BrowserRouter>
 
         <Toaster position="top-right" richColors />
       </AuthProvider>
     </div>
+    </SimulationProvider>
   );
 }
 

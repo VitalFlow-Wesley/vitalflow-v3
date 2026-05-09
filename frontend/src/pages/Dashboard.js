@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSimulation } from "../contexts/SimulationContext";
 import {
   AreaChart,
   Area,
@@ -208,6 +209,7 @@ export default function Dashboard() {
 
   const [history, setHistory] = useState([]);
   const [healthTrend, setHealthTrend] = useState(null);
+  const { isSimulating, getSimulatedApiData } = useSimulation();
   const [morningReport, setMorningReport] = useState(null);
   const [predictiveAlert, setPredictiveAlert] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -215,6 +217,17 @@ export default function Dashboard() {
   const [error, setError] = useState("");
 
   const fetchDashboardData = useCallback(async ({ silent = false } = {}) => {
+      // SIMULACAO: se ativo, usa dados simulados sem bater na API
+      if (isSimulating) {
+        const sim = getSimulatedApiData();
+        if (sim) {
+          setHistory(Array.isArray(sim.history) ? sim.history : []);
+          setHealthTrend(sim.healthTrend);
+          setMorningReport(sim.morningReport);
+          setPredictiveAlert(sim.alert);
+          return;
+        }
+      }
     try {
       if (!silent) setLoading(true);
       setRefreshing(true);
@@ -260,7 +273,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isSimulating, getSimulatedApiData]);
 
   useEffect(() => {
     fetchDashboardData();
