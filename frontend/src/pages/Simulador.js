@@ -26,7 +26,7 @@ const scenarios = [
     id: "badSleep",
     label: "Sono ruim",
     description: "Janela de sono curta com impacto cognitivo.",
-    values: { bpm: 72, hrv: 39, sleep: 4.8, stress: 58, steps: 4100, spo2: 97 },
+    values: { bpm: 78, hrv: 30, sleep: 4.2, stress: 70, steps: 2200, spo2: 95 },
   },
   {
     id: "training",
@@ -106,9 +106,11 @@ export default function Simulador() {
   }, [activeScenario, values, result]);
 
   const selectScenario = (scenario) => {
+    const nextScore = scoreFromVitals(scenario.values);
+    const nextTone = toneFromScore(nextScore);
     setActiveId(scenario.id);
     setValues(scenario.values);
-    saveActiveSimulation({ scenario, values: scenario.values, result: { score: scoreFromVitals(scenario.values), tone: toneFromScore(scoreFromVitals(scenario.values)) } });
+    saveActiveSimulation({ scenario, values: scenario.values, result: { score: nextScore, tone: nextTone } });
   };
 
   const updateValue = (key, value) => {
@@ -205,7 +207,7 @@ export default function Simulador() {
                 <div className="mt-8 text-7xl font-black">{result.score}</div>
                 <div className={`mt-1 text-3xl font-black ${tone.color}`}>{tone.label}</div>
               </div>
-              <div className="grid h-44 w-44 place-items-center rounded-full border-[14px] border-emerald-400 text-center">
+              <div className={`grid h-44 w-44 place-items-center rounded-full border-[14px] text-center ${result.tone === "critico" ? "border-rose-400" : result.tone === "atencao" ? "border-yellow-400" : "border-emerald-400"}`}>
                 <div>
                   <div className="text-4xl font-black">{result.confidence}%</div>
                   <div className="text-sm font-bold text-blue-200/80">confianca</div>
