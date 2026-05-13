@@ -2,9 +2,19 @@ import { createContext, useContext, useState, useEffect, useRef } from "react";
 
 const AuthContext = createContext(null);
 
-const API_URL = (
-  process.env.REACT_APP_BACKEND_URL || "https://vitalflow.up.railway.app"
-).replace(/\/+$/, "");
+const resolveApiUrl = () => {
+  const configuredUrl = (process.env.REACT_APP_BACKEND_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (!configuredUrl || configuredUrl.includes("api.vitalflow.ia.br")) {
+    return "";
+  }
+
+  return configuredUrl;
+};
+
+const API_URL = resolveApiUrl();
 
 export const ROLE_LEVELS = {
   CEO: 1,
